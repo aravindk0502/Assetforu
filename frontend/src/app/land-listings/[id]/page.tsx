@@ -226,15 +226,15 @@ export default function PropertyDetailPage() {
         )}
 
         {/* Call to Action - Prominent Phone Display */}
-        <div className="grid md:grid-cols-2 gap-4 mb-8">
+        <div className="mb-8">
           {dealer && (
-            <div className="bg-emerald-50 border-2 border-emerald-600 rounded-2xl p-6">
-              <p className="text-xs uppercase tracking-wider text-emerald-600 mb-3 font-bold">Call the Owner</p>
-              <p className="text-sm text-slate-600 mb-4">{dealer.name} from {dealer.company}</p>
+            <div className="bg-emerald-50 border-2 border-emerald-600 rounded-2xl p-8">
+              <p className="text-xs uppercase tracking-wider text-emerald-600 mb-4 font-bold">Contact Owner</p>
+              <p className="text-sm text-slate-600 mb-6">{dealer.name} from {dealer.company}</p>
               
-              <div className="mb-6">
-                <p className="text-xs text-slate-500 mb-2">PHONE NUMBER</p>
-                <p className="text-3xl font-black text-emerald-600 tracking-wider">{dealer.phone}</p>
+              <div className="mb-8">
+                <p className="text-xs text-slate-500 mb-3">PHONE NUMBER</p>
+                <p className="text-4xl font-black text-emerald-600 tracking-wider mb-4">{dealer.phone}</p>
               </div>
 
               <button
@@ -254,23 +254,6 @@ export default function PropertyDetailPage() {
               </p>
             </div>
           )}
-
-          <div className="bg-white border-2 border-slate-200 rounded-2xl p-6 flex flex-col">
-            <p className="text-xs uppercase tracking-wider text-slate-600 mb-3 font-bold">Save for Later</p>
-            <p className="text-sm text-slate-600 mb-6 flex-grow">Add this property to your favorites and review it anytime</p>
-            
-            <button
-              onClick={handleFavorite}
-              className={`w-full py-4 rounded-xl font-bold border-2 transition flex items-center justify-center gap-2 ${
-                isFavorited
-                  ? 'border-rose-500 text-rose-500 bg-rose-50 hover:bg-rose-100'
-                  : 'border-emerald-600 text-emerald-600 hover:bg-emerald-50'
-              }`}
-            >
-              <Heart className={`w-5 h-5 ${isFavorited ? 'fill-rose-500' : ''}`} />
-              {isFavorited ? '💖 Saved' : '❤️ Save Property'}
-            </button>
-          </div>
         </div>
 
         {/* Terms */}
