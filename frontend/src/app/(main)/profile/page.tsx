@@ -449,7 +449,7 @@ export default function ProfilePage() {
                       .map((a) => (
                         <div 
                           key={a.id} 
-                          onClick={() => router.push(`/campaigns/${a.campaignId}`)}
+                          onClick={() => router.push(`/campaigns/${a.campaignId}/ticket`)}
                           className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm cursor-pointer hover:bg-slate-100 hover:border-slate-200 transition"
                         >
                           <div>
