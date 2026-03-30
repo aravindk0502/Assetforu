@@ -3,11 +3,30 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { campaigns } from '@/data/dreamCampaigns';
-import { ChevronLeft, ChevronRight, Heart, Phone, Eye } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Heart, Phone, Eye, X } from 'lucide-react';
 import BackNavigation from '@/components/BackNavigation';
+
+// Mock dealer data
+const dealerData: Record<string, { name: string; phone: string; company: string; email: string }> = {
+  'premium-metro-alliance': { name: 'Rajesh Kumar', phone: '+91 98765 43210', company: 'Prime Properties', email: 'rajesh@primeproperties.com' },
+  'heritage-orchard-land': { name: 'Priya Singh', phone: '+91 97654 32109', company: 'Heritage Estates', email: 'priya@heritageestates.com' },
+  'coastal-boulevard-project': { name: 'Amit Patel', phone: '+91 96543 21098', company: 'Coastal Investments', email: 'amit@coastalinvest.com' },
+};
 
 export default function LandListingsPage() {
   const router = useRouter();
+  const [revealedNumbers, setRevealedNumbers] = useState<Set<string>>(new Set());
+  const [contactModal, setContactModal] = useState<string | null>(null);
+
+  const toggleRevealNumber = (id: string) => {
+    const newSet = new Set(revealedNumbers);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+    }
+    setRevealedNumbers(newSet);
+  };
 
   return (
     <div className="page-enter bg-[#f4f5f6] min-h-screen">
@@ -81,15 +100,35 @@ export default function LandListingsPage() {
                         <p>• Dedicated advisory support available</p>
                       </div>
                     </div>
+
+                    {/* Dealer Info */}
+                    <div className="bg-slate-50 rounded-xl p-4 mb-6 border border-slate-200">
+                      <p className="text-xs uppercase tracking-widest text-slate-400 mb-3">Dealer Information</p>
+                      <div>
+                        <p className="font-bold text-slate-900">{dealerData[campaign.id]?.name || 'Property Owner'}</p>
+                        <p className="text-sm text-slate-600">{dealerData[campaign.id]?.company || 'Verified Dealer'}</p>
+                        {revealedNumbers.has(campaign.id) ? (
+                          <p className="text-sm font-bold text-emerald-600 mt-2">{dealerData[campaign.id]?.phone || '+91 XXXX XXXX XX'}</p>
+                        ) : (
+                          <p className="text-sm text-slate-500 mt-2">Phone number hidden</p>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
                   {/* Contact Section */}
                   <div className="flex gap-3">
-                    <button className="flex-1 rounded-xl border-2 border-emerald-600 text-emerald-600 px-6 py-3 font-bold hover:bg-emerald-50 transition">
+                    <button
+                      onClick={() => toggleRevealNumber(campaign.id)}
+                      className="flex-1 rounded-xl border-2 border-emerald-600 text-emerald-600 px-6 py-3 font-bold hover:bg-emerald-50 transition"
+                    >
                       <Eye className="w-4 h-4 inline mr-2" />
-                      View Number
+                      {revealedNumbers.has(campaign.id) ? 'Hide Number' : 'View Number'}
                     </button>
-                    <button className="flex-1 rounded-xl bg-emerald-600 text-white px-6 py-3 font-bold hover:bg-emerald-700 transition">
+                    <button
+                      onClick={() => setContactModal(campaign.id)}
+                      className="flex-1 rounded-xl bg-emerald-600 text-white px-6 py-3 font-bold hover:bg-emerald-700 transition"
+                    >
                       <Phone className="w-4 h-4 inline mr-2" />
                       Contact Owner
                     </button>
@@ -100,6 +139,70 @@ export default function LandListingsPage() {
           ))}
         </div>
       </section>
+
+      {/* Contact Modal */}
+      {contactModal && dealerData[contactModal] && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl">
+            <div className="flex items-center justify-between p-6 border-b border-slate-200">
+              <h3 className="text-2xl font-black text-slate-900">Contact Property Owner</h3>
+              <button
+                onClick={() => setContactModal(null)}
+                className="text-slate-400 hover:text-slate-600 transition"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              <div className="bg-emerald-50 rounded-2xl p-6 border border-emerald-200">
+                <p className="text-xs uppercase tracking-wider text-emerald-600 mb-3">Owner Details</p>
+                <h4 className="text-xl font-black text-slate-900 mb-1">{dealerData[contactModal].name}</h4>
+                <p className="text-sm text-slate-600 mb-4">{dealerData[contactModal].company}</p>
+                <div className="space-y-3">
+                  <a
+                    href={`tel:${dealerData[contactModal].phone}`}
+                    className="flex items-center gap-3 p-3 bg-white rounded-xl hover:bg-emerald-100 transition"
+                  >
+                    <Phone className="w-5 h-5 text-emerald-600" />
+                    <span className="font-bold text-slate-900">{dealerData[contactModal].phone}</span>
+                  </a>
+                  <a
+                    href={`mailto:${dealerData[contactModal].email}`}
+                    className="flex items-center gap-3 p-3 bg-white rounded-xl hover:bg-emerald-100 transition text-left"
+                  >
+                    <span className="text-emerald-600 font-bold">@</span>
+                    <span className="text-sm text-slate-700 break-all">{dealerData[contactModal].email}</span>
+                  </a>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <button
+                  onClick={() => {
+                    window.location.href = `tel:${dealerData[contactModal].phone}`;
+                  }}
+                  className="w-full rounded-xl bg-emerald-600 text-white px-6 py-3 font-bold hover:bg-emerald-700 transition flex items-center justify-center gap-2"
+                >
+                  <Phone className="w-4 h-4" />
+                  Call Now
+                </button>
+                <button
+                  onClick={() => setContactModal(null)}
+                  className="w-full rounded-xl border-2 border-slate-200 text-slate-900 px-6 py-3 font-bold hover:bg-slate-50 transition"
+                >
+                  Close
+                </button>
+              </div>
+
+              <div className="text-xs text-center text-slate-500">
+                <p>By contacting, you agree to our Terms of Service</p>
+                <p>Your information is safe and secure</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

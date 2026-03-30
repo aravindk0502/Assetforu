@@ -21,11 +21,11 @@ export default function LandPropertiesCarousel() {
   }, [autoScroll]);
 
   const goToCampaign = (campaignId: string) => {
-    router.push(`/land-listings/${campaignId}`);
+    router.push(`/land-listings`);
   };
 
   const handleBannerClick = () => {
-    router.push(`/land-listings/${current.id}`);
+    router.push(`/land-listings`);
   };
 
   const goToPrevious = () => {
