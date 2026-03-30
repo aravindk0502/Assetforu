@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { campaigns } from '@/data/dreamCampaigns';
 import { ChevronLeft, ChevronRight, Heart, Phone, Eye, X } from 'lucide-react';
+import { useUIStore } from '@/store';
+import { addToast } from '@/components/Toast';
 import BackNavigation from '@/components/BackNavigation';
 
 // Mock dealer data
@@ -22,6 +24,7 @@ const propertyPrices: Record<string, string> = {
 
 export default function LandListingsPage() {
   const router = useRouter();
+  const { favorites, toggleFavorite } = useUIStore();
   const [revealedNumbers, setRevealedNumbers] = useState<Set<string>>(new Set());
   const [contactModal, setContactModal] = useState<string | null>(null);
 
@@ -60,8 +63,34 @@ export default function LandListingsPage() {
                   <div className="absolute top-4 left-4 rounded-full bg-emerald-600 text-white px-4 py-2 text-xs font-bold">
                     {idx % 2 === 0 ? 'FOR SALE' : 'FOR RENT'}
                   </div>
-                  <button className="absolute top-4 right-4 rounded-full bg-white text-slate-600 p-3 hover:text-rose-500 transition">
-                    <Heart className="w-5 h-5" />
+                  <button 
+                    onClick={() => {
+                      const isFavorited = favorites.some((f) => f.id === campaign.id);
+                      toggleFavorite({
+                        id: campaign.id,
+                        title: campaign.title,
+                        description: campaign.description,
+                        image_url: campaign.imageUrl,
+                        type: 'property',
+                        category: campaign.location,
+                        credits: 0,
+                      });
+                      addToast(
+                        isFavorited ? `${campaign.title} removed from favorites` : `${campaign.title} added to favorites`,
+                        'success',
+                        1,
+                        !isFavorited
+                      );
+                    }}
+                    className="absolute top-4 right-4 rounded-full bg-white text-slate-600 p-3 hover:text-rose-500 transition"
+                  >
+                    <Heart 
+                      className={`w-5 h-5 ${
+                        favorites.some((f) => f.id === campaign.id) 
+                          ? 'fill-rose-500 text-rose-500' 
+                          : ''
+                      }`} 
+                    />
                   </button>
                   {/* Carousel dots */}
                   <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
