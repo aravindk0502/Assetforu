@@ -43,7 +43,7 @@ export const authAPI = {
 // ── User ─────────────────────────────────────────────────────
 export const userAPI = {
   getProfile: () => api.get('/user/profile'),
-  updateProfile: (data: { name?: string; email?: string }) => api.patch('/user/profile', data),
+  updateProfile: (data: { name?: string; email?: string; phone?: string }) => api.patch('/user/profile', data),
 };
 
 // ── Wallet ───────────────────────────────────────────────────

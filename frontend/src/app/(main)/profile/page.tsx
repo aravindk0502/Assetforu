@@ -40,6 +40,7 @@ export default function ProfilePage() {
 
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
+  const [phone, setPhone] = useState(user?.phone || '');
   const [gender, setGender] = useState<Gender>('');
   const [dob, setDob] = useState('');
   const [country, setCountry] = useState('India');
@@ -95,6 +96,9 @@ export default function ProfilePage() {
       const extrasRaw = localStorage.getItem('af_profile_extras');
       if (extrasRaw) {
         const extras = JSON.parse(extrasRaw) as {
+          name?: string;
+          email?: string;
+          phone?: string;
           gender?: Gender;
           dob?: string;
           country?: string;
@@ -102,6 +106,9 @@ export default function ProfilePage() {
           city?: string;
           nationality?: string;
         };
+        if (extras.name) setName(extras.name);
+        if (extras.email) setEmail(extras.email);
+        if (extras.phone) setPhone(extras.phone);
         if (extras.gender) setGender(extras.gender);
         if (extras.dob) setDob(extras.dob);
         if (extras.country) setCountry(extras.country);
@@ -139,19 +146,19 @@ export default function ProfilePage() {
       if (typeof window !== 'undefined') {
         localStorage.setItem(
           'af_profile_extras',
-          JSON.stringify({ gender, dob, country, state, city, nationality })
+          JSON.stringify({ name, email, phone, gender, dob, country, state, city, nationality })
         );
       }
 
       if (user?.id?.startsWith('dev_')) {
-        updateUser({ name, email });
+        updateUser({ name, email, phone });
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 3000);
         return;
       }
 
-      await userAPI.updateProfile({ name, email });
-      updateUser({ name, email });
+      await userAPI.updateProfile({ name, email, phone });
+      updateUser({ name, email, phone });
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch {
@@ -274,9 +281,10 @@ export default function ProfilePage() {
                   <div className="mt-2 relative">
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <input
-                      value={displayPhone}
-                      readOnly
-                      className="w-full rounded-2xl border border-slate-200 pl-10 pr-4 py-3 text-sm bg-slate-50 text-slate-500"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      className="w-full rounded-2xl border border-slate-200 pl-10 pr-4 py-3 text-sm focus:border-primary-500 outline-none"
+                      placeholder="+91 1234567890"
                     />
                   </div>
                 </div>
