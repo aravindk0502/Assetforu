@@ -3,14 +3,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore, useCartStore, useUIStore } from '@/store';
-import { addToast } from '@/components/Toast';
 import { campaigns } from '@/data/dreamCampaigns';
 import { productCatalog, servicesCatalog } from '@/data/storeCatalog';
-import { Sparkles, Ticket, ArrowUpRight, Heart, Wallet, Store, BadgeCheck, Activity, ChevronDown } from 'lucide-react';
+import { Sparkles, Ticket, ArrowUpRight, Heart, Wallet, Store, BadgeCheck, Activity } from 'lucide-react';
 import { campaignAPI } from '@/lib/api';
 import { formatCurrency } from '@/lib/currency';
-import LandPropertiesCarousel from '@/components/LandPropertiesCarousel';
-import { CampaignImageCarousel } from '@/components/CampaignImageCarousel';
 
 const campaignTags = ['Just Launched', 'Closing Soon', 'Exclusive Series', 'Trending'];
 
@@ -20,6 +17,7 @@ export default function HomePage() {
   const token = useAuthStore((state) => state.token);
   const { walletBalance, openSignupModal, favorites, toggleFavorite, currency } = useUIStore();
   const { addToCart, items: cartItems } = useCartStore();
+  const [activeFilter, setActiveFilter] = useState('All Campaigns');
   const [limitMap, setLimitMap] = useState<Record<string, number>>({});
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
@@ -30,14 +28,19 @@ export default function HomePage() {
     try {
       const raw = localStorage.getItem('af_dev_campaign_purchases');
       const map = raw ? JSON.parse(raw) as Record<string, number> : {};
-      const topThreeCampaigns = campaigns.slice(0, 3);
-      const entries = topThreeCampaigns.map((c) => [c.id, Math.max(0, 3 - (map[c.id] || 0))] as const);
+      const entries = campaigns.map((c) => [c.id, Math.max(0, 3 - (map[c.id] || 0))] as const);
       setLimitMap(Object.fromEntries(entries));
-    } catch (error) {
-      // Failed to load dev limits - use defaults
-      setLimitMap({});
+    } catch {
+      // ignore
     }
   };
+
+  const filteredCampaigns = useMemo(() => {
+    if (activeFilter === 'All Campaigns') return campaigns;
+    if (activeFilter === 'Exclusive') return campaigns.slice(0, 2);
+    if (activeFilter === 'Closing Soon') return campaigns.slice(2, 4);
+    return campaigns;
+  }, [activeFilter]);
 
   useEffect(() => {
     const loadLimits = async () => {
@@ -47,35 +50,26 @@ export default function HomePage() {
         return;
       }
       try {
-        const topThreeCampaigns = campaigns.slice(0, 3);
         const entries = await Promise.all(
-          topThreeCampaigns.map(async (c) => {
-            try {
-              const res = await campaignAPI.limit(c.id);
-              const remaining = Number(res.data?.data?.remaining_limit ?? 3);
-              return [c.id, remaining] as const;
-            } catch (error) {
-              // If API fails, use default limit of 3
-              return [c.id, 3] as const;
-            }
+          campaigns.map(async (c) => {
+            const res = await campaignAPI.limit(c.id);
+            const remaining = Number(res.data?.data?.remaining_limit ?? 3);
+            return [c.id, remaining] as const;
           })
         );
         setLimitMap(Object.fromEntries(entries));
-      } catch (error) {
-        // Failed to load campaign limits - use defaults
-        setLimitMap({});
+      } catch {
+        // ignore
       }
     };
     loadLimits();
     const onFocus = () => loadLimits();
-    if (typeof window !== 'undefined') {
-      window.addEventListener('focus', onFocus);
-      window.addEventListener('campaign:purchase', onFocus);
-      return () => {
-        window.removeEventListener('focus', onFocus);
-        window.removeEventListener('campaign:purchase', onFocus);
-      };
-    }
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('campaign:purchase', onFocus);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('campaign:purchase', onFocus);
+    };
   }, [token, user, isDevUser]);
 
   const goToCampaign = (id: string) => router.push(`/campaigns/${id}`);
@@ -107,14 +101,14 @@ export default function HomePage() {
             <p className="mt-6 max-w-2xl text-base sm:text-lg text-slate-100/85 leading-8">Use Asset Credits to access platform services such as legal consultation, land advisory, and related offerings, designed to enhance your overall experience.</p>
             <p className="mt-6 text-sm text-slate-200/70 max-w-xl">As part of the platform experience, users may receive access to promotional campaigns. These benefits are complimentary and not the primary purpose of credit purchase.</p>
             <div className="mt-10 flex flex-wrap items-center gap-4">
-              <button onClick={() => router.push('/campaigns')} className="rounded-full bg-emerald-300 text-slate-950 px-6 py-3 text-sm font-semibold shadow-xl shadow-emerald-500/20 transition hover:bg-emerald-200">Get Started</button>
-              <button onClick={() => router.push('/store')} className="rounded-full border border-emerald-200/75 text-white px-6 py-3 text-sm font-semibold transition hover:bg-white/10">Explore Store</button>
+              <button onClick={() => router.push('/store')} className="rounded-full bg-emerald-300 text-slate-950 px-6 py-3 text-sm font-semibold shadow-xl shadow-emerald-500/20 transition hover:bg-emerald-200">Get Started</button>
+              <button onClick={() => router.push('/store')} className="rounded-full border border-emerald-200/75 text-white px-6 py-3 text-sm font-semibold transition hover:bg-white/10">Explore Services</button>
             </div>
           </div>
           <div className="mt-14 grid gap-4 md:grid-cols-3">
             {[
               { label: 'Wallet Balance', value: `${formatCurrency(isAuthed ? walletBalance : 0, currency)}` },
-              { label: 'Active Campaigns', value: `3` },
+              { label: 'Active Campaigns', value: `${campaigns.length}` },
               { label: 'Items in Cart', value: `${cartItems.length}` },
             ].map((stat) => (
               <div key={stat.label} className="rounded-[28px] bg-slate-900/70 border border-white/10 px-5 py-4 text-white backdrop-blur-sm shadow-xl shadow-slate-950/20">
@@ -130,8 +124,22 @@ export default function HomePage() {
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div>
             <p className="text-xs uppercase tracking-[0.25em] text-emerald-600">Active Platform Campaigns</p>
-            <h2 className="text-3xl font-black text-slate-900 mt-2">Featured Campaigns</h2>
+            <h2 className="text-3xl font-black text-slate-900 mt-2\">Featured Campaigns</h2>
             <p className="text-slate-500 mt-2">Explore available campaigns as part of your platform experience with Asset Credits.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {['All Campaigns', 'Exclusive', 'Closing Soon'].map((filter) => (
+              <button
+                key={filter}
+                onClick={() => setActiveFilter(filter)}
+                className={`rounded-full px-4 py-2 text-xs font-bold ${activeFilter === filter
+                    ? 'bg-slate-900 text-white'
+                    : 'border border-slate-200 text-slate-600 hover:bg-white'
+                  }`}
+              >
+                {filter}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -143,27 +151,19 @@ export default function HomePage() {
               <li className="flex items-start gap-2"><Ticket className="w-4 h-4 text-emerald-500" /> Automatic entry on credit purchase.</li>
               <li className="flex items-start gap-2"><ArrowUpRight className="w-4 h-4 text-emerald-500" /> Dedicated advisory support.</li>
             </ul>
-            <button onClick={() => router.push('/campaigns')} className="mt-6 w-full rounded-xl bg-primary-700 text-white py-2 text-sm font-bold flex items-center justify-center gap-2">View All Campaigns <ChevronDown className="w-4 h-4" /></button>
+            <button onClick={() => router.push('/campaigns')} className="mt-6 w-full rounded-xl bg-primary-700 text-white py-2 text-sm font-bold">View All Campaigns</button>
           </div>
 
           <div className="space-y-5">
-            {campaigns.slice(0, 3).map((campaign, idx) => (
+            {filteredCampaigns.map((campaign, idx) => (
               <div key={campaign.id} className="rounded-3xl bg-white border border-slate-200 shadow-sm overflow-hidden">
-                <div className="grid md:grid-cols-[250px_1fr] gap-0">
-                  {/* Carousel/Image Section */}
-                  <div className="relative h-48 md:h-64 bg-slate-200 overflow-hidden">
-                    {campaign.images && campaign.images.length > 0 ? (
-                      <CampaignImageCarousel images={campaign.images} title={campaign.title} />
-                    ) : (
-                      <img src={campaign.imageUrl} alt={campaign.title} className="w-full h-full object-cover" />
-                    )}
-                    {/* Campaign Tag */}
-                    <span className="absolute top-3 left-3 rounded-full bg-emerald-600 text-white px-3 py-1 text-xs font-bold z-10">
+                <div className="grid md:grid-cols-[220px_1fr]">
+                  <div className="relative">
+                    <img src={campaign.imageUrl} alt={campaign.title} className="h-full w-full object-cover" />
+                    <span className="absolute top-3 left-3 rounded-full bg-emerald-600 text-white px-3 py-1 text-xs font-bold">
                       {campaignTags[idx % campaignTags.length]}
                     </span>
                   </div>
-
-                  {/* Content Section */}
                   <div className="p-5 flex flex-col gap-4">
                     <div>
                       <p className="text-xs uppercase tracking-wide text-slate-400">{campaign.location}</p>
@@ -185,8 +185,7 @@ export default function HomePage() {
                       </div>
                       <div className="flex gap-2">
                         <button
-                          onClick={() => {
-                            const isFavorited = favorites.some((f) => f.id === campaign.id);
+                          onClick={() =>
                             toggleFavorite({
                               id: campaign.id,
                               title: campaign.title,
@@ -195,14 +194,8 @@ export default function HomePage() {
                               type: 'campaign',
                               category: campaign.location,
                               credits: campaign.creditPack,
-                            });
-                            addToast(
-                              isFavorited ? `${campaign.title} removed from favorites` : `${campaign.title} added to favorites`,
-                              'success',
-                              1,
-                              !isFavorited
-                            );
-                          }}
+                            })
+                          }
                           className="rounded-xl border border-slate-200 text-slate-600 px-3 py-2 text-sm font-bold hover:text-rose-500"
                         >
                           <Heart
@@ -254,38 +247,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {!isAuthed && (
-        <section className="mx-auto max-w-7xl px-6 lg:px-10 py-8">
-          <div className="rounded-3xl bg-slate-900 text-white p-8 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-            <div>
-              <p className="text-xs uppercase tracking-[0.25em] text-emerald-300">Join Now</p>
-              <h2 className="text-3xl font-black mt-2">Ready to Get Started?</h2>
-              <p className="text-slate-200 mt-2">Create your account today and start exploring amazing opportunities with Asset Credits.</p>
-            </div>
-            <button
-              onClick={() => openSignupModal()}
-              className="rounded-full bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-3 text-sm font-bold whitespace-nowrap transition"
-            >
-              Create Account
-            </button>
-          </div>
-        </section>
-      )}
-
-      <section className="mx-auto max-w-7xl px-6 lg:px-10 py-8">
-        <div className="rounded-3xl bg-gradient-to-r from-emerald-500 to-emerald-600 p-8 md:p-10 text-white">
-          <h3 className="text-2xl md:text-3xl font-black mb-4">Explore Products & Services</h3>
-          <ul className="space-y-2 mb-6 text-sm md:text-base">
-            <li className="flex items-center gap-2"><span className="text-emerald-200">✓</span> Premium products curated for quality</li>
-            <li className="flex items-center gap-2"><span className="text-emerald-200">✓</span> Expert services available instantly</li>
-            <li className="flex items-center gap-2"><span className="text-emerald-200">✓</span> Use your Asset Credits to purchase</li>
-          </ul>
-          <button onClick={() => router.push('/store')} className="rounded-full bg-white text-emerald-600 px-6 py-3 text-sm font-bold hover:bg-emerald-50 transition">
-            Shop Now →
-          </button>
-        </div>
-      </section>
-
       <section className="mx-auto max-w-7xl px-6 lg:px-10 py-12">
         <div className="flex items-end justify-between gap-6 mb-8">
           <div>
@@ -328,8 +289,6 @@ export default function HomePage() {
           ))}
         </div>
       </section>
-
-      <LandPropertiesCarousel />
 
       <section className="mx-auto max-w-7xl px-6 lg:px-10 py-12">
         <div className="flex items-end justify-between gap-6 mb-6">
@@ -399,6 +358,23 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {!isAuthed && (
+        <section className="mx-auto max-w-7xl px-6 lg:px-10 pb-16">
+          <div className="rounded-3xl bg-slate-900 text-white p-8 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+            <div>
+              <p className="text-xs uppercase tracking-[0.25em] text-emerald-300">Get Started</p>
+              <h2 className="text-3xl font-black mt-2">Get Started with AssetForU</h2>
+            </div>
+            <button
+              onClick={() => openSignupModal()}
+              className="rounded-full bg-white text-slate-900 px-6 py-3 text-sm font-bold"
+            >
+              Create Account
+            </button>
+          </div>
+        </section>
+      )}
 
       <section className="mx-auto max-w-7xl px-6 lg:px-10 pb-14">
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">

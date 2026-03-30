@@ -237,172 +237,172 @@ export default function ProfilePage() {
 
           <main>
             {active === 'personal' && (
-            <div className="rounded-3xl bg-white border border-slate-200 p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h2 className="text-xl font-black text-slate-900">Personal Details</h2>
-                  <p className="text-sm text-slate-500">Update your profile for AssetForU benefits.</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Full Name</label>
-                  <input
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-primary-500 outline-none"
-                    placeholder="Your full name"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Email Address</label>
-                  <div className="mt-2 relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full rounded-2xl border border-slate-200 pl-10 pr-4 py-3 text-sm focus:border-primary-500 outline-none"
-                      placeholder="you@email.com"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Phone Number</label>
-                  <div className="mt-2 relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      className="w-full rounded-2xl border border-slate-200 pl-10 pr-4 py-3 text-sm focus:border-primary-500 outline-none"
-                      placeholder="+91 1234567890"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Date of Birth</label>
-                  <div className="mt-2 relative">
-                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input
-                      type="date"
-                      value={dob}
-                      onChange={(e) => setDob(e.target.value)}
-                      className="w-full rounded-2xl border border-slate-200 pl-10 pr-4 py-3 text-sm focus:border-primary-500 outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Gender</label>
-                  <div className="mt-2 grid grid-cols-3 gap-2">
-                    {(['male', 'female', 'other'] as const).map((g) => (
-                      <button
-                        key={g}
-                        type="button"
-                        onClick={() => setGender(g)}
-                        className={clsx(
-                          'rounded-2xl border px-3 py-2 text-xs font-bold uppercase',
-                          gender === g ? 'border-primary-600 text-primary-700 bg-primary-50' : 'border-slate-200 text-slate-500'
-                        )}
-                      >
-                        {g}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Country of Residence</label>
-                  <select
-                    value={country}
-                    onChange={(e) => {
-                      setCountry(e.target.value);
-                      setState('');
-                      setCity('');
-                    }}
-                    className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-primary-500 outline-none"
-                  >
-                    <option value="">Select Country</option>
-                    {getCountryNames().map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {country && (
+              <div className="rounded-3xl bg-white border border-slate-200 p-6 shadow-sm">
+                <div className="flex items-center justify-between mb-6">
                   <div>
-                    <label className="text-xs font-bold uppercase tracking-wider text-slate-500">State / Province</label>
+                    <h2 className="text-xl font-black text-slate-900">Personal Details</h2>
+                    <p className="text-sm text-slate-500">Update your profile for AssetForU benefits.</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Full Name</label>
+                    <input
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-primary-500 outline-none"
+                      placeholder="Your full name"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Email Address</label>
+                    <div className="mt-2 relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="w-full rounded-2xl border border-slate-200 pl-10 pr-4 py-3 text-sm focus:border-primary-500 outline-none"
+                        placeholder="you@email.com"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Phone Number</label>
+                    <div className="mt-2 relative">
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        className="w-full rounded-2xl border border-slate-200 pl-10 pr-4 py-3 text-sm focus:border-primary-500 outline-none"
+                        placeholder="+91 1234567890"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Date of Birth</label>
+                    <div className="mt-2 relative">
+                      <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input
+                        type="date"
+                        value={dob}
+                        onChange={(e) => setDob(e.target.value)}
+                        className="w-full rounded-2xl border border-slate-200 pl-10 pr-4 py-3 text-sm focus:border-primary-500 outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Gender</label>
+                    <div className="mt-2 grid grid-cols-3 gap-2">
+                      {(['male', 'female', 'other'] as const).map((g) => (
+                        <button
+                          key={g}
+                          type="button"
+                          onClick={() => setGender(g)}
+                          className={clsx(
+                            'rounded-2xl border px-3 py-2 text-xs font-bold uppercase',
+                            gender === g ? 'border-primary-600 text-primary-700 bg-primary-50' : 'border-slate-200 text-slate-500'
+                          )}
+                        >
+                          {g}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Country of Residence</label>
                     <select
-                      value={state}
+                      value={country}
                       onChange={(e) => {
-                        setState(e.target.value);
+                        setCountry(e.target.value);
+                        setState('');
                         setCity('');
                       }}
                       className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-primary-500 outline-none"
                     >
-                      <option value="">Select State</option>
-                      {getStatesForCountry(country).map((s) => (
-                        <option key={s.name} value={s.name}>
-                          {s.name}
+                      <option value="">Select Country</option>
+                      {getCountryNames().map((c) => (
+                        <option key={c} value={c}>
+                          {c}
                         </option>
                       ))}
                     </select>
                   </div>
-                )}
 
-                {state && (
+                  {country && (
+                    <div>
+                      <label className="text-xs font-bold uppercase tracking-wider text-slate-500">State / Province</label>
+                      <select
+                        value={state}
+                        onChange={(e) => {
+                          setState(e.target.value);
+                          setCity('');
+                        }}
+                        className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-primary-500 outline-none"
+                      >
+                        <option value="">Select State</option>
+                        {getStatesForCountry(country).map((s) => (
+                          <option key={s.name} value={s.name}>
+                            {s.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {state && (
+                    <div>
+                      <label className="text-xs font-bold uppercase tracking-wider text-slate-500">City</label>
+                      <select
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                        className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-primary-500 outline-none"
+                      >
+                        <option value="">Select City</option>
+                        {getCitiesForState(country, state).map((c) => (
+                          <option key={c.name} value={c.name}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
                   <div>
-                    <label className="text-xs font-bold uppercase tracking-wider text-slate-500">City</label>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Nationality</label>
                     <select
-                      value={city}
-                      onChange={(e) => setCity(e.target.value)}
+                      value={nationality}
+                      onChange={(e) => setNationality(e.target.value)}
                       className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-primary-500 outline-none"
                     >
-                      <option value="">Select City</option>
-                      {getCitiesForState(country, state).map((c) => (
-                        <option key={c.name} value={c.name}>
-                          {c.name}
+                      <option value="">Select Nationality</option>
+                      {getCountryNames().map((c) => (
+                        <option key={c} value={c}>
+                          {c}
                         </option>
                       ))}
                     </select>
                   </div>
-                )}
+                </div>
 
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Nationality</label>
-                  <select
-                    value={nationality}
-                    onChange={(e) => setNationality(e.target.value)}
-                    className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-primary-500 outline-none"
+                <div className="mt-6 flex items-center gap-3">
+                  <button
+                    onClick={() => (isGuest ? openSignupModal() : handleSave())}
+                    disabled={saving}
+                    className="rounded-2xl bg-primary-700 text-white px-6 py-3 text-sm font-bold hover:bg-primary-800 transition disabled:opacity-70"
                   >
-                    <option value="">Select Nationality</option>
-                    {getCountryNames().map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
+                    {saving ? 'Updating...' : 'Update'}
+                  </button>
+                  {loading && <span className="text-xs text-slate-400">Syncing account...</span>}
+                  {mounted && saveSuccess && <span className="text-sm font-semibold text-emerald-600 animate-pulse">✓ Successfully Updated</span>}
                 </div>
               </div>
-
-              <div className="mt-6 flex items-center gap-3">
-                <button
-                  onClick={() => (isGuest ? openSignupModal() : handleSave())}
-                  disabled={saving}
-                  className="rounded-2xl bg-primary-700 text-white px-6 py-3 text-sm font-bold hover:bg-primary-800 transition disabled:opacity-70"
-                >
-                  {saving ? 'Updating...' : 'Update'}
-                </button>
-                {loading && <span className="text-xs text-slate-400">Syncing account...</span>}
-                {mounted && saveSuccess && <span className="text-sm font-semibold text-emerald-600 animate-pulse">✓ Successfully Updated</span>}
-              </div>
-            </div>
             )}
 
             {active === 'wallet' && (
@@ -442,8 +442,8 @@ export default function ProfilePage() {
                       .filter((a) => typeof a.ticketNumber === 'number')
                       .slice(0, 12)
                       .map((a) => (
-                        <div 
-                          key={a.id} 
+                        <div
+                          key={a.id}
                           onClick={() => router.push(`/campaigns/${a.campaignId}/ticket`)}
                           className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm cursor-pointer hover:bg-slate-100 hover:border-slate-200 transition"
                         >
@@ -468,8 +468,8 @@ export default function ProfilePage() {
                 ) : (
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     {favorites.map((fav) => (
-                      <div 
-                        key={fav.id} 
+                      <div
+                        key={fav.id}
                         onClick={() => router.push(getNavigationPath(fav))}
                         className="rounded-2xl border border-slate-200 bg-slate-50 p-3 flex gap-3 cursor-pointer hover:bg-slate-100 transition"
                       >

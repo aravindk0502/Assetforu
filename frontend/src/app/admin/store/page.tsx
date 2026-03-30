@@ -79,7 +79,7 @@ export default function AdminStorePage() {
                   <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Category</label>
                   <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
                     className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none">
-                    {['legal','advisory','documentation','plants','home_items'].map(c => <option key={c} value={c}>{c}</option>)}
+                    {['legal', 'advisory', 'documentation', 'plants', 'home_items'].map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
               </div>

@@ -19,7 +19,7 @@ export default function AdminUsersPage() {
 
   useEffect(() => {
     setLoading(true);
-    adminAPI.getUsers(page).then(r => { setUsers(r.data.data); setTotal(r.data.meta.total); }).catch(() => {}).finally(() => setLoading(false));
+    adminAPI.getUsers(page).then(r => { setUsers(r.data.data); setTotal(r.data.meta.total); }).catch(() => { }).finally(() => setLoading(false));
   }, [page]);
 
   return (

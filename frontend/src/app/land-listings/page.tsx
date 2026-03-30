@@ -51,7 +51,7 @@ export default function LandListingsPage() {
                   <div className="absolute top-4 left-4 rounded-full bg-emerald-600 text-white px-4 py-2 text-xs font-bold">
                     {idx % 2 === 0 ? 'FOR SALE' : 'FOR RENT'}
                   </div>
-                  <button 
+                  <button
                     onClick={() => {
                       const isFavorited = favorites.some((f) => f.id === campaign.id);
                       toggleFavorite({
@@ -72,12 +72,11 @@ export default function LandListingsPage() {
                     }}
                     className="absolute top-4 right-4 rounded-full bg-white text-slate-600 p-3 hover:text-rose-500 transition"
                   >
-                    <Heart 
-                      className={`w-5 h-5 ${
-                        favorites.some((f) => f.id === campaign.id) 
-                          ? 'fill-rose-500 text-rose-500' 
+                    <Heart
+                      className={`w-5 h-5 ${favorites.some((f) => f.id === campaign.id)
+                          ? 'fill-rose-500 text-rose-500'
                           : ''
-                      }`} 
+                        }`}
                     />
                   </button>
                   {/* Carousel dots */}
@@ -85,9 +84,8 @@ export default function LandListingsPage() {
                     {[0, 1, 2, 3, 4, 5].map((i) => (
                       <button
                         key={i}
-                        className={`h-2 rounded-full transition-all ${
-                          i === 0 ? 'bg-white w-8' : 'bg-white/40 w-2 hover:bg-white/60'
-                        }`}
+                        className={`h-2 rounded-full transition-all ${i === 0 ? 'bg-white w-8' : 'bg-white/40 w-2 hover:bg-white/60'
+                          }`}
                       />
                     ))}
                   </div>
@@ -101,7 +99,7 @@ export default function LandListingsPage() {
                   <div>
                     <p className="text-xs uppercase tracking-widest text-slate-400 mb-2">{campaign.location}</p>
                     <h2 className="text-3xl font-black text-slate-900 mb-2">{campaign.title}</h2>
-                    
+
                     <div className="grid grid-cols-2 gap-4 mb-6 py-4 border-y border-slate-200">
                       <div>
                         <p className="text-xs text-slate-400 mb-1">PRICE</p>

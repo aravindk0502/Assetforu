@@ -49,6 +49,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     localStorage.removeItem('af_transactions');
     localStorage.removeItem('af_wallet_balance');
     localStorage.removeItem('af_delivery_address');
+    localStorage.removeItem('af_profile_overrides');
+    localStorage.removeItem('af_profile_extras');
+    localStorage.removeItem('af_last_phone');
     set({ user: null, token: null });
   },
 
@@ -285,6 +288,9 @@ export const useUIStore = create<UIState>((set, get) => ({
     saveFavorites([]);
     if (typeof window !== 'undefined') {
       localStorage.removeItem('af_delivery_address');
+      localStorage.removeItem('af_profile_overrides');
+      localStorage.removeItem('af_profile_extras');
+      localStorage.removeItem('af_last_phone');
     }
     set({ walletBalance: 0, transactions: [], activity: [], favorites: [] });
   },

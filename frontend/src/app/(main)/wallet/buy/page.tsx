@@ -76,9 +76,8 @@ export default function BuyCreditsPage() {
                   setSelected(amt);
                   setCustomAmount('');
                 }}
-                className={`rounded-xl px-3 py-2 text-sm font-bold ${
-                  selected === amt ? 'bg-primary-700 text-white' : 'border border-slate-200 text-slate-700'
-                }`}
+                className={`rounded-xl px-3 py-2 text-sm font-bold ${selected === amt ? 'bg-primary-700 text-white' : 'border border-slate-200 text-slate-700'
+                  }`}
               >
                 {formatCurrency(amt, currency)}
               </button>
@@ -113,9 +112,8 @@ export default function BuyCreditsPage() {
                 key={option.id}
                 type="button"
                 onClick={() => setUpi(option.id)}
-                className={`w-full rounded-xl border px-4 py-3 text-left text-sm font-semibold ${
-                  upi === option.id ? 'border-primary-700 bg-primary-50 text-primary-800' : 'border-slate-200 text-slate-700'
-                }`}
+                className={`w-full rounded-xl border px-4 py-3 text-left text-sm font-semibold ${upi === option.id ? 'border-primary-700 bg-primary-50 text-primary-800' : 'border-slate-200 text-slate-700'
+                  }`}
               >
                 {option.label}
               </button>

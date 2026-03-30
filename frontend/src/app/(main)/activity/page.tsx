@@ -48,11 +48,10 @@ export default function ActivityPage() {
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
-                                className={`rounded-xl px-4 py-2 text-sm font-bold ${
-                                    activeTab === tab.id
+                                className={`rounded-xl px-4 py-2 text-sm font-bold ${activeTab === tab.id
                                         ? 'bg-primary-700 text-white'
                                         : 'border border-slate-200 text-slate-700 hover:bg-slate-50'
-                                }`}
+                                    }`}
                             >
                                 {tab.label}
                             </button>
@@ -64,40 +63,40 @@ export default function ActivityPage() {
                             {activeTab === 'tickets'
                                 ? 'No tickets yet. Participate in a land gift campaign to generate tickets.'
                                 : activeTab === 'purchases'
-                                ? 'No asset purchases yet.'
-                                : 'No activity yet.'}
+                                    ? 'No asset purchases yet.'
+                                    : 'No activity yet.'}
                         </div>
                     ) : (
                         visible.map((item) => {
-                          const isTicket = typeof item.ticketNumber === 'number';
-                          const orderNumber = `ORD-${new Date(item.createdAt).getTime().toString().slice(-8)}`;
-                          return (
-                        <div key={item.id} className="rounded-xl border border-slate-200 bg-white p-4 grid grid-cols-1 md:grid-cols-3 gap-2 items-center">
-                            <div>
-                                <p className="font-semibold text-slate-800">{item.campaignName}</p>
-                                <p className="text-xs text-slate-500">{new Date(item.createdAt).toLocaleString()}</p>
-                                {isTicket && (
-                                    <p className="text-xs font-semibold text-primary-700">Ticket #{item.ticketNumber}</p>
-                                )}
-                                {!isTicket && (
-                                    <p className="text-xs font-semibold text-emerald-700">Order # {orderNumber}</p>
-                                )}
-                            </div>
-                            <div>
-                                <p className="text-sm text-slate-700">
-                                    Credits used: ₹{isTicket ? 0 : item.creditsUsed}
-                                </p>
-                                <p className="text-sm text-slate-700">Status: {item.status}</p>
-                            </div>
-                            <div className="text-right md:text-left">
-                                {isTicket ? (
-                                  <Link href={`/activity/${item.id}/ticket-details?ticketNo=Ticket #${item.ticketNumber}`} className="text-primary-700 font-semibold hover:underline">View Campaign</Link>
-                                ) : (
-                                  <Link href={`/activity/${item.id}/order-details?orderNo=${orderNumber}`} className="text-primary-700 font-semibold hover:underline">Order Details</Link>
-                                )}
-                            </div>
-                        </div>
-                        );
+                            const isTicket = typeof item.ticketNumber === 'number';
+                            const orderNumber = `ORD-${new Date(item.createdAt).getTime().toString().slice(-8)}`;
+                            return (
+                                <div key={item.id} className="rounded-xl border border-slate-200 bg-white p-4 grid grid-cols-1 md:grid-cols-3 gap-2 items-center">
+                                    <div>
+                                        <p className="font-semibold text-slate-800">{item.campaignName}</p>
+                                        <p className="text-xs text-slate-500">{new Date(item.createdAt).toLocaleString()}</p>
+                                        {isTicket && (
+                                            <p className="text-xs font-semibold text-primary-700">Ticket #{item.ticketNumber}</p>
+                                        )}
+                                        {!isTicket && (
+                                            <p className="text-xs font-semibold text-emerald-700">Order # {orderNumber}</p>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-slate-700">
+                                            Credits used: ₹{isTicket ? 0 : item.creditsUsed}
+                                        </p>
+                                        <p className="text-sm text-slate-700">Status: {item.status}</p>
+                                    </div>
+                                    <div className="text-right md:text-left">
+                                        {isTicket ? (
+                                            <Link href={`/activity/${item.id}/ticket-details?ticketNo=Ticket #${item.ticketNumber}`} className="text-primary-700 font-semibold hover:underline">View Campaign</Link>
+                                        ) : (
+                                            <Link href={`/activity/${item.id}/order-details?orderNo=${orderNumber}`} className="text-primary-700 font-semibold hover:underline">Order Details</Link>
+                                        )}
+                                    </div>
+                                </div>
+                            );
                         }))}
                 </div>
             )}

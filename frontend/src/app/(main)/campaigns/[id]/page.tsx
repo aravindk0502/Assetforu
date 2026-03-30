@@ -233,9 +233,8 @@ export default function CampaignDetailPage() {
                     key={option}
                     type="button"
                     onClick={() => setSelectedAnswer(idx)}
-                    className={`w-full text-left rounded-xl border px-4 py-3 text-sm font-semibold ${
-                      selectedAnswer === idx ? 'border-primary-700 bg-primary-50 text-primary-800' : 'border-slate-200 text-slate-700'
-                    }`}
+                    className={`w-full text-left rounded-xl border px-4 py-3 text-sm font-semibold ${selectedAnswer === idx ? 'border-primary-700 bg-primary-50 text-primary-800' : 'border-slate-200 text-slate-700'
+                      }`}
                   >
                     {option}
                   </button>

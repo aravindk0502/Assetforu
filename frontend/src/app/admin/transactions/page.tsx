@@ -16,7 +16,7 @@ export default function AdminTransactionsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    adminAPI.getTransactions().then(r => setTxns(r.data.data)).catch(() => {}).finally(() => setLoading(false));
+    adminAPI.getTransactions().then(r => setTxns(r.data.data)).catch(() => { }).finally(() => setLoading(false));
   }, []);
 
   const totalRevenue = txns.filter(t => t.direction === 'credit' && t.type === 'credit_purchase').reduce((s, t) => s + Number(t.amount), 0);
@@ -49,7 +49,7 @@ export default function AdminTransactionsPage() {
               <tr key={t.id} className="hover:bg-slate-800/50 transition-colors">
                 <td className="px-5 py-3.5 text-slate-300 text-sm font-mono">+91 {t.phone}</td>
                 <td className="px-5 py-3.5">
-                  <span className="badge bg-slate-800 text-slate-400 text-[10px]">{t.type.replace(/_/g,' ')}</span>
+                  <span className="badge bg-slate-800 text-slate-400 text-[10px]">{t.type.replace(/_/g, ' ')}</span>
                 </td>
                 <td className="px-5 py-3.5 text-white font-semibold text-sm">₹{Number(t.amount).toFixed(0)}</td>
                 <td className="px-5 py-3.5">

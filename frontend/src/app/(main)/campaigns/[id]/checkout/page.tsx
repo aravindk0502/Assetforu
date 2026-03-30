@@ -185,18 +185,16 @@ export default function CampaignCheckoutPage() {
                     <button
                         type="button"
                         onClick={() => setPaymentMode('upi')}
-                        className={`rounded-xl border px-4 py-3 text-left text-sm font-bold ${
-                            paymentMode === 'upi' ? 'border-primary-700 bg-primary-50 text-primary-800' : 'border-slate-200 text-slate-700'
-                        }`}
+                        className={`rounded-xl border px-4 py-3 text-left text-sm font-bold ${paymentMode === 'upi' ? 'border-primary-700 bg-primary-50 text-primary-800' : 'border-slate-200 text-slate-700'
+                            }`}
                     >
                         UPI (Razorpay)
                     </button>
                     <button
                         type="button"
                         onClick={() => setPaymentMode('card')}
-                        className={`rounded-xl border px-4 py-3 text-left text-sm font-bold ${
-                            paymentMode === 'card' ? 'border-primary-700 bg-primary-50 text-primary-800' : 'border-slate-200 text-slate-700'
-                        }`}
+                        className={`rounded-xl border px-4 py-3 text-left text-sm font-bold ${paymentMode === 'card' ? 'border-primary-700 bg-primary-50 text-primary-800' : 'border-slate-200 text-slate-700'
+                            }`}
                     >
                         Debit / Credit Card
                     </button>

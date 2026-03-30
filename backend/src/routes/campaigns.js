@@ -7,19 +7,19 @@ const { query } = require('../db');
 router.get('/', optionalAuth, async (req, res) => {
   try {
     const { status = 'active', page = 1, limit = 12 } = req.query;
-    
+
     // Validate and bound pagination parameters
     const MAX_LIMIT = 100;
     const parsedPage = Math.max(1, parseInt(page) || 1);
     const parsedLimit = Math.min(MAX_LIMIT, Math.max(1, parseInt(limit) || 12));
-    
+
     if (parsedPage > 1000000) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Invalid page number' 
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid page number'
       });
     }
-    
+
     const offset = (parsedPage - 1) * parsedLimit;
 
     const result = await query(

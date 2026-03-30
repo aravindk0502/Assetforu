@@ -31,7 +31,7 @@ const getDealerData = (propertyId: string, propertyTitle: string) => {
   if (dealerData[propertyId]) {
     return dealerData[propertyId];
   }
-  
+
   return {
     name: 'Property Owner',
     phone: '+91 9876543210',
@@ -131,9 +131,8 @@ export default function PropertyDetailPage() {
             className="absolute top-4 right-4 rounded-full bg-white p-3 hover:bg-slate-100 transition shadow-lg"
           >
             <Heart
-              className={`w-6 h-6 ${
-                isFavorited ? 'text-rose-500 fill-rose-500' : 'text-slate-600'
-              }`}
+              className={`w-6 h-6 ${isFavorited ? 'text-rose-500 fill-rose-500' : 'text-slate-600'
+                }`}
             />
           </button>
         </div>
@@ -222,7 +221,7 @@ export default function PropertyDetailPage() {
               </div>
               <div>
                 <p className="text-xs text-slate-500 mb-2">PHONE</p>
-                <a 
+                <a
                   href={`tel:${dealer.phone}`}
                   className="text-lg font-bold text-emerald-600 hover:text-emerald-700"
                 >
@@ -231,7 +230,7 @@ export default function PropertyDetailPage() {
               </div>
               <div>
                 <p className="text-xs text-slate-500 mb-2">EMAIL</p>
-                <a 
+                <a
                   href={`mailto:${dealer.email}`}
                   className="text-sm font-bold text-emerald-600 hover:text-emerald-700 break-all"
                 >
@@ -239,7 +238,7 @@ export default function PropertyDetailPage() {
                 </a>
               </div>
             </div>
-            
+
             {/* Right Side - WhatsApp Button */}
             <div className="flex flex-col items-center justify-center gap-4">
               <a

@@ -95,7 +95,7 @@ export default function FavoritesPage() {
                 key={item.id}
                 className="rounded-3xl bg-white border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition"
               >
-                <div 
+                <div
                   onClick={() => router.push(getNavigationPath(item))}
                   className="relative h-40 bg-slate-200 cursor-pointer"
                 >
@@ -121,7 +121,7 @@ export default function FavoritesPage() {
                   </span>
                 </div>
 
-                <div 
+                <div
                   onClick={() => router.push(getNavigationPath(item))}
                   className="p-4 cursor-pointer"
                 >

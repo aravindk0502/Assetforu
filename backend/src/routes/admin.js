@@ -12,7 +12,7 @@ router.get('/users', async (req, res) => {
     const MAX_LIMIT = 100;
     const parsedPage = Math.max(1, parseInt(page) || 1);
     const parsedLimit = Math.min(MAX_LIMIT, Math.max(1, parseInt(limit) || 20));
-    
+
     const result = await query(
       `SELECT u.id, u.phone, u.name, u.email, u.kyc_status, u.role, u.created_at, w.balance
        FROM users u LEFT JOIN wallets w ON w.user_id = u.id
@@ -44,31 +44,31 @@ router.get('/transactions', async (req, res) => {
 router.post('/campaigns', async (req, res) => {
   try {
     const { title, description, location, image_url, credit_price, total_slots, end_time, badge, is_featured } = req.body;
-    
+
     // Validate required fields
     if (!title || !description || !image_url) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'title, description, and image_url are required' 
+      return res.status(400).json({
+        success: false,
+        message: 'title, description, and image_url are required'
       });
     }
-    
+
     // Validate credit_price
     if (credit_price == null || credit_price < 0 || credit_price > 1000000) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'credit_price must be a number between 0 and 1000000' 
+      return res.status(400).json({
+        success: false,
+        message: 'credit_price must be a number between 0 and 1000000'
       });
     }
-    
+
     // Validate total_slots if provided
     if (total_slots != null && (total_slots < 1 || total_slots > 1000000)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'total_slots must be between 1 and 1000000' 
+      return res.status(400).json({
+        success: false,
+        message: 'total_slots must be between 1 and 1000000'
       });
     }
-    
+
     const result = await query(
       `INSERT INTO campaigns (title, description, location, image_url, credit_price, total_slots, end_time, badge, is_featured)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
@@ -109,31 +109,31 @@ router.patch('/campaigns/:id', async (req, res) => {
 router.post('/store-items', async (req, res) => {
   try {
     const { title, description, image_url, type, category, credit_cost, is_popular } = req.body;
-    
+
     // Validate required fields
     if (!title || !image_url || !type || !category) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'title, image_url, type, and category are required' 
+      return res.status(400).json({
+        success: false,
+        message: 'title, image_url, type, and category are required'
       });
     }
-    
+
     // Validate type enum
     if (!['product', 'service'].includes(type)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'type must be either "product" or "service"' 
+      return res.status(400).json({
+        success: false,
+        message: 'type must be either "product" or "service"'
       });
     }
-    
+
     // Validate credit_cost
     if (credit_cost == null || credit_cost < 0 || credit_cost > 1000000) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'credit_cost must be a number between 0 and 1000000' 
+      return res.status(400).json({
+        success: false,
+        message: 'credit_cost must be a number between 0 and 1000000'
       });
     }
-    
+
     const result = await query(
       `INSERT INTO store_items (title, description, image_url, type, category, credit_cost, is_popular)
        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
