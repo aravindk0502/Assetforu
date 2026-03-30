@@ -210,110 +210,17 @@ export default function PropertyDetailPage() {
           </div>
         </div>
 
-        {/* Dealer Contact Section */}
-        <div className="bg-gradient-to-r from-emerald-50 to-emerald-100/50 rounded-3xl p-8 border border-emerald-200 mb-8">
-          <h3 className="text-2xl font-black text-slate-900 mb-6">Contact Property Owner</h3>
-          <div className="grid md:grid-cols-2 gap-8">
-            <div>
-              <h4 className="font-bold text-slate-900 mb-4">Owner Details</h4>
-              <div className="space-y-3">
-                <div>
-                  <p className="text-xs text-slate-500 mb-1">NAME</p>
-                  <p className="text-lg font-bold text-slate-900">{dealer.name}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500 mb-1">COMPANY</p>
-                  <p className="text-lg font-bold text-slate-900">{dealer.company}</p>
-                </div>
-              </div>
-            </div>
-            <div className="space-y-3">
-              <a
-                href={`tel:${dealer.phone}`}
-                className="flex items-center gap-3 p-4 bg-white rounded-xl hover:bg-slate-50 border border-emerald-200 transition"
-              >
-                <Phone className="w-5 h-5 text-emerald-600" />
-                <div>
-                  <p className="text-xs text-slate-500">PHONE</p>
-                  <p className="font-bold text-slate-900">{dealer.phone}</p>
-                </div>
-              </a>
-              <a
-                href={`mailto:${dealer.email}`}
-                className="flex items-center gap-3 p-4 bg-white rounded-xl hover:bg-slate-50 border border-emerald-200 transition"
-              >
-                <span className="text-emerald-600 font-bold">@</span>
-                <div>
-                  <p className="text-xs text-slate-500">EMAIL</p>
-                  <p className="font-bold text-slate-900 truncate">{dealer.email}</p>
-                </div>
-              </a>
-            </div>
-          </div>
-        </div>
-
-        {/* Call to Action - Prominent Phone Display */}
-        <div className="mb-8">
-          <div className="bg-emerald-50 border-2 border-emerald-600 rounded-2xl p-8">
-            <p className="text-xs uppercase tracking-wider text-emerald-600 mb-4 font-bold">Contact Owner</p>
-            <p className="text-sm text-slate-600 mb-6">{dealer.name} from {dealer.company}</p>
-            
-            <div className="mb-8">
-              <p className="text-xs text-slate-500 mb-3">PHONE NUMBER</p>
-              <p className="text-4xl font-black text-emerald-600 tracking-wider mb-4 break-all">{dealer.phone}</p>
-              <p className="text-xs text-slate-600 mb-6">
-                {isMobile ? '👈 Tap below to call directly' : '👇 Choose your preferred contact method'}
-              </p>
-            </div>
-
-            {/* Mobile: Direct Call Button */}
-            {isMobile ? (
-              <>
-                <a
-                  href={`tel:${dealer.phone}`}
-                  className="w-full py-4 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition flex items-center justify-center gap-2 shadow-lg hover:shadow-xl mb-4"
-                >
-                  <Phone className="w-5 h-5" />
-                  Call {dealer.phone}
-                </a>
-                
-                <a
-                  href={`https://wa.me/${dealer.phone.replace(/\D/g, '')}?text=Hi, I'm interested in the property listing. Can you provide more details?`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full py-4 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
-                >
-                  <MessageCircle className="w-5 h-5" />
-                  Message on WhatsApp
-                </a>
-              </>
-            ) : (
-              /* Desktop: Call + WhatsApp Buttons */
-              <div className="grid grid-cols-2 gap-4">
-                <a
-                  href={`tel:${dealer.phone}`}
-                  className="py-4 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
-                >
-                  <Phone className="w-5 h-5" />
-                  Call
-                </a>
-                
-                <a
-                  href={`https://wa.me/${dealer.phone.replace(/\D/g, '')}?text=Hi, I'm interested in the property listing. Can you provide more details?`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="py-4 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
-                >
-                  <MessageCircle className="w-5 h-5" />
-                  WhatsApp
-                </a>
-              </div>
-            )}
-
-            <p className="text-xs text-slate-500 text-center mt-4">
-              {isMobile ? 'Direct call from your device' : 'Call or message via WhatsApp'}
-            </p>
-          </div>
+        {/* Contact Owner - Minimal WhatsApp */}
+        <div className="mb-8 flex items-center justify-center">
+          <a
+            href={`https://wa.me/${dealer.phone.replace(/\D/g, '')}?text=Hi, I'm interested in the property listing. Can you provide more details?`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-4 bg-green-500 text-white rounded-full hover:bg-green-600 transition shadow-lg hover:shadow-xl"
+            title="Contact via WhatsApp"
+          >
+            <MessageCircle className="w-6 h-6" />
+          </a>
         </div>
 
         {/* Terms */}
