@@ -67,21 +67,24 @@ export default function LandPropertiesCarousel() {
             <p className="text-lg md:text-xl text-emerald-200 mb-4">{current.location}</p>
             <p className="text-base text-slate-100 max-w-2xl mb-6">{current.description}</p>
 
-            <div className="flex items-center gap-6">
-              <div>
-                <p className="text-xs text-slate-300 mb-1">ENTRY INVESTMENT</p>
-                <p className="text-3xl font-black text-emerald-400">
-                  ₹{current.creditPack} <span className="text-lg">Credits</span>
-                </p>
-              </div>
+            <div className="flex items-center gap-4">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   goToCampaign(current.id);
                 }}
-                className="rounded-full bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-3 font-bold text-lg transition transform hover:scale-105"
+                className="rounded-full bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-3 font-bold transition transform hover:scale-105"
               >
-                Click Now →
+                Buy Now →
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goToCampaign(current.id);
+                }}
+                className="rounded-full border-2 border-emerald-400 text-emerald-400 hover:bg-emerald-400 hover:text-white px-8 py-3 font-bold transition transform hover:scale-105"
+              >
+                Rent Now →
               </button>
             </div>
           </div>
