@@ -101,8 +101,8 @@ export default function HomePage() {
             <p className="mt-6 max-w-2xl text-base sm:text-lg text-slate-100/85 leading-8">Use Asset Credits to access platform services such as legal consultation, land advisory, and related offerings, designed to enhance your overall experience.</p>
             <p className="mt-6 text-sm text-slate-200/70 max-w-xl">As part of the platform experience, users may receive access to promotional campaigns. These benefits are complimentary and not the primary purpose of credit purchase.</p>
             <div className="mt-10 flex flex-wrap items-center gap-4">
-              <button onClick={() => router.push('/store')} className="rounded-full bg-emerald-300 text-slate-950 px-6 py-3 text-sm font-semibold shadow-xl shadow-emerald-500/20 transition hover:bg-emerald-200">Get Started</button>
-              <button onClick={() => router.push('/store')} className="rounded-full border border-emerald-200/75 text-white px-6 py-3 text-sm font-semibold transition hover:bg-white/10">Explore Services</button>
+              <button onClick={() => router.push('/campaigns')} className="rounded-full bg-emerald-300 text-slate-950 px-6 py-3 text-sm font-semibold shadow-xl shadow-emerald-500/20 transition hover:bg-emerald-200">Get Started</button>
+              <button onClick={() => router.push('/store')} className="rounded-full border border-emerald-200/75 text-white px-6 py-3 text-sm font-semibold transition hover:bg-white/10">Explore Store</button>
             </div>
           </div>
           <div className="mt-14 grid gap-4 md:grid-cols-3">
@@ -341,6 +341,55 @@ export default function HomePage() {
               )}
             </div>
           ))}
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-6 lg:px-10 py-12">
+        <div className="rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-900 overflow-hidden shadow-2xl">
+          <div className="relative p-8 md:p-12">
+            <div className="absolute inset-0 opacity-10">
+              <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-cyan-400 blur-3xl" />
+            </div>
+            <div className="relative z-10">
+              <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
+                <div className="flex-1">
+                  <p className="text-xs uppercase tracking-[0.3em] text-emerald-300 font-bold mb-3">Unlock Exclusive Benefits</p>
+                  <h2 className="text-3xl md:text-4xl font-black text-white mb-4 leading-tight">
+                    Your Asset Credits Await
+                  </h2>
+                  <p className="text-lg text-slate-200 mb-3">
+                    Access premium products, expert services, and exclusive campaign opportunities with every credit you purchase.
+                  </p>
+                  <ul className="space-y-2 mb-6">
+                    <li className="flex items-center gap-3 text-slate-100">
+                      <span className="text-emerald-400 font-bold">✓</span> Instant account credit allocation
+                    </li>
+                    <li className="flex items-center gap-3 text-slate-100">
+                      <span className="text-emerald-400 font-bold">✓</span> Use across all platform services
+                    </li>
+                    <li className="flex items-center gap-3 text-slate-100">
+                      <span className="text-emerald-400 font-bold">✓</span> Transparent, zero hidden charges
+                    </li>
+                  </ul>
+                  <button
+                    onClick={() => router.push('/store')}
+                    className="rounded-full bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-3 text-sm font-bold transition shadow-lg hover:shadow-emerald-500/50"
+                  >
+                    Explore Now →
+                  </button>
+                </div>
+                <div className="flex-1 text-center">
+                  <div className="inline-block">
+                    <div className="rounded-2xl bg-white/10 backdrop-blur-sm border border-emerald-400/20 p-8 shadow-xl">
+                      <div className="text-5xl font-black text-emerald-400 mb-2">∞</div>
+                      <p className="text-white font-bold text-sm">Unlimited Opportunities</p>
+                      <p className="text-slate-300 text-xs mt-1">Credits never expire</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
