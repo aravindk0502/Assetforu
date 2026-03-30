@@ -115,13 +115,28 @@ export function Header() {
                             <span className="text-[10px] font-bold">LIVE</span>
                         </a>
 
-                        {/* Notifications */}
+                        {/* Notifications - Desktop */}
                         <button onClick={() => (isAuthed ? setNotificationsOpen(!notificationsOpen) : openSignupModal())} className="relative hidden sm:flex items-center justify-center h-9 w-9 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50">
+                            <Bell className="w-4 h-4" />
+                        </button>
+
+                        {/* Notifications - Mobile */}
+                        <button onClick={() => (isAuthed ? setNotificationsOpen(!notificationsOpen) : openSignupModal())} className="relative sm:hidden flex items-center justify-center h-8 w-8 rounded-lg text-slate-600 active:bg-slate-100">
                             <Bell className="w-4 h-4" />
                         </button>
 
                         {/* Favorites - Desktop */}
                         <Link href="/favourites" className="hidden md:relative md:flex items-center justify-center h-9 w-9 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50">
+                            <Heart className="w-4 h-4" />
+                            {favorites.length > 0 && (
+                                <span className="absolute -top-2 -right-2 h-5 min-w-5 px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center">
+                                    {favorites.length}
+                                </span>
+                            )}
+                        </Link>
+
+                        {/* Favorites - Mobile */}
+                        <Link href="/favourites" className="md:hidden relative flex items-center justify-center h-8 w-8 text-slate-600 active:bg-slate-100 rounded-lg">
                             <Heart className="w-4 h-4" />
                             {favorites.length > 0 && (
                                 <span className="absolute -top-2 -right-2 h-5 min-w-5 px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center">
