@@ -246,9 +246,21 @@ export default function ProfilePage() {
               </div>
 
               {saveSuccess && (
-                <div className="mb-4 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-700 px-4 py-2 text-sm font-semibold">
-                  Profile updated successfully.
-                </div>
+                <>
+                  {/* Mobile Centered Toast */}
+                  <div className="md:hidden fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
+                    <div className="bg-emerald-500 text-white px-6 py-3 rounded-2xl font-semibold text-sm shadow-lg animate-pulse pointer-events-auto">
+                      ✓ Successfully Updated
+                    </div>
+                  </div>
+                  
+                  {/* Desktop Centered Toast */}
+                  <div className="hidden md:flex fixed inset-0 items-center justify-center z-50 pointer-events-none">
+                    <div className="bg-emerald-500 text-white px-8 py-4 rounded-2xl font-semibold text-base shadow-lg animate-pulse pointer-events-auto">
+                      ✓ Successfully Updated
+                    </div>
+                  </div>
+                </>
               )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
