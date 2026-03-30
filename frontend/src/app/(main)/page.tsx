@@ -33,8 +33,9 @@ export default function HomePage() {
       const topThreeCampaigns = campaigns.slice(0, 3);
       const entries = topThreeCampaigns.map((c) => [c.id, Math.max(0, 3 - (map[c.id] || 0))] as const);
       setLimitMap(Object.fromEntries(entries));
-    } catch {
-      // ignore
+    } catch (error) {
+      // Failed to load dev limits - use defaults
+      setLimitMap({});
     }
   };
 
@@ -49,24 +50,32 @@ export default function HomePage() {
         const topThreeCampaigns = campaigns.slice(0, 3);
         const entries = await Promise.all(
           topThreeCampaigns.map(async (c) => {
-            const res = await campaignAPI.limit(c.id);
-            const remaining = Number(res.data?.data?.remaining_limit ?? 3);
-            return [c.id, remaining] as const;
+            try {
+              const res = await campaignAPI.limit(c.id);
+              const remaining = Number(res.data?.data?.remaining_limit ?? 3);
+              return [c.id, remaining] as const;
+            } catch (error) {
+              // If API fails, use default limit of 3
+              return [c.id, 3] as const;
+            }
           })
         );
         setLimitMap(Object.fromEntries(entries));
-      } catch {
-        // ignore
+      } catch (error) {
+        // Failed to load campaign limits - use defaults
+        setLimitMap({});
       }
     };
     loadLimits();
     const onFocus = () => loadLimits();
-    window.addEventListener('focus', onFocus);
-    window.addEventListener('campaign:purchase', onFocus);
-    return () => {
-      window.removeEventListener('focus', onFocus);
-      window.removeEventListener('campaign:purchase', onFocus);
-    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('focus', onFocus);
+      window.addEventListener('campaign:purchase', onFocus);
+      return () => {
+        window.removeEventListener('focus', onFocus);
+        window.removeEventListener('campaign:purchase', onFocus);
+      };
+    }
   }, [token, user, isDevUser]);
 
   const goToCampaign = (id: string) => router.push(`/campaigns/${id}`);

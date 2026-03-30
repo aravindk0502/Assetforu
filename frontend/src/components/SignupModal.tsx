@@ -41,15 +41,11 @@ export function SignupModal() {
       return;
     }
     setError('');
-    setDevOtp('');
     setLoading(true);
     try {
-      const res = await authAPI.sendOtp(phone);
+      await authAPI.sendOtp(phone);
       setStep('otp');
       setCountdown(30);
-      if (res?.data?.otp) {
-        setDevOtp(String(res.data.otp));
-      }
     } catch (e: unknown) {
       const err = e as { response?: { data?: { message?: string } } };
       setError(err.response?.data?.message || 'Failed to send OTP');
@@ -113,35 +109,6 @@ export function SignupModal() {
     }
   };
 
-  const handleDevLogin = async () => {
-    if (!/^\d{10}$/.test(phone)) {
-      setError('Enter a valid 10-digit phone number');
-      return;
-    }
-    if (!termsAccepted) {
-      setError('You must accept the Terms & Conditions and Privacy Policy');
-      return;
-    }
-    setError('');
-    setLoading(true);
-    try {
-      const res = await authAPI.devLogin(phone, termsAccepted);
-      const { token, user } = res.data;
-      localStorage.setItem('af_last_phone', phone);
-      setAuth(user, token);
-      setStep('success');
-      setTimeout(() => {
-        closeSignupModal();
-        signupModalCallback?.();
-      }, 1500);
-    } catch (e: unknown) {
-      const err = e as { response?: { data?: { message?: string } } };
-      setError(err.response?.data?.message || 'Dev login failed');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center p-4 modal-overlay bg-black/50"
@@ -169,7 +136,7 @@ export function SignupModal() {
             {step === 'success'
               ? 'Your account is ready.'
               : step === 'otp'
-                ? `OTP sent to +91 ${phone}`
+                ? 'Entering 6-digit OTP — check your phone'
                 : 'Sign up or log in to access campaigns & wallet.'}
           </p>
         </div>
@@ -222,11 +189,7 @@ export function SignupModal() {
               </label>
 
               {error && <p className="text-red-500 text-sm font-medium">{error}</p>}
-              {devOtp && (
-                <p className="text-sm font-medium text-primary-700 bg-primary-50 p-2 rounded">
-                  Dev OTP (use this in development): {devOtp}
-                </p>
-              )}
+
 
               <button
                 onClick={handleSendOtp}
@@ -247,19 +210,6 @@ export function SignupModal() {
                     <Phone className="w-4 h-4" /> Send OTP
                   </span>
                 )}
-              </button>
-
-              <button
-                onClick={handleDevLogin}
-                disabled={loading || !phone || !termsAccepted}
-                className={clsx(
-                  'w-full py-3 rounded-xl font-bold text-sm transition-all',
-                  loading || !phone || !termsAccepted
-                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                    : 'bg-slate-100 text-primary-700 hover:bg-slate-200'
-                )}
-              >
-                {loading ? 'Logging in…' : '🚀 Quick Dev Login (skip OTP)'}
               </button>
             </div>
           )}

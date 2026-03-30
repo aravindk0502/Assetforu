@@ -38,8 +38,6 @@ export const authAPI = {
   sendOtp: (phone: string) => api.post('/auth/send-otp', { phone }),
   verifyOtp: (phone: string, otp: string, terms_accepted: boolean) =>
     api.post('/auth/verify-otp', { phone, otp, terms_accepted }),
-  devLogin: (phone: string, terms_accepted: boolean) =>
-    api.post('/auth/dev-login', { phone, terms_accepted }),
 };
 
 // ── User ─────────────────────────────────────────────────────
