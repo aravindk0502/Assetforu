@@ -400,7 +400,7 @@ export default function ProfilePage() {
                   {saving ? 'Updating...' : 'Update'}
                 </button>
                 {loading && <span className="text-xs text-slate-400">Syncing account...</span>}
-                {saveSuccess && <span className="text-sm font-semibold text-emerald-600 animate-pulse">✓ Successfully Updated</span>}
+                {mounted && saveSuccess && <span className="text-sm font-semibold text-emerald-600 animate-pulse">✓ Successfully Updated</span>}
               </div>
             </div>
             )}
