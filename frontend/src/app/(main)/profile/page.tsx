@@ -43,10 +43,6 @@ export default function ProfilePage() {
   const [dob, setDob] = useState('');
   const [country, setCountry] = useState('India');
   const [nationality, setNationality] = useState('India');
-  const [bankName, setBankName] = useState('');
-  const [accountNumber, setAccountNumber] = useState('');
-  const [ifsc, setIfsc] = useState('');
-  const [accountHolder, setAccountHolder] = useState('');
 
   const getNavigationPath = (item: typeof favorites[0]) => {
     if (item.type === 'campaign') return `/campaigns/${item.id}`;
@@ -100,19 +96,11 @@ export default function ProfilePage() {
           dob?: string;
           country?: string;
           nationality?: string;
-          bankName?: string;
-          accountNumber?: string;
-          ifsc?: string;
-          accountHolder?: string;
         };
         if (extras.gender) setGender(extras.gender);
         if (extras.dob) setDob(extras.dob);
         if (extras.country) setCountry(extras.country);
         if (extras.nationality) setNationality(extras.nationality);
-        if (extras.bankName) setBankName(extras.bankName);
-        if (extras.accountNumber) setAccountNumber(extras.accountNumber);
-        if (extras.ifsc) setIfsc(extras.ifsc);
-        if (extras.accountHolder) setAccountHolder(extras.accountHolder);
       }
     } catch {
       setHasStoredToken(false);
@@ -144,7 +132,7 @@ export default function ProfilePage() {
       if (typeof window !== 'undefined') {
         localStorage.setItem(
           'af_profile_extras',
-          JSON.stringify({ gender, dob, country, nationality, bankName, accountNumber, ifsc, accountHolder })
+          JSON.stringify({ gender, dob, country, nationality })
         );
       }
 
@@ -336,50 +324,6 @@ export default function ProfilePage() {
                     value={nationality}
                     onChange={(e) => setNationality(e.target.value)}
                     className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-primary-500 outline-none"
-                  />
-                </div>
-
-                <div className="md:col-span-2 pt-2">
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Bank Details</p>
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Account Holder Name</label>
-                  <input
-                    value={accountHolder}
-                    onChange={(e) => setAccountHolder(e.target.value)}
-                    className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-primary-500 outline-none"
-                    placeholder="Name as per bank"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Bank Name</label>
-                  <input
-                    value={bankName}
-                    onChange={(e) => setBankName(e.target.value)}
-                    className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-primary-500 outline-none"
-                    placeholder="Your bank name"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Account Number</label>
-                  <input
-                    value={accountNumber}
-                    onChange={(e) => setAccountNumber(e.target.value)}
-                    className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-primary-500 outline-none"
-                    placeholder="Account number"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">IFSC Code</label>
-                  <input
-                    value={ifsc}
-                    onChange={(e) => setIfsc(e.target.value.toUpperCase())}
-                    className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-primary-500 outline-none"
-                    placeholder="e.g. HDFC0001234"
                   />
                 </div>
               </div>
