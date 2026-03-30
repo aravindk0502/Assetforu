@@ -6,6 +6,7 @@ import clsx from 'clsx';
 import { userAPI, walletAPI } from '@/lib/api';
 import { useAuthStore, useUIStore, useCartStore } from '@/store';
 import { formatCurrency } from '@/lib/currency';
+import { getCountryNames, getStatesForCountry, getCitiesForState } from '@/lib/countries';
 import BackNavigation from '@/components/BackNavigation';
 import {
   User,
@@ -42,6 +43,8 @@ export default function ProfilePage() {
   const [gender, setGender] = useState<Gender>('');
   const [dob, setDob] = useState('');
   const [country, setCountry] = useState('India');
+  const [state, setState] = useState('');
+  const [city, setCity] = useState('');
   const [nationality, setNationality] = useState('India');
 
   const getNavigationPath = (item: typeof favorites[0]) => {
@@ -95,11 +98,15 @@ export default function ProfilePage() {
           gender?: Gender;
           dob?: string;
           country?: string;
+          state?: string;
+          city?: string;
           nationality?: string;
         };
         if (extras.gender) setGender(extras.gender);
         if (extras.dob) setDob(extras.dob);
         if (extras.country) setCountry(extras.country);
+        if (extras.state) setState(extras.state);
+        if (extras.city) setCity(extras.city);
         if (extras.nationality) setNationality(extras.nationality);
       }
     } catch {
@@ -132,7 +139,7 @@ export default function ProfilePage() {
       if (typeof window !== 'undefined') {
         localStorage.setItem(
           'af_profile_extras',
-          JSON.stringify({ gender, dob, country, nationality })
+          JSON.stringify({ gender, dob, country, state, city, nationality })
         );
       }
 
@@ -308,23 +315,77 @@ export default function ProfilePage() {
 
                 <div>
                   <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Country of Residence</label>
-                  <div className="mt-2 relative">
-                    <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input
-                      value={country}
-                      onChange={(e) => setCountry(e.target.value)}
-                      className="w-full rounded-2xl border border-slate-200 pl-10 pr-4 py-3 text-sm focus:border-primary-500 outline-none"
-                    />
-                  </div>
+                  <select
+                    value={country}
+                    onChange={(e) => {
+                      setCountry(e.target.value);
+                      setState('');
+                      setCity('');
+                    }}
+                    className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-primary-500 outline-none"
+                  >
+                    <option value="">Select Country</option>
+                    {getCountryNames().map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
                 </div>
+
+                {country && (
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-500">State / Province</label>
+                    <select
+                      value={state}
+                      onChange={(e) => {
+                        setState(e.target.value);
+                        setCity('');
+                      }}
+                      className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-primary-500 outline-none"
+                    >
+                      <option value="">Select State</option>
+                      {getStatesForCountry(country).map((s) => (
+                        <option key={s.name} value={s.name}>
+                          {s.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {state && (
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-500">City</label>
+                    <select
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-primary-500 outline-none"
+                    >
+                      <option value="">Select City</option>
+                      {getCitiesForState(country, state).map((c) => (
+                        <option key={c.name} value={c.name}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 <div>
                   <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Nationality</label>
-                  <input
+                  <select
                     value={nationality}
                     onChange={(e) => setNationality(e.target.value)}
                     className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-primary-500 outline-none"
-                  />
+                  >
+                    <option value="">Select Nationality</option>
+                    {getCountryNames().map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
