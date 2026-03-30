@@ -1,9 +1,10 @@
 'use client';
 
 import { useRouter, useParams } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import { campaigns } from '@/data/dreamCampaigns';
 import { useUIStore, useAuthStore } from '@/store';
-import { Heart, Phone, MapPin, Copy, ArrowLeft } from 'lucide-react';
+import { Heart, Phone, MapPin, Copy, ArrowLeft, MessageCircle } from 'lucide-react';
 import { addToast } from '@/components/Toast';
 
 // Property pricing data
@@ -26,6 +27,15 @@ export default function PropertyDetailPage() {
   const propertyId = params.id as string;
   const { favorites, toggleFavorite } = useUIStore();
   const { user, token } = useAuthStore();
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect if device is mobile
+  useEffect(() => {
+    const isMobileDevice = () => {
+      return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    };
+    setIsMobile(isMobileDevice());
+  }, []);
 
   // Find the property from campaigns
   const property = campaigns.find((c) => c.id === propertyId);
@@ -234,23 +244,58 @@ export default function PropertyDetailPage() {
               
               <div className="mb-8">
                 <p className="text-xs text-slate-500 mb-3">PHONE NUMBER</p>
-                <p className="text-4xl font-black text-emerald-600 tracking-wider mb-4">{dealer.phone}</p>
+                <p className="text-4xl font-black text-emerald-600 tracking-wider mb-4 break-all">{dealer.phone}</p>
+                <p className="text-xs text-slate-600 mb-6">
+                  {isMobile ? '👈 Tap below to call directly' : '👇 Choose your preferred contact method'}
+                </p>
               </div>
 
-              <button
-                onClick={() => {
-                  if (dealer) {
-                    window.location.href = `tel:${dealer.phone}`;
-                  }
-                }}
-                className="w-full py-4 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
-              >
-                <Phone className="w-5 h-5" />
-                Call {dealer.phone}
-              </button>
+              {/* Mobile: Direct Call Button */}
+              {isMobile ? (
+                <>
+                  <a
+                    href={`tel:${dealer.phone}`}
+                    className="w-full py-4 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition flex items-center justify-center gap-2 shadow-lg hover:shadow-xl mb-4"
+                  >
+                    <Phone className="w-5 h-5" />
+                    Call {dealer.phone}
+                  </a>
+                  
+                  <a
+                    href={`https://wa.me/${dealer.phone.replace(/\D/g, '')}?text=Hi, I'm interested in the property listing. Can you provide more details?`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-4 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+                  >
+                    <MessageCircle className="w-5 h-5" />
+                    Message on WhatsApp
+                  </a>
+                </>
+              ) : (
+                /* Desktop: Call + WhatsApp Buttons */
+                <div className="grid grid-cols-2 gap-4">
+                  <a
+                    href={`tel:${dealer.phone}`}
+                    className="py-4 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+                  >
+                    <Phone className="w-5 h-5" />
+                    Call
+                  </a>
+                  
+                  <a
+                    href={`https://wa.me/${dealer.phone.replace(/\D/g, '')}?text=Hi, I'm interested in the property listing. Can you provide more details?`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="py-4 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+                  >
+                    <MessageCircle className="w-5 h-5" />
+                    WhatsApp
+                  </a>
+                </div>
+              )}
 
               <p className="text-xs text-slate-500 text-center mt-4">
-                Tap to call directly from your device
+                {isMobile ? 'Direct call from your device' : 'Call or message via WhatsApp'}
               </p>
             </div>
           )}
