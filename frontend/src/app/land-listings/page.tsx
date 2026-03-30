@@ -1,17 +1,15 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { campaigns } from '@/data/dreamCampaigns';
-import { ChevronLeft, ChevronRight, Heart, Phone, MessageCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Heart, Phone, Eye, X } from 'lucide-react';
 import { useUIStore } from '@/store';
 import { addToast } from '@/components/Toast';
 import BackNavigation from '@/components/BackNavigation';
 
 // Mock dealer data
 const dealerData: Record<string, { name: string; phone: string; company: string; email: string }> = {
-  'dxb-1': { name: 'Vikram Singh', phone: '+91 98765 43210', company: 'Coastal Realty Partners', email: 'vikram@coastalrealty.com' },
-  'dxb-2': { name: 'Madhuri Sharma', phone: '+91 97654 32109', company: 'Heritage Land Ventures', email: 'madhuri@heritageventures.com' },
-  'dxb-3': { name: 'Aryan Verma', phone: '+91 96543 21098', company: 'Metro Property Solutions', email: 'aryan@metroproperty.com' },
   'premium-metro-alliance': { name: 'Rajesh Kumar', phone: '+91 98765 43210', company: 'Prime Properties', email: 'rajesh@primeproperties.com' },
   'heritage-orchard-land': { name: 'Priya Singh', phone: '+91 97654 32109', company: 'Heritage Estates', email: 'priya@heritageestates.com' },
   'coastal-boulevard-project': { name: 'Amit Patel', phone: '+91 96543 21098', company: 'Coastal Investments', email: 'amit@coastalinvest.com' },
@@ -27,6 +25,18 @@ const propertyPrices: Record<string, string> = {
 export default function LandListingsPage() {
   const router = useRouter();
   const { favorites, toggleFavorite } = useUIStore();
+  const [revealedNumbers, setRevealedNumbers] = useState<Set<string>>(new Set());
+  const [contactModal, setContactModal] = useState<string | null>(null);
+
+  const toggleRevealNumber = (id: string) => {
+    const newSet = new Set(revealedNumbers);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+    }
+    setRevealedNumbers(newSet);
+  };
 
   return (
     <div className="page-enter bg-[#f4f5f6] min-h-screen">
@@ -127,71 +137,37 @@ export default function LandListingsPage() {
                       </div>
                     </div>
 
-                    {/* Contact Details Card */}
-                    <div className="bg-gradient-to-r from-emerald-50 to-emerald-100/50 rounded-3xl p-6 border border-emerald-200">
-                      <h4 className="text-lg font-black text-slate-900 mb-4">Contact Property Owner</h4>
-                      <div className="grid md:grid-cols-2 gap-6 items-center">
-                        {/* Left Side - Details */}
-                        <div className="space-y-3">
-                          <div>
-                            <p className="text-xs text-slate-500 mb-1">NAME</p>
-                            <p className="font-bold text-slate-900">{dealerData[campaign.id]?.name || 'Property Owner'}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-slate-500 mb-1">PHONE</p>
-                            <a 
-                              href={`tel:${dealerData[campaign.id]?.phone}`}
-                              className="font-bold text-emerald-600 hover:text-emerald-700"
-                            >
-                              {dealerData[campaign.id]?.phone || '+91 XXXX XXXX XX'}
-                            </a>
-                          </div>
-                          <div>
-                            <p className="text-xs text-slate-500 mb-1">EMAIL</p>
-                            <a 
-                              href={`mailto:${dealerData[campaign.id]?.email}`}
-                              className="text-sm font-bold text-emerald-600 hover:text-emerald-700 break-all"
-                            >
-                              {dealerData[campaign.id]?.email || 'contact@seller.com'}
-                            </a>
-                          </div>
-                        </div>
-                        
-                        {/* Right Side - WhatsApp Button */}
-                        <div className="flex flex-col items-center justify-center gap-3">
-                          <a
-                            href={`https://wa.me/${dealerData[campaign.id]?.phone.replace(/\D/g, '') || '919876543210'}?text=Hi, I'm interested in the property listing. Can you provide more details?`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-6 bg-green-500 text-white rounded-full hover:bg-green-600 transition shadow-lg hover:shadow-xl"
-                            title="Contact via WhatsApp"
-                          >
-                            <MessageCircle className="w-8 h-8" />
-                          </a>
-                          <p className="text-xs text-slate-600 text-center">Message on WhatsApp</p>
-                        </div>
+                    {/* Dealer Info */}
+                    <div className="bg-slate-50 rounded-xl p-4 mb-6 border border-slate-200">
+                      <p className="text-xs uppercase tracking-widest text-slate-400 mb-3">Dealer Information</p>
+                      <div>
+                        <p className="font-bold text-slate-900">{dealerData[campaign.id]?.name || 'Property Owner'}</p>
+                        <p className="text-sm text-slate-600">{dealerData[campaign.id]?.company || 'Verified Dealer'}</p>
+                        {revealedNumbers.has(campaign.id) ? (
+                          <p className="text-sm font-bold text-emerald-600 mt-2">{dealerData[campaign.id]?.phone || '+91 XXXX XXXX XX'}</p>
+                        ) : (
+                          <p className="text-sm text-slate-500 mt-2">Phone number hidden</p>
+                        )}
                       </div>
                     </div>
                   </div>
 
-                  {/* Contact Buttons */}
+                  {/* Contact Section */}
                   <div className="flex gap-3">
-                    <a
-                      href={`tel:${dealerData[campaign.id]?.phone || '+919876543210'}`}
-                      className="flex-1 rounded-xl border-2 border-emerald-600 text-emerald-600 px-6 py-3 font-bold hover:bg-emerald-50 transition flex items-center justify-center gap-2"
+                    <button
+                      onClick={() => toggleRevealNumber(campaign.id)}
+                      className="flex-1 rounded-xl border-2 border-emerald-600 text-emerald-600 px-6 py-3 font-bold hover:bg-emerald-50 transition"
                     >
-                      <Phone className="w-4 h-4" />
-                      Call Now
-                    </a>
-                    <a
-                      href={`https://wa.me/${dealerData[campaign.id]?.phone.replace(/\D/g, '') || '919876543210'}?text=Hi, I'm interested in the property listing. Can you provide more details?`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1 rounded-xl bg-green-500 text-white px-6 py-3 font-bold hover:bg-green-600 transition flex items-center justify-center gap-2"
+                      <Eye className="w-4 h-4 inline mr-2" />
+                      {revealedNumbers.has(campaign.id) ? 'Hide Number' : 'View Number'}
+                    </button>
+                    <button
+                      onClick={() => setContactModal(campaign.id)}
+                      className="flex-1 rounded-xl bg-emerald-600 text-white px-6 py-3 font-bold hover:bg-emerald-700 transition"
                     >
-                      <MessageCircle className="w-4 h-4" />
-                      WhatsApp
-                    </a>
+                      <Phone className="w-4 h-4 inline mr-2" />
+                      Contact Owner
+                    </button>
                   </div>
                 </div>
               </div>
@@ -199,6 +175,70 @@ export default function LandListingsPage() {
           ))}
         </div>
       </section>
+
+      {/* Contact Modal */}
+      {contactModal && dealerData[contactModal] && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl">
+            <div className="flex items-center justify-between p-6 border-b border-slate-200">
+              <h3 className="text-2xl font-black text-slate-900">Contact Property Owner</h3>
+              <button
+                onClick={() => setContactModal(null)}
+                className="text-slate-400 hover:text-slate-600 transition"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              <div className="bg-emerald-50 rounded-2xl p-6 border border-emerald-200">
+                <p className="text-xs uppercase tracking-wider text-emerald-600 mb-3">Owner Details</p>
+                <h4 className="text-xl font-black text-slate-900 mb-1">{dealerData[contactModal].name}</h4>
+                <p className="text-sm text-slate-600 mb-4">{dealerData[contactModal].company}</p>
+                <div className="space-y-3">
+                  <a
+                    href={`tel:${dealerData[contactModal].phone}`}
+                    className="flex items-center gap-3 p-3 bg-white rounded-xl hover:bg-emerald-100 transition"
+                  >
+                    <Phone className="w-5 h-5 text-emerald-600" />
+                    <span className="font-bold text-slate-900">{dealerData[contactModal].phone}</span>
+                  </a>
+                  <a
+                    href={`mailto:${dealerData[contactModal].email}`}
+                    className="flex items-center gap-3 p-3 bg-white rounded-xl hover:bg-emerald-100 transition text-left"
+                  >
+                    <span className="text-emerald-600 font-bold">@</span>
+                    <span className="text-sm text-slate-700 break-all">{dealerData[contactModal].email}</span>
+                  </a>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <button
+                  onClick={() => {
+                    window.location.href = `tel:${dealerData[contactModal].phone}`;
+                  }}
+                  className="w-full rounded-xl bg-emerald-600 text-white px-6 py-3 font-bold hover:bg-emerald-700 transition flex items-center justify-center gap-2"
+                >
+                  <Phone className="w-4 h-4" />
+                  Call Now
+                </button>
+                <button
+                  onClick={() => setContactModal(null)}
+                  className="w-full rounded-xl border-2 border-slate-200 text-slate-900 px-6 py-3 font-bold hover:bg-slate-50 transition"
+                >
+                  Close
+                </button>
+              </div>
+
+              <div className="text-xs text-center text-slate-500">
+                <p>By contacting, you agree to our Terms of Service</p>
+                <p>Your information is safe and secure</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
