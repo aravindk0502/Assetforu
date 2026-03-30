@@ -447,7 +447,11 @@ export default function ProfilePage() {
                       .filter((a) => typeof a.ticketNumber === 'number')
                       .slice(0, 12)
                       .map((a) => (
-                        <div key={a.id} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm">
+                        <div 
+                          key={a.id} 
+                          onClick={() => router.push(`/campaigns/${a.campaignId}`)}
+                          className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm cursor-pointer hover:bg-slate-100 hover:border-slate-200 transition"
+                        >
                           <div>
                             <p className="font-semibold text-slate-800">{a.campaignName}</p>
                             <p className="text-xs text-slate-500">Ticket #{a.ticketNumber}</p>
