@@ -210,17 +210,50 @@ export default function PropertyDetailPage() {
           </div>
         </div>
 
-        {/* Contact Owner - Minimal WhatsApp */}
-        <div className="mb-8 flex items-center justify-center">
-          <a
-            href={`https://wa.me/${dealer.phone.replace(/\D/g, '')}?text=Hi, I'm interested in the property listing. Can you provide more details?`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="p-4 bg-green-500 text-white rounded-full hover:bg-green-600 transition shadow-lg hover:shadow-xl"
-            title="Contact via WhatsApp"
-          >
-            <MessageCircle className="w-6 h-6" />
-          </a>
+        {/* Contact Owner Details */}
+        <div className="bg-gradient-to-r from-emerald-50 to-emerald-100/50 rounded-3xl p-8 border border-emerald-200 mb-8">
+          <h3 className="text-2xl font-black text-slate-900 mb-6">Contact Property Owner</h3>
+          <div className="grid md:grid-cols-2 gap-8">
+            {/* Left Side - Contact Details */}
+            <div className="space-y-4">
+              <div>
+                <p className="text-xs text-slate-500 mb-2">NAME</p>
+                <p className="text-lg font-bold text-slate-900">{dealer.name}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 mb-2">PHONE</p>
+                <a 
+                  href={`tel:${dealer.phone}`}
+                  className="text-lg font-bold text-emerald-600 hover:text-emerald-700"
+                >
+                  {dealer.phone}
+                </a>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 mb-2">EMAIL</p>
+                <a 
+                  href={`mailto:${dealer.email}`}
+                  className="text-sm font-bold text-emerald-600 hover:text-emerald-700 break-all"
+                >
+                  {dealer.email}
+                </a>
+              </div>
+            </div>
+            
+            {/* Right Side - WhatsApp Button */}
+            <div className="flex flex-col items-center justify-center gap-4">
+              <a
+                href={`https://wa.me/${dealer.phone.replace(/\D/g, '')}?text=Hi, I'm interested in the property listing. Can you provide more details?`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-6 bg-green-500 text-white rounded-full hover:bg-green-600 transition shadow-lg hover:shadow-xl"
+                title="Contact via WhatsApp"
+              >
+                <MessageCircle className="w-8 h-8" />
+              </a>
+              <p className="text-xs text-slate-600 text-center">Message on WhatsApp</p>
+            </div>
+          </div>
         </div>
 
         {/* Terms */}
