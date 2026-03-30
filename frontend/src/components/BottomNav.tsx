@@ -4,9 +4,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, Megaphone, ShoppingBag, Activity, Heart } from 'lucide-react';
 import clsx from 'clsx';
+import { useUIStore } from '@/store';
 
 export function BottomNav() {
   const pathname = usePathname();
+  const favorites = useUIStore((state) => state.favorites);
 
   const navItems = [
     { href: '/', label: 'Home', icon: Home },
@@ -21,12 +23,13 @@ export function BottomNav() {
       <div className="flex items-center justify-around h-16">
         {navItems.map(({ href, label, icon: Icon }) => {
           const isActive = pathname === href || (href !== '/' && pathname.startsWith(href));
+          const isFavoritesLink = href === '/favourites';
           return (
             <Link
               key={href}
               href={href}
               className={clsx(
-                'flex flex-col items-center justify-center w-full h-full gap-1 text-xs font-semibold transition-colors',
+                'relative flex flex-col items-center justify-center w-full h-full gap-1 text-xs font-semibold transition-colors',
                 isActive
                   ? 'text-primary-700 bg-primary-50'
                   : 'text-slate-500 hover:text-slate-700'
@@ -34,6 +37,11 @@ export function BottomNav() {
             >
               <Icon className="w-5 h-5" />
               <span className="text-[10px]">{label}</span>
+              {isFavoritesLink && favorites.length > 0 && (
+                <span className="absolute -top-1 -right-1 h-5 min-w-5 px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center">
+                  {favorites.length}
+                </span>
+              )}
             </Link>
           );
         })}
