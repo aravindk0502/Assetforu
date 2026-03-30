@@ -9,14 +9,18 @@ router.use(authenticate, requireAdmin);
 router.get('/users', async (req, res) => {
   try {
     const { page = 1, limit = 20 } = req.query;
+    const MAX_LIMIT = 100;
+    const parsedPage = Math.max(1, parseInt(page) || 1);
+    const parsedLimit = Math.min(MAX_LIMIT, Math.max(1, parseInt(limit) || 20));
+    
     const result = await query(
       `SELECT u.id, u.phone, u.name, u.email, u.kyc_status, u.role, u.created_at, w.balance
        FROM users u LEFT JOIN wallets w ON w.user_id = u.id
        ORDER BY u.created_at DESC LIMIT $1 OFFSET $2`,
-      [limit, (page - 1) * limit]
+      [parsedLimit, (parsedPage - 1) * parsedLimit]
     );
     const count = await query(`SELECT COUNT(*) FROM users`);
-    res.json({ success: true, data: result.rows, meta: { total: parseInt(count.rows[0].count) } });
+    res.json({ success: true, data: result.rows, meta: { total: parseInt(count.rows[0].count), page: parsedPage, limit: parsedLimit } });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Server error' });
   }
@@ -40,13 +44,39 @@ router.get('/transactions', async (req, res) => {
 router.post('/campaigns', async (req, res) => {
   try {
     const { title, description, location, image_url, credit_price, total_slots, end_time, badge, is_featured } = req.body;
+    
+    // Validate required fields
+    if (!title || !description || !image_url) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'title, description, and image_url are required' 
+      });
+    }
+    
+    // Validate credit_price
+    if (credit_price == null || credit_price < 0 || credit_price > 1000000) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'credit_price must be a number between 0 and 1000000' 
+      });
+    }
+    
+    // Validate total_slots if provided
+    if (total_slots != null && (total_slots < 1 || total_slots > 1000000)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'total_slots must be between 1 and 1000000' 
+      });
+    }
+    
     const result = await query(
       `INSERT INTO campaigns (title, description, location, image_url, credit_price, total_slots, end_time, badge, is_featured)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
-      [title, description, location, image_url, credit_price, total_slots || 100, end_time, badge, is_featured || false]
+      [title, description, location || '', image_url, credit_price, total_slots || 100, end_time, badge || null, is_featured || false]
     );
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (err) {
+    console.error('[admin-create-campaign]', err);
     res.status(500).json({ success: false, message: 'Failed to create campaign' });
   }
 });
@@ -79,13 +109,39 @@ router.patch('/campaigns/:id', async (req, res) => {
 router.post('/store-items', async (req, res) => {
   try {
     const { title, description, image_url, type, category, credit_cost, is_popular } = req.body;
+    
+    // Validate required fields
+    if (!title || !image_url || !type || !category) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'title, image_url, type, and category are required' 
+      });
+    }
+    
+    // Validate type enum
+    if (!['product', 'service'].includes(type)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'type must be either "product" or "service"' 
+      });
+    }
+    
+    // Validate credit_cost
+    if (credit_cost == null || credit_cost < 0 || credit_cost > 1000000) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'credit_cost must be a number between 0 and 1000000' 
+      });
+    }
+    
     const result = await query(
       `INSERT INTO store_items (title, description, image_url, type, category, credit_cost, is_popular)
        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [title, description, image_url, type, category, credit_cost, is_popular || false]
+      [title, description || '', image_url, type, category, credit_cost, is_popular || false]
     );
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (err) {
+    console.error('[admin-create-store-item]', err);
     res.status(500).json({ success: false, message: 'Failed to create store item' });
   }
 });

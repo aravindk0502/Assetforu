@@ -25,12 +25,14 @@ router.post('/send-otp', async (req, res) => {
 
     await sendOTP(phone, otp);
 
+    // Log OTP only in development, never return in response
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`\n📱 OTP for ${phone}: ${otp}\n`);
+    }
+
     res.json({
       success: true,
-      message: 'OTP sent successfully',
-      otp, // always return OTP for local/dev convenience
-      // Also keep legacy dev-only field
-      ...(process.env.NODE_ENV === 'development' && { dev_otp: otp }),
+      message: 'OTP sent to your phone',
     });
   } catch (err) {
     console.error('[send-otp]', err);
@@ -38,52 +40,7 @@ router.post('/send-otp', async (req, res) => {
   }
 });
 
-// POST /auth/dev-login (development-only shortcut for quick testing)
-router.post('/dev-login', async (req, res) => {
-  try {
-    if (process.env.NODE_ENV !== 'development') {
-      return res.status(403).json({ success: false, message: 'Dev login is allowed only in development mode' });
-    }
-
-    const { phone, terms_accepted } = req.body;
-
-    if (!phone || !/^[0-9]{10}$/.test(phone)) {
-      return res.status(400).json({ success: false, message: 'Valid 10-digit phone number required' });
-    }
-
-    if (!terms_accepted) {
-      return res.status(400).json({ success: false, message: 'Terms must be accepted' });
-    }
-
-    // Dev-only: create mock user without database
-    const mockUserId = `dev_${phone}_${Date.now()}`;
-    const mockUser = {
-      id: mockUserId,
-      phone,
-      name: `User ${phone.slice(-4)}`,
-      role: 'user',
-      is_active: true,
-    };
-
-    const token = generateToken({ userId: mockUser.id, phone: mockUser.phone, role: mockUser.role });
-
-    res.json({
-      success: true,
-      message: 'Dev login successful (mock user)',
-      token,
-      user: {
-        id: mockUser.id,
-        phone: mockUser.phone,
-        name: mockUser.name,
-        role: mockUser.role,
-        isNew: true,
-      },
-    });
-  } catch (err) {
-    console.error('[dev-login]', err);
-    res.status(500).json({ success: false, message: 'Dev login failed' });
-  }
-});
+// Removed dev-login endpoint - use verify-otp instead for all authentication
 
 // POST /auth/verify-otp
 router.post('/verify-otp', async (req, res) => {

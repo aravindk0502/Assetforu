@@ -7,7 +7,20 @@ const { query } = require('../db');
 router.get('/', optionalAuth, async (req, res) => {
   try {
     const { status = 'active', page = 1, limit = 12 } = req.query;
-    const offset = (page - 1) * limit;
+    
+    // Validate and bound pagination parameters
+    const MAX_LIMIT = 100;
+    const parsedPage = Math.max(1, parseInt(page) || 1);
+    const parsedLimit = Math.min(MAX_LIMIT, Math.max(1, parseInt(limit) || 12));
+    
+    if (parsedPage > 1000000) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid page number' 
+      });
+    }
+    
+    const offset = (parsedPage - 1) * parsedLimit;
 
     const result = await query(
       `SELECT id, title, description, location, image_url, credit_price,
@@ -16,7 +29,7 @@ router.get('/', optionalAuth, async (req, res) => {
        WHERE status = $1
        ORDER BY is_featured DESC, end_time ASC
        LIMIT $2 OFFSET $3`,
-      [status, parseInt(limit), parseInt(offset)]
+      [status, parsedLimit, offset]
     );
 
     const countResult = await query(`SELECT COUNT(*) FROM campaigns WHERE status = $1`, [status]);
@@ -26,8 +39,8 @@ router.get('/', optionalAuth, async (req, res) => {
       data: result.rows,
       meta: {
         total: parseInt(countResult.rows[0].count),
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page: parsedPage,
+        limit: parsedLimit,
       },
     });
   } catch (err) {

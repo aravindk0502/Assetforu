@@ -1,6 +1,13 @@
 const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
+// Enforce JWT_SECRET is set
+if (!process.env.JWT_SECRET) {
+  console.error('\n❌ FATAL ERROR: JWT_SECRET environment variable is not set!');
+  console.error('Set it in your .env file before running the server.\n');
+  process.exit(1);
+}
+
+const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 
 const generateToken = (payload) => {
