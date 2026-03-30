@@ -48,6 +48,12 @@ export default function ProfilePage() {
   const [ifsc, setIfsc] = useState('');
   const [accountHolder, setAccountHolder] = useState('');
 
+  const getNavigationPath = (item: typeof favorites[0]) => {
+    if (item.type === 'campaign') return `/campaigns/${item.id}`;
+    if (item.type === 'property') return `/land-listings/${item.id}`;
+    return `/store/${item.type === 'product' ? 'products' : 'services'}/${item.id}`;
+  };
+
   const load = useCallback(async () => {
     if (!user) {
       setLoading(false);
@@ -450,7 +456,11 @@ export default function ProfilePage() {
                 ) : (
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     {favorites.map((fav) => (
-                      <div key={fav.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-3 flex gap-3">
+                      <div 
+                        key={fav.id} 
+                        onClick={() => router.push(getNavigationPath(fav))}
+                        className="rounded-2xl border border-slate-200 bg-slate-50 p-3 flex gap-3 cursor-pointer hover:bg-slate-100 transition"
+                      >
                         <img src={fav.image_url} alt={fav.title} className="h-16 w-16 rounded-xl object-cover" />
                         <div>
                           <p className="text-sm font-bold text-slate-900">{fav.title}</p>
