@@ -43,6 +43,11 @@ export const useAuthStore = create<AuthState>((set) => ({
   logout: () => {
     localStorage.removeItem('af_token');
     localStorage.removeItem('af_user');
+    // Clear user-specific data on logout
+    localStorage.removeItem('af_favorites');
+    localStorage.removeItem('af_activity');
+    localStorage.removeItem('af_transactions');
+    localStorage.removeItem('af_wallet_balance');
     set({ user: null, token: null });
   },
 

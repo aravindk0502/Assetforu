@@ -16,7 +16,7 @@ export function Header() {
     const currency = useUIStore((state) => state.currency);
     const cartItems = useCartStore((state) => state.items);
     const favorites = useUIStore((state) => state.favorites);
-    const { openSignupModal } = useUIStore();
+    const { openSignupModal, resetUserData } = useUIStore();
     const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
     const [notificationsOpen, setNotificationsOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
@@ -38,6 +38,7 @@ export function Header() {
 
     const handleLogout = () => {
         logout();
+        resetUserData();
         setNotificationsOpen(false);
         setProfileDropdownOpen(false);
         window.location.assign('/');

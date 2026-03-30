@@ -8,13 +8,17 @@ import { useUIStore } from '@/store';
 export function Providers({ children }: { children: React.ReactNode }) {
   const loadFromStorage = useAuthStore((s) => s.loadFromStorage);
   const logout = useAuthStore((s) => s.logout);
+  const resetUserData = useUIStore((s) => s.resetUserData);
 
   useEffect(() => {
     loadFromStorage();
-    const handler = () => logout();
+    const handler = () => {
+      logout();
+      resetUserData();
+    };
     window.addEventListener('auth:logout', handler);
     return () => window.removeEventListener('auth:logout', handler);
-  }, [loadFromStorage, logout]);
+  }, [loadFromStorage, logout, resetUserData]);
 
   return (
     <>
