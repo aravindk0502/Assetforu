@@ -125,7 +125,7 @@ export default function FavoritesPage() {
                   <h3 className="font-bold text-slate-900 mb-1 line-clamp-2">{item.title}</h3>
                   <p className="text-xs text-slate-500 mb-3 line-clamp-2">{item.description}</p>
 
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between mb-4">
                     <div>
                       <p className="text-xs text-slate-400">Cost</p>
                       <p className="font-bold text-slate-900">
@@ -138,6 +138,18 @@ export default function FavoritesPage() {
                       </span>
                     )}
                   </div>
+
+                  {/* Remove Button */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleFavorite(item);
+                    }}
+                    className="w-full py-2 border-2 border-rose-500 text-rose-500 rounded-lg font-semibold hover:bg-rose-50 transition duration-200 flex items-center justify-center gap-2"
+                  >
+                    <Heart className="w-4 h-4" fill="currentColor" />
+                    Remove from Favorites
+                  </button>
                 </div>
               </div>
             ))}
