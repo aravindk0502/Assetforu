@@ -13,6 +13,13 @@ const dealerData: Record<string, { name: string; phone: string; company: string;
   'coastal-boulevard-project': { name: 'Amit Patel', phone: '+91 96543 21098', company: 'Coastal Investments', email: 'amit@coastalinvest.com' },
 };
 
+// Property pricing data
+const propertyPrices: Record<string, string> = {
+  'premium-metro-alliance': '₹2.5 Crore',
+  'heritage-orchard-land': '₹45 Lac',
+  'coastal-boulevard-project': '₹1.2 Crore',
+};
+
 export default function LandListingsPage() {
   const router = useRouter();
   const [revealedNumbers, setRevealedNumbers] = useState<Set<string>>(new Set());
@@ -80,8 +87,8 @@ export default function LandListingsPage() {
                     
                     <div className="grid grid-cols-2 gap-4 mb-6 py-4 border-y border-slate-200">
                       <div>
-                        <p className="text-xs text-slate-400 mb-1">INVESTMENT REQUIRED</p>
-                        <p className="text-2xl font-black text-emerald-600">₹{campaign.creditPack} Credits</p>
+                        <p className="text-xs text-slate-400 mb-1">PRICE</p>
+                        <p className="text-2xl font-black text-emerald-600">{propertyPrices[campaign.id] || '₹On Request'}</p>
                       </div>
                       <div>
                         <p className="text-xs text-slate-400 mb-1">LOCATION</p>
