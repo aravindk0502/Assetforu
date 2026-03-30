@@ -107,8 +107,8 @@ export default function HomePage() {
             <p className="mt-6 max-w-2xl text-base sm:text-lg text-slate-100/85 leading-8">Use Asset Credits to access platform services such as legal consultation, land advisory, and related offerings, designed to enhance your overall experience.</p>
             <p className="mt-6 text-sm text-slate-200/70 max-w-xl">As part of the platform experience, users may receive access to promotional campaigns. These benefits are complimentary and not the primary purpose of credit purchase.</p>
             <div className="mt-10 flex flex-wrap items-center gap-4">
-              <button onClick={() => router.push('/store')} className="rounded-full bg-emerald-300 text-slate-950 px-6 py-3 text-sm font-semibold shadow-xl shadow-emerald-500/20 transition hover:bg-emerald-200">Get Started</button>
-              <button onClick={() => router.push('/store')} className="rounded-full border border-emerald-200/75 text-white px-6 py-3 text-sm font-semibold transition hover:bg-white/10">Explore Services</button>
+              <button onClick={() => router.push('/campaigns')} className="rounded-full bg-emerald-300 text-slate-950 px-6 py-3 text-sm font-semibold shadow-xl shadow-emerald-500/20 transition hover:bg-emerald-200">Get Started</button>
+              <button onClick={() => router.push('/store')} className="rounded-full border border-emerald-200/75 text-white px-6 py-3 text-sm font-semibold transition hover:bg-white/10">Explore Store</button>
             </div>
           </div>
           <div className="mt-14 grid gap-4 md:grid-cols-3">
