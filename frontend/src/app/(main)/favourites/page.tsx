@@ -42,6 +42,9 @@ export default function FavoritesPage() {
     if (item.type === 'campaign') {
       return `/campaigns/${item.id}`;
     }
+    if (item.type === 'property') {
+      return `/land-listings/${item.id}`;
+    }
     return `/store/${item.type === 'product' ? 'products' : 'services'}/${item.id}`;
   };
 
