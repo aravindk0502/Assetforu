@@ -92,7 +92,7 @@ interface FavoriteItem {
   title: string;
   description: string;
   image_url: string;
-  type: 'product' | 'service' | 'campaign' | 'store';
+  type: 'product' | 'service' | 'campaign' | 'store' | 'property';
   category: string;
   credits: number;
 }
