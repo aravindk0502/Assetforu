@@ -50,12 +50,14 @@ export function Header() {
             title: 'Campaign Update',
             message: 'New premium land campaign now live.',
             time: '2h ago',
+            link: '/campaigns',
         },
         {
             id: 'n-2',
             title: 'Wallet',
             message: 'Credits redeemed successfully in Asset Store.',
             time: '1d ago',
+            link: '/activity',
         },
     ];
 
@@ -185,11 +187,18 @@ export function Header() {
                             ) : (
                                 <div className="max-h-72 overflow-auto">
                                     {notifications.map((n) => (
-                                        <div key={n.id} className="px-4 py-3 border-b border-slate-100 last:border-0">
+                                        <button
+                                            key={n.id}
+                                            onClick={() => {
+                                                router.push(n.link);
+                                                setNotificationsOpen(false);
+                                            }}
+                                            className="w-full px-4 py-3 border-b border-slate-100 last:border-0 text-left hover:bg-slate-50 transition-colors cursor-pointer"
+                                        >
                                             <p className="text-xs uppercase tracking-wide text-primary-600 font-bold">{n.title}</p>
                                             <p className="text-sm text-slate-700 mt-1">{n.message}</p>
                                             <p className="text-xs text-slate-400 mt-2">{n.time}</p>
-                                        </div>
+                                        </button>
                                     ))}
                                 </div>
                             )}

@@ -6,7 +6,7 @@ import { formatCurrency } from '@/lib/currency';
 import { walletAPI } from '@/lib/api';
 import { useEffect, useState } from 'react';
 import {
-  Leaf, ShoppingCart, Wallet, User, LogOut, Menu, X, ChevronDown,
+  Leaf, ShoppingCart, Wallet, User, LogOut, Menu, X, ChevronDown, Heart,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -107,6 +107,15 @@ export function Navbar() {
                 <span className="text-sm font-bold text-primary-700 credit-number">
                   {formatCurrency(Number(walletBalance), currency)}
                 </span>
+              </Link>
+
+              {/* Favourites */}
+              <Link
+                href="/favourites"
+                className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 transition-colors"
+                title="Favourite Items"
+              >
+                <Heart className="w-5 h-5 text-slate-600" />
               </Link>
 
               {/* Cart */}

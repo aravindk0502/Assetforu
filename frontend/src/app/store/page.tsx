@@ -300,28 +300,66 @@ export default function StorePage() {
                     </div>
                 )}
 
-                <div id="store-list">
-                    {visibleItems.length === 0 ? (
-                        <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-12 text-center">
-                            <p className="text-xl font-bold text-slate-700">No results found</p>
-                            <p className="text-slate-500 mt-2">Try adjusting your search or filter to find what you&apos;re looking for.</p>
-                            {query && (
-                                <button
-                                    onClick={() => {
-                                        setQuery('');
-                                        setVisibleCount(9);
-                                    }}
-                                    className="mt-4 text-sm font-bold text-primary-700 hover:underline"
-                                >
-                                    Clear search
-                                </button>
-                            )}
-                        </div>
-                    ) : (
-                        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                            {visibleItems.map((item) => {
-                                const isService = 'icon' in item;
-                                const itemPath = isService ? 'services' : 'products';
+                {/* Mobile Quick Switch */}
+                <div className="lg:hidden flex gap-2 mb-6">
+                    <button
+                        onClick={() => {
+                            if (activeTab !== 'products') {
+                                setActiveTab('products');
+                                setCategory('All');
+                                setQuery('');
+                                setVisibleCount(9);
+                            }
+                        }}
+                        className={`flex-1 rounded-xl px-4 py-3 text-sm font-bold transition ${activeTab === 'products'
+                            ? 'bg-primary-700 text-white'
+                            : 'border border-slate-200 text-slate-700 hover:bg-slate-50'
+                        }`}
+                    >
+                        📦 Products
+                    </button>
+                    <button
+                        onClick={() => {
+                            if (activeTab !== 'services') {
+                                setActiveTab('services');
+                                setCategory('All');
+                                setQuery('');
+                                setVisibleCount(9);
+                            }
+                        }}
+                        className={`flex-1 rounded-xl px-4 py-3 text-sm font-bold transition ${activeTab === 'services'
+                            ? 'bg-primary-700 text-white'
+                            : 'border border-slate-200 text-slate-700 hover:bg-slate-50'
+                        }`}
+                    >
+                        🛎️ Services
+                    </button>
+                </div>
+
+                <div className="grid gap-6 lg:grid-cols-[1fr_250px]">
+                    {/* Main Content */}
+                    <div id="store-list">
+                        {visibleItems.length === 0 ? (
+                            <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-12 text-center">
+                                <p className="text-xl font-bold text-slate-700">No results found</p>
+                                <p className="text-slate-500 mt-2">Try adjusting your search or filter to find what you&apos;re looking for.</p>
+                                {query && (
+                                    <button
+                                        onClick={() => {
+                                            setQuery('');
+                                            setVisibleCount(9);
+                                        }}
+                                        className="mt-4 text-sm font-bold text-primary-700 hover:underline"
+                                    >
+                                        Clear search
+                                    </button>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                                {visibleItems.map((item) => {
+                                    const isService = 'icon' in item;
+                                    const itemPath = isService ? 'services' : 'products';
                                 return (
                                     <div
                                         key={item.id}
@@ -421,8 +459,60 @@ export default function StorePage() {
                                     </div>
                                 );
                             })}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Sidebar - Switch between Products & Services */}
+                    <aside className="hidden lg:block">
+                        <div className="sticky top-20 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                            <p className="text-xs uppercase font-bold tracking-wider text-slate-500 mb-4">Quick Switch</p>
+                            <div className="space-y-2">
+                                <button
+                                    onClick={() => {
+                                        if (activeTab !== 'products') {
+                                            setActiveTab('products');
+                                            setCategory('All');
+                                            setQuery('');
+                                            setVisibleCount(9);
+                                        }
+                                    }}
+                                    className={`w-full rounded-xl px-4 py-3 text-sm font-bold transition ${activeTab === 'products'
+                                        ? 'bg-primary-700 text-white'
+                                        : 'border border-slate-200 text-slate-700 hover:bg-slate-50'
+                                    }`}
+                                >
+                                    📦 All Products
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        if (activeTab !== 'services') {
+                                            setActiveTab('services');
+                                            setCategory('All');
+                                            setQuery('');
+                                            setVisibleCount(9);
+                                        }
+                                    }}
+                                    className={`w-full rounded-xl px-4 py-3 text-sm font-bold transition ${activeTab === 'services'
+                                        ? 'bg-primary-700 text-white'
+                                        : 'border border-slate-200 text-slate-700 hover:bg-slate-50'
+                                    }`}
+                                >
+                                    🛎️ All Services
+                                </button>
+                            </div>
+
+                            <div className="mt-6 pt-4 border-t border-slate-100">
+                                <p className="text-xs uppercase font-bold tracking-wider text-slate-500 mb-3">Viewing</p>
+                                <div className="space-y-2 text-xs">
+                                    <div className="rounded-lg bg-slate-50 p-3">
+                                        <p className="font-bold text-slate-900">{activeTab === 'products' ? 'Products' : 'Services'}</p>
+                                        <p className="text-slate-500 mt-1">{filtered.length} item{filtered.length !== 1 ? 's' : ''} available</p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                    )}
+                    </aside>
                 </div>
 
                 {filtered.length > visibleCount && (

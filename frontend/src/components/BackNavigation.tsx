@@ -43,6 +43,10 @@ export default function BackNavigation({ href }: BackNavigationProps) {
         if (pathname.includes('/activity/')) {
             return '/activity';
         }
+        // Terms, Privacy, Help pages go to home
+        if (pathname.includes('/terms') || pathname.includes('/privacy') || pathname.includes('/help')) {
+            return '/';
+        }
         // Use browser back as fallback
         return null;
     };

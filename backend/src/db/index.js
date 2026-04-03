@@ -1,25 +1,37 @@
-const { Pool } = require('pg');
+const mongoose = require('mongoose');
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
-});
+let isConnected = false;
 
-pool.on('error', (err) => {
-  console.error('Unexpected error on idle client', err);
-});
-
-const query = async (text, params) => {
-  const start = Date.now();
-  const res = await pool.query(text, params);
-  const duration = Date.now() - start;
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[DB]', { text: text.substring(0, 60), duration, rows: res.rowCount });
+const connectDB = async () => {
+  if (isConnected) {
+    console.log('[DB] Already connected to MongoDB');
+    return;
   }
-  return res;
+
+  try {
+    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/assetforu';
+    
+    await mongoose.connect(mongoUri, {
+      connectTimeoutMS: 10000,
+      socketTimeoutMS: 45000,
+    });
+
+    isConnected = true;
+    console.log('[DB] ✅ MongoDB Connected Successfully');
+  } catch (error) {
+    console.error('[DB] ❌ MongoDB Connection Error:', error.message);
+    process.exit(1);
+  }
 };
 
-module.exports = { query, pool };
+// Handle connection events
+mongoose.connection.on('error', (err) => {
+  console.error('[DB] MongoDB connection error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.warn('[DB] MongoDB disconnected');
+  isConnected = false;
+});
+
+module.exports = { connectDB, mongoose };

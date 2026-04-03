@@ -3,8 +3,15 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const { connectDB } = require('./db');
 
 const app = express();
+
+// ─── Database Connection ────────────────────────────────────
+connectDB().catch((err) => {
+  console.error('Failed to connect to MongoDB:', err);
+  process.exit(1);
+});
 
 // ─── Security ───────────────────────────────────────────────
 app.use(helmet());
@@ -64,5 +71,6 @@ app.listen(PORT, HOST, () => {
   console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`   Health: ${baseUrl}/health\n`);
 });
+
 
 module.exports = app;
