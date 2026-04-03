@@ -1,5 +1,7 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import BackNavigation from '@/components/BackNavigation';
 
 export default function TermsPage() {

@@ -1,5 +1,7 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import { useState } from 'react';
 import { Mail, Phone, MapPin } from 'lucide-react';
 import BackNavigation from '@/components/BackNavigation';
@@ -41,7 +43,7 @@ export default function ContactPage() {
                 <div className="mx-auto max-w-4xl px-6 lg:px-10 py-12">
                     <h1 className="text-4xl font-extrabold text-slate-900 mb-4">Contact Us</h1>
                     <p className="text-lg text-slate-600">
-                        Have questions or feedback? We'd love to hear from you. Get in touch with our support team.
+                        Have questions or feedback? We&apos;d love to hear from you. Get in touch with our support team.
                     </p>
                 </div>
             </div>
@@ -110,7 +112,7 @@ export default function ContactPage() {
                                     <div className="text-4xl mb-3">✓</div>
                                     <h3 className="text-lg font-semibold text-green-900 mb-2">Message Received!</h3>
                                     <p className="text-green-700 text-sm">
-                                        Thank you for reaching out. We'll get back to you within 24–48 hours.
+                                        Thank you for reaching out. We&apos;ll get back to you within 24–48 hours.
                                     </p>
                                 </div>
                             ) : (

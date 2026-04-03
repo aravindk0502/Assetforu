@@ -108,7 +108,7 @@ export default function TicketDetailsPage() {
                 {/* Message */}
                 <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-xl text-center">
                     <p className="text-sm text-blue-800">
-                        Keep this ticket number safe. You'll need it for the upcoming draw results.
+                        Keep this ticket number safe. You&apos;ll need it for the upcoming draw results.
                     </p>
                 </div>
 

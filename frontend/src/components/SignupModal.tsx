@@ -305,7 +305,7 @@ export function SignupModal() {
                 <button
                   onClick={() => {
                     if (devOtp === 'dev123') {
-                      const devUser = { id: 'dev_user_1', name: 'Dev User', role: 'user' };
+                      const devUser = { id: 'dev_user_1', name: 'Dev User', role: 'user' as const, phone: '9999999999', kyc_status: 'verified' as const };
                       const devToken = 'dev_token_' + Date.now();
                       setAuth(devUser, devToken);
                       setStep('success');

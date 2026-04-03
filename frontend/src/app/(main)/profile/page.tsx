@@ -1,5 +1,7 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import clsx from 'clsx';
@@ -425,7 +427,7 @@ export default function ProfilePage() {
                   <p className="text-sm text-slate-500">No transactions yet.</p>
                 ) : (
                   <div className="space-y-3">
-                    {transactions.slice(0, 6).map((t) => (
+                    {transactions.slice(0, 6).map((t: any) => (
                       <div
                         key={t.id}
                         onClick={() => router.push(`/activity/${t.reference_id || t.id}/order-details`)}
@@ -583,7 +585,7 @@ export default function ProfilePage() {
                     <p className="text-sm text-slate-500">No transactions yet.</p>
                   ) : (
                     <div className="space-y-3">
-                      {transactions.slice(0, 6).map((t) => (
+                      {transactions.slice(0, 6).map((t: any) => (
                         <div key={t.id} onClick={() => { router.push(`/activity/${t.reference_id || t.id}/order-details`); setShowMobileModal(false); }} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-100 px-4 py-3 text-sm cursor-pointer transition">
                           <span className="text-slate-600">{t.description}</span>
                           <span className="font-bold text-slate-900">{formatCurrency(Number(t.credits), currency)}</span>

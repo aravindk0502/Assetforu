@@ -140,7 +140,7 @@ export default function TicketDetailsPage({ params }: { params: { id: string } }
                 <div className="rounded-2xl bg-blue-50 border border-blue-200 p-6 mb-8">
                     <p className="text-sm text-blue-950">
                         <span className="font-bold">Ticket #{ticketActivity.ticketNumber}</span> represents your confirmed participation in the <span className="font-bold">{campaignDetails.title}</span> campaign.
-                        Keep this ticket safe as it's your proof of participation. You can view this ticket anytime from your Activity page.
+                        Keep this ticket safe as it&apos;s your proof of participation. You can view this ticket anytime from your Activity page.
                     </p>
                 </div>
 
