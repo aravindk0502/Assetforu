@@ -6,6 +6,8 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { BottomNav } from '@/components/BottomNav';
 
+export const dynamic = 'force-dynamic';
+
 const manrope = Manrope({
   subsets: ['latin'],
   variable: '--font-manrope',

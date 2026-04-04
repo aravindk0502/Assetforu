@@ -6,12 +6,6 @@ const nextConfig = {
       { protocol: 'https', hostname: 'images.unsplash.com' },
     ],
   },
-  // Allow dynamic rendering on Vercel
-  experimental: {
-    allowDynamic: [
-      '/node_modules/uuid/**',
-    ],
-  },
 };
 
 module.exports = nextConfig;
