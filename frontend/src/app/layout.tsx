@@ -6,6 +6,10 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { BottomNav } from '@/components/BottomNav';
 
+// Force all pages to be dynamic - this cascades to all routes
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 const manrope = Manrope({
   subsets: ['latin'],
   variable: '--font-manrope',

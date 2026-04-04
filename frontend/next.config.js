@@ -13,15 +13,6 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  // Force serverless mode - no static generation
-  output: 'standalone',
-  experimental: {
-    isrMemoryCacheSize: 0,
-  },
-  onDemandEntries: {
-    maxInactiveAge: 15000,
-    pagesBufferLength: 2,
-  },
 };
 
 module.exports = nextConfig;
