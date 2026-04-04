@@ -12,6 +12,8 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  // Skip static export during build
+  output: process.env.VERCEL ? 'standalone' : undefined,
 };
 
 module.exports = nextConfig;
