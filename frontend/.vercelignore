@@ -1,0 +1,6 @@
+# Skip static generation for dynamic pages
+.next/cache
+node_modules
+.env
+.env.local
+.git
