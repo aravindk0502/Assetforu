@@ -1,3 +1,4 @@
 {
+  "root": "frontend",
   "outputDirectory": ".next"
 }
