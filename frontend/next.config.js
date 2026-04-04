@@ -12,8 +12,10 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  // Skip static export during build
-  output: process.env.VERCEL ? 'standalone' : undefined,
+  skipTrailingSlashRedirect: true,
+  experimental: {
+    optimizePackageImports: ['lucide-react'],
+  },
 };
 
 module.exports = nextConfig;
