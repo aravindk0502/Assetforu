@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useAuthStore, useUIStore } from '@/store';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useMemo } from 'react';
@@ -7,7 +8,7 @@ import { CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import BackNavigation from '@/components/BackNavigation';
 
-export default function OrderDetailsPage() {
+function OrderDetailsContent() {
     const params = useParams();
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -104,5 +105,13 @@ export default function OrderDetailsPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function OrderDetailsPage() {
+    return (
+        <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
+            <OrderDetailsContent />
+        </Suspense>
     );
 }

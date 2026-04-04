@@ -1,12 +1,13 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
 import { useUIStore } from '@/store';
 import { campaigns } from '@/data/dreamCampaigns';
 import { formatCurrency } from '@/lib/currency';
 import BackNavigation from '@/components/BackNavigation';
 
-export default function CampaignSuccessPage() {
+function CampaignSuccessContent() {
     const router = useRouter();
     const params = useParams();
     const searchParams = useSearchParams();
@@ -63,5 +64,13 @@ export default function CampaignSuccessPage() {
                 </button>
             </div>
         </div>
+    );
+}
+
+export default function CampaignSuccessPage() {
+    return (
+        <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
+            <CampaignSuccessContent />
+        </Suspense>
     );
 }

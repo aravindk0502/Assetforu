@@ -1,12 +1,13 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { useMemo } from 'react';
 import { productCatalog } from '@/data/storeCatalog';
 import { formatCurrency } from '@/lib/currency';
 import { useUIStore } from '@/store';
 
-export default function ProductRedeemSuccessPage() {
+function ProductRedeemSuccessContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();

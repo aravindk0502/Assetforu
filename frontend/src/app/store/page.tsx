@@ -2,6 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
+import { Suspense } from 'react';
 import { useMemo, useState, useEffect } from 'react';
 import { useAuthStore, useCartStore, useUIStore } from '@/store';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -31,7 +32,7 @@ const adCards = [
     },
 ];
 
-export default function StorePage() {
+function StoreContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const user = useAuthStore((state) => state.user);
@@ -545,5 +546,13 @@ export default function StorePage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function StorePage() {
+    return (
+        <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading Store...</div>}>
+            <StoreContent />
+        </Suspense>
     );
 }

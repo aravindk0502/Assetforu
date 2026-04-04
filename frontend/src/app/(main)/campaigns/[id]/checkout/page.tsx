@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
 import { useAuthStore, useUIStore } from '@/store';
@@ -8,7 +9,7 @@ import { campaignAPI } from '@/lib/api';
 import { formatCurrency } from '@/lib/currency';
 import BackNavigation from '@/components/BackNavigation';
 
-export default function CampaignCheckoutPage() {
+function CampaignCheckoutContent() {
     const router = useRouter();
     const params = useParams();
     const searchParams = useSearchParams();
@@ -251,5 +252,13 @@ export default function CampaignCheckoutPage() {
                 <p className="mt-3 text-xs text-slate-500">1 Asset Credit = ₹1. Credits are non-transferable. This transaction only adds Asset Credits.</p>
             </div>
         </div>
+    );
+}
+
+export default function CampaignCheckoutPage() {
+    return (
+        <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
+            <CampaignCheckoutContent />
+        </Suspense>
     );
 }

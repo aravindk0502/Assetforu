@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useAuthStore, useUIStore } from '@/store';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -7,7 +8,7 @@ import BackNavigation from '@/components/BackNavigation';
 import { useMemo } from 'react';
 import { campaigns } from '@/data/dreamCampaigns';
 
-export default function TicketDetailsPage({ params }: { params: { id: string } }) {
+function TicketDetailsContent({ params }: { params: { id: string } }) {
     const { id } = params;
     const user = useAuthStore((state) => state.user);
     const { activity } = useUIStore();
@@ -161,5 +162,17 @@ export default function TicketDetailsPage({ params }: { params: { id: string } }
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function TicketDetailsPage({ params }: { params: { id: string } }) {
+    return (
+        <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
+            <Tic
+export default function CampaignSuccessPage() {
+    return (
+        <Suspense fallback={<div className=oru    return (
+        <Suspense fallback={<div /s  cess/page.t            <CampaignSuccessContent />
+        </Suspense>
     );
 }
