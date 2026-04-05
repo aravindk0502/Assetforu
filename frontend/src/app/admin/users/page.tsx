@@ -1,4 +1,6 @@
 'use client';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 import { useEffect, useState } from 'react';
 import { adminAPI } from '@/lib/api';
 import { User, ShieldCheck, Loader2 } from 'lucide-react';
