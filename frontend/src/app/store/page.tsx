@@ -1,7 +1,5 @@
 'use client';
 
-export const dynamic = 'force-dynamic';
-
 import { Suspense } from 'react';
 import { useMemo, useState, useEffect } from 'react';
 import { useAuthStore, useCartStore, useUIStore } from '@/store';
