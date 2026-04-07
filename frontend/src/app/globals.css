@@ -2,11 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
+@import '@fontsource/manrope/300.css';
+@import '@fontsource/manrope/400.css';
+@import '@fontsource/manrope/500.css';
+@import '@fontsource/manrope/600.css';
+@import '@fontsource/manrope/700.css';
+@import '@fontsource/manrope/800.css';
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+
 :root {
   --primary: #0b6a39;
   --primary-light: #e7f2ed;
   --background: #f6f8f7;
   --surface: #ffffff;
+  --font-manrope: 'Manrope';
+  --font-inter: 'Inter';
 }
 
 @layer base {

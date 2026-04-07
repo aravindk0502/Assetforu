@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import { Manrope, Inter } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
 import { Header } from '@/components/Header';
@@ -10,20 +9,6 @@ import { BottomNav } from '@/components/BottomNav';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-const manrope = Manrope({
-  subsets: ['latin'],
-  variable: '--font-manrope',
-  weight: ['300', '400', '500', '600', '700', '800'],
-  display: 'swap',
-});
-
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-inter',
-  weight: ['400', '500', '600'],
-  display: 'swap',
-});
-
 export const metadata: Metadata = {
   title: 'AssetForU – Premium Land Access Platform',
   description:
@@ -33,7 +18,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${manrope.variable} ${inter.variable}`}>
+    <html lang="en">
       <body className="font-display antialiased bg-[#f6f8f7] text-slate-900 min-h-screen">
         <Providers>
           <Header />
