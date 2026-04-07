@@ -64,3 +64,11 @@ function ProductRedeemSuccessContent() {
     </div>
   );
 }
+
+export default function ProductRedeemSuccessPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
+      <ProductRedeemSuccessContent />
+    </Suspense>
+  );
+}

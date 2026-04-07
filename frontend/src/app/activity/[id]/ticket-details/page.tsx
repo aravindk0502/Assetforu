@@ -2,7 +2,6 @@
 
 import { Suspense } from 'react';
 import { useAuthStore, useUIStore } from '@/store';
-import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import BackNavigation from '@/components/BackNavigation';
 import { useMemo } from 'react';
@@ -12,8 +11,6 @@ function TicketDetailsContent({ params }: { params: { id: string } }) {
     const { id } = params;
     const user = useAuthStore((state) => state.user);
     const { activity } = useUIStore();
-    const searchParams = useSearchParams();
-    const ticketNo = searchParams.get('ticketNo') || '';
 
     const ticketActivity = useMemo(() => {
         return activity.find((item) => item.id === id && typeof item.ticketNumber === 'number');
@@ -162,5 +159,13 @@ function TicketDetailsContent({ params }: { params: { id: string } }) {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function TicketDetailsPage({ params }: { params: { id: string } }) {
+    return (
+        <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
+            <TicketDetailsContent params={params} />
+        </Suspense>
     );
 }

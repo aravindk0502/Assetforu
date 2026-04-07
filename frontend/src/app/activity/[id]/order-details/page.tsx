@@ -2,7 +2,7 @@
 
 import { Suspense } from 'react';
 import { useAuthStore, useUIStore } from '@/store';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { useMemo } from 'react';
 import { CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
@@ -11,7 +11,6 @@ import BackNavigation from '@/components/BackNavigation';
 function OrderDetailsContent() {
     const params = useParams();
     const searchParams = useSearchParams();
-    const router = useRouter();
     const user = useAuthStore((state) => state.user);
     const { activity } = useUIStore();
 
