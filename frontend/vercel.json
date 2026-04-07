@@ -1,4 +1,6 @@
 {
-  "installCommand": "npm ci --legacy-peer-deps",
-  "buildCommand": "npm run build"
+  "builds": [
+    { "src": "package.json", "use": "@vercel/next" }
+  ],
+  "installCommand": "npm ci --legacy-peer-deps"
 }

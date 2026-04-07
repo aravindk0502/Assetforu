@@ -1,4 +1,6 @@
 {
-  "installCommand": "npm --prefix frontend ci --legacy-peer-deps",
-  "buildCommand": "npm run frontend:build"
+  "builds": [
+    { "src": "frontend/package.json", "use": "@vercel/next" }
+  ],
+  "installCommand": "npm --prefix frontend ci --legacy-peer-deps"
 }
