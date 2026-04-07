@@ -6,7 +6,8 @@
     "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "install:frontend": "npm ci --legacy-peer-deps"
   },
   "dependencies": {
     "@fontsource/inter": "^5.2.6",
