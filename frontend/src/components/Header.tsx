@@ -130,10 +130,19 @@ export function Header() {
                         {/* Favourites - Desktop */}
                         <Link
                             href="/favourites"
-                            className="relative hidden sm:flex items-center justify-center h-9 w-9 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
+                            className="group relative hidden sm:flex items-center justify-center h-9 w-9 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
                             aria-label="Favourites"
+                            title="Favorites"
                         >
                             <Heart className={`w-4 h-4 ${favorites.length > 0 ? 'fill-rose-500 text-rose-500' : ''}`} />
+                            {favorites.length > 0 && (
+                                <span className="absolute -top-2 -right-2 h-5 min-w-5 px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center">
+                                    {favorites.length}
+                                </span>
+                            )}
+                            <span className="pointer-events-none absolute top-11 right-1/2 translate-x-1/2 whitespace-nowrap rounded-lg bg-slate-900 px-2 py-1 text-[11px] font-semibold text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                                Favorites
+                            </span>
                         </Link>
 
                         {/* Cart */}

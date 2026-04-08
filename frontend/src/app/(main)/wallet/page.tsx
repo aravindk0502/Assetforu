@@ -4,8 +4,10 @@ import { useAuthStore, useUIStore } from '@/store';
 import { formatCurrency } from '@/lib/currency';
 import Link from 'next/link';
 import BackNavigation from '@/components/BackNavigation';
+import { useRouter } from 'next/navigation';
 
 export default function WalletPage() {
+    const router = useRouter();
     const user = useAuthStore((state) => state.user);
     const { walletBalance, transactions, currency } = useUIStore();
 
@@ -53,7 +55,12 @@ export default function WalletPage() {
                     ) : (
                         <div className="space-y-3">
                             {transactions.map((tx) => (
-                                <div key={tx.id} className="rounded-xl border border-slate-100 p-3 flex justify-between items-center">
+                                <button
+                                    key={tx.id}
+                                    type="button"
+                                    onClick={() => router.push(`/activity/${tx.id}/order-details`)}
+                                    className="w-full text-left rounded-xl border border-slate-100 p-3 flex justify-between items-center hover:bg-slate-50 hover:border-slate-200 transition"
+                                >
                                     <div>
                                         <p className="font-semibold text-slate-800">{tx.description}</p>
                                         <p className="text-xs text-slate-500">{new Date(tx.createdAt).toLocaleString()}</p>
@@ -61,7 +68,7 @@ export default function WalletPage() {
                                     <div className={tx.type === 'credit' ? 'text-green-600 font-black' : 'text-red-500 font-black'}>
                                         {tx.type === 'credit' ? '+' : '-'}{formatCurrency(tx.credits, currency)}
                                     </div>
-                                </div>
+                                </button>
                             ))}
                         </div>
                     )}
