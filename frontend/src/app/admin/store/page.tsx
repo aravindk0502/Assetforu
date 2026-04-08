@@ -15,6 +15,7 @@ export default function AdminStorePage() {
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState('');
   const [form, setForm] = useState({ title: '', description: '', image_url: '', type: 'service', category: 'legal', credit_cost: '', is_popular: false });
+  const [imagePreview, setImagePreview] = useState<string>('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'service' | 'product'>('all');
   const [categoryFilter, setCategoryFilter] = useState<'all' | string>('all');
   const [query, setQuery] = useState('');
@@ -40,10 +41,27 @@ export default function AdminStorePage() {
       setSuccess('Store item created!');
       setShowForm(false);
       setForm({ title: '', description: '', image_url: '', type: 'service', category: 'legal', credit_cost: '', is_popular: false });
+      setImagePreview('');
       await load();
       setTimeout(() => setSuccess(''), 3000);
     } catch { /* ignore */ } finally { setSaving(false); }
   };
+
+  const handleImagePick = (file: File | null) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = String(reader.result || '');
+      setForm((f) => ({ ...f, image_url: dataUrl }));
+      setImagePreview(dataUrl);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  useEffect(() => {
+    if (!showForm) setImagePreview('');
+  }, [showForm]);
 
   const visibleItems = items.filter((item) => {
     const q = query.trim().toLowerCase();
@@ -118,13 +136,53 @@ export default function AdminStorePage() {
               <button onClick={() => setShowForm(false)} className="text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
             </div>
             <div className="space-y-4">
-              {[{ key: 'title', label: 'Title *', type: 'text' }, { key: 'credit_cost', label: 'Credit Cost (₹) *', type: 'number' }, { key: 'image_url', label: 'Image URL', type: 'url' }].map(({ key, label, type }) => (
+              {[{ key: 'title', label: 'Title *', type: 'text' }, { key: 'credit_cost', label: 'Credit Cost (₹) *', type: 'number' }].map(({ key, label, type }) => (
                 <div key={key}>
                   <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">{label}</label>
                   <input type={type} value={form[key as keyof typeof form] as string} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
                     className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:ring-2 focus:ring-primary-700 focus:outline-none" />
                 </div>
               ))}
+
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Image (Gallery)</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => handleImagePick(e.target.files?.[0] || null)}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-200 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-slate-700 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-white hover:file:bg-slate-600"
+                />
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Selecting an image will auto-fill `image_url`. For best performance, use a hosted URL when possible.
+                </p>
+                {(imagePreview || form.image_url) && (
+                  <div className="mt-3 flex items-start gap-3">
+                    <img
+                      src={imagePreview || form.image_url}
+                      alt="Preview"
+                      className="h-16 w-24 rounded-lg object-cover border border-slate-700 bg-slate-950"
+                    />
+                    <div className="flex-1">
+                      <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Image URL</label>
+                      <input
+                        type="url"
+                        value={form.image_url}
+                        onChange={(e) => { setForm((f) => ({ ...f, image_url: e.target.value })); setImagePreview(''); }}
+                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:ring-2 focus:ring-primary-700 focus:outline-none"
+                        placeholder="https://… or data:image/…"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => { setForm((f) => ({ ...f, image_url: '' })); setImagePreview(''); }}
+                        className="mt-2 text-xs font-bold text-slate-400 hover:text-white"
+                      >
+                        Clear image
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Type</label>
