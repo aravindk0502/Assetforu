@@ -23,6 +23,13 @@ export default function AssetPage() {
     const loadAssets = useCallback(async () => {
         setLoading(true);
         try {
+            const blobRes = await fetch('/api/public/campaigns?status=active&limit=9', { cache: 'no-store' });
+            const blobJson = (await blobRes.json().catch(() => ({}))) as { success?: boolean; data?: unknown[] };
+            const blobRows = (blobRes.ok && blobJson?.success && Array.isArray(blobJson.data)) ? blobJson.data : [];
+            if (blobRows.length) {
+                setAssets(blobRows as Campaign[]);
+                return;
+            }
             const res = await campaignAPI.list({ status: 'active', limit: 9 });
             setAssets(res.data.data);
         } catch (e) {

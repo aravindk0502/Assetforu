@@ -1,6 +1,15 @@
 import axios from 'axios';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
+function normalizeApiBaseUrl(raw: string) {
+  const trimmed = String(raw || '').trim();
+  if (!trimmed) return 'http://localhost:4001/api';
+  const noTrailingSlash = trimmed.replace(/\/+$/, '');
+  // If caller already includes /api at the end, keep it.
+  if (/\/api$/i.test(noTrailingSlash)) return noTrailingSlash;
+  return `${noTrailingSlash}/api`;
+}
+
+const BASE_URL = normalizeApiBaseUrl(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001');
 
 export const api = axios.create({
   baseURL: BASE_URL,

@@ -29,8 +29,15 @@ export default function CampaignsPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await campaignAPI.list({ status: 'active', limit: 50 });
-        const rows = (res.data?.data || []) as Array<{
+        const blobRes = await fetch('/api/public/campaigns?status=active&limit=50', { cache: 'no-store' });
+        const blobJson = (await blobRes.json().catch(() => ({}))) as { success?: boolean; data?: unknown[] };
+        const blobRows = (blobRes.ok && blobJson?.success && Array.isArray(blobJson.data)) ? blobJson.data : [];
+
+        const apiRows = blobRows.length
+          ? []
+          : (((await campaignAPI.list({ status: 'active', limit: 50 })).data?.data || []) as unknown[]);
+
+        const rows = (blobRows.length ? blobRows : apiRows) as Array<{
           id: string;
           title: string;
           description: string;

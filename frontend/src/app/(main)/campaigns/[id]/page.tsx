@@ -40,9 +40,24 @@ export default function CampaignDetailPage() {
     const id = String(params?.id || '');
     if (!id) return;
     setApiLoading(true);
-    campaignAPI
-      .get(id)
-      .then((res) => setApiCampaign(res.data?.data || null))
+    (async () => {
+      try {
+        const blobRes = await fetch(`/api/public/campaigns/${id}`, { cache: 'no-store' });
+        const blobJson = (await blobRes.json().catch(() => ({}))) as { success?: boolean; data?: unknown };
+        if (blobRes.ok && blobJson?.success && blobJson.data) {
+          setApiCampaign(blobJson.data as any);
+          return;
+        }
+      } catch {
+        // ignore
+      }
+      try {
+        const res = await campaignAPI.get(id);
+        setApiCampaign(res.data?.data || null);
+      } catch {
+        setApiCampaign(null);
+      }
+    })()
       .catch(() => setApiCampaign(null))
       .finally(() => setApiLoading(false));
   }, [campaign, params?.id]);

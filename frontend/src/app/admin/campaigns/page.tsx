@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { adminAPI, campaignAPI } from '@/lib/api';
+import { campaignAPI } from '@/lib/api';
 import { Campaign } from '@/types';
 import { Plus, Loader2, X, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
@@ -9,8 +9,10 @@ import BackNavigation from '@/components/BackNavigation';
 import AdminJsonModal from '@/components/admin/AdminJsonModal';
 import type { CampaignLandMeta } from '@/lib/campaignMeta';
 import { buildCampaignDescription } from '@/lib/campaignMeta';
+import { useAuthStore } from '@/store';
 
 export default function AdminCampaignsPage() {
+  const token = useAuthStore((s) => s.token);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<'active' | 'upcoming' | 'closed'>('active');
@@ -44,9 +46,21 @@ export default function AdminCampaignsPage() {
 
   const loadCampaigns = async () => {
     try {
-      const res = await campaignAPI.list({ status: statusFilter, limit: 100 });
-      setCampaigns(res.data.data);
-    } catch { /* ignore */ } finally { setLoading(false); }
+      // Prefer Blob-backed campaigns so admin/live stay in sync without CORS issues.
+      const res = await fetch(`/api/public/campaigns?status=${statusFilter}&limit=200`, { cache: 'no-store' });
+      const json = (await res.json().catch(() => ({}))) as { success?: boolean; data?: Campaign[] };
+      if (res.ok && json?.success && Array.isArray(json?.data)) {
+        setCampaigns(json.data);
+        return;
+      }
+      // Fallback to API URL if blob is not configured.
+      const apiRes = await campaignAPI.list({ status: statusFilter, limit: 100 });
+      setCampaigns(apiRes.data.data);
+    } catch {
+      /* ignore */
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { setLoading(true); loadCampaigns(); }, [statusFilter]);
@@ -60,6 +74,9 @@ export default function AdminCampaignsPage() {
 
     setSaving(true);
     try {
+      const bearer = token || (typeof window !== 'undefined' ? localStorage.getItem('af_token') : null);
+      if (!bearer) throw new Error('Not authenticated');
+
       const description = buildCampaignDescription({
         text: descriptionText,
         images: imageUrls,
@@ -80,8 +97,20 @@ export default function AdminCampaignsPage() {
         total_slots: parseInt(form.total_slots),
         end_time: form.end_time ? new Date(form.end_time).toISOString() : null,
         image_url: imageUrls[0],
+        image_urls: imageUrls,
       };
-      await adminAPI.createCampaign(payload);
+      const res = await fetch('/api/admin/campaigns', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${bearer}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      const json = (await res.json().catch(() => ({}))) as { success?: boolean; message?: string };
+      if (!res.ok || json?.success === false) {
+        throw new Error(json?.message || `HTTP ${res.status}`);
+      }
       setSuccess('Campaign created!');
       setShowForm(false);
       setForm({ title: '', location: '', credit_price: '', total_slots: '100', end_time: '', badge: '', is_featured: false });
@@ -92,15 +121,19 @@ export default function AdminCampaignsPage() {
       await loadCampaigns();
       setTimeout(() => setSuccess(''), 3000);
     } catch (e: unknown) {
-      const err = e as { response?: { status?: number; data?: { message?: string } } };
-      const status = err.response?.status;
-      const msg = err.response?.data?.message;
-      setError(status ? `Failed to create campaign (HTTP ${status})${msg ? `: ${msg}` : ''}` : (msg || 'Failed to create campaign'));
+      const msg = e instanceof Error ? e.message : 'Failed to create campaign';
+      setError(`Failed to create campaign: ${msg}`);
     } finally { setSaving(false); }
   };
 
   const handleStatusChange = async (id: string, status: string) => {
-    await adminAPI.updateCampaign(id, { status });
+    const bearer = token || (typeof window !== 'undefined' ? localStorage.getItem('af_token') : null);
+    if (!bearer) return;
+    await fetch(`/api/admin/campaigns/${id}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${bearer}` },
+      body: JSON.stringify({ status }),
+    });
     await loadCampaigns();
   };
 
