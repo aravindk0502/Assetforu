@@ -32,11 +32,6 @@ function CampaignCheckoutContent() {
 
     useEffect(() => {
         if (!campaign) return;
-        const quizToken = sessionStorage.getItem(`af_quiz_token_${campaign.id}`) === '1';
-        if (!quizToken) {
-            router.replace(`/campaigns/${campaign.id}`);
-            return;
-        }
         const loadLimit = async () => {
             try {
                 if (isDevUser) {
@@ -144,7 +139,6 @@ function CampaignCheckoutContent() {
             ticketNumbers: allocatedTickets.length > 0 ? allocatedTickets : undefined,
         });
 
-        sessionStorage.removeItem(`af_quiz_token_${campaign.id}`);
         const ticketParam = allocatedTickets.length ? `&tickets=${allocatedTickets.join(',')}` : '';
         router.push(`/campaigns/${campaign.id}/success?qty=${currentQty}${ticketParam}`);
     };

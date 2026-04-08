@@ -46,16 +46,7 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-lg font-bold text-slate-900 mb-2">5. Knowledge Step (Quiz)</h2>
-          <ul className="list-disc pl-5 space-y-1">
-            <li>Users may be required to complete a simple quiz.</li>
-            <li>This is part of platform engagement.</li>
-            <li>Correct completion is required to proceed.</li>
-          </ul>
-        </section>
-
-        <section>
-          <h2 className="text-lg font-bold text-slate-900 mb-2">6. User Responsibilities</h2>
+          <h2 className="text-lg font-bold text-slate-900 mb-2">5. User Responsibilities</h2>
           <ul className="list-disc pl-5 space-y-1">
             <li>Provide accurate details.</li>
             <li>Maintain account security.</li>
@@ -64,7 +55,7 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-lg font-bold text-slate-900 mb-2">7. Payments</h2>
+          <h2 className="text-lg font-bold text-slate-900 mb-2">6. Payments</h2>
           <ul className="list-disc pl-5 space-y-1">
             <li>Payments are processed via third-party gateways.</li>
             <li>Credits are added only after successful payment.</li>
@@ -72,7 +63,7 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-lg font-bold text-slate-900 mb-2">8. Refund Policy</h2>
+          <h2 className="text-lg font-bold text-slate-900 mb-2">7. Refund Policy</h2>
           <ul className="list-disc pl-5 space-y-1">
             <li>Credits are generally non-refundable.</li>
             <li>Exceptions at platform discretion.</li>
@@ -80,7 +71,7 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-lg font-bold text-slate-900 mb-2">9. Platform Rights</h2>
+          <h2 className="text-lg font-bold text-slate-900 mb-2">8. Platform Rights</h2>
           <p>AssetForU may:</p>
           <ul className="list-disc pl-5 space-y-1">
             <li>Modify services.</li>
@@ -90,17 +81,17 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-lg font-bold text-slate-900 mb-2">10. Limitation of Liability</h2>
+          <h2 className="text-lg font-bold text-slate-900 mb-2">9. Limitation of Liability</h2>
           <p>AssetForU does not guarantee outcomes from any campaign.</p>
         </section>
 
         <section>
-          <h2 className="text-lg font-bold text-slate-900 mb-2">11. Governing Law</h2>
+          <h2 className="text-lg font-bold text-slate-900 mb-2">10. Governing Law</h2>
           <p>Laws of India apply. Jurisdiction: [Your City]</p>
         </section>
 
         <section>
-          <h2 className="text-lg font-bold text-slate-900 mb-2">12. Acceptance</h2>
+          <h2 className="text-lg font-bold text-slate-900 mb-2">11. Acceptance</h2>
           <p>By using the platform, you agree to these terms.</p>
         </section>
       </div>

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { campaigns } from '@/data/dreamCampaigns';
+import { AdsBadge } from '@/components/AdsBadge';
 
 export default function LandPropertiesCarousel() {
     const router = useRouter();
@@ -24,10 +25,6 @@ export default function LandPropertiesCarousel() {
         router.push(`/land-listings`);
     };
 
-    const handleBannerClick = () => {
-        router.push(`/land-listings`);
-    };
-
     const goToPrevious = () => {
         setAutoScroll(false);
         setCurrentIndex((prev) => (prev - 1 + campaigns.length) % campaigns.length);
@@ -42,7 +39,7 @@ export default function LandPropertiesCarousel() {
 
     return (
         <section className="mx-auto max-w-7xl px-6 lg:px-10 py-8">
-            <div className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 h-96 cursor-pointer" onClick={handleBannerClick}>
+            <div className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 h-96">
                 {/* Background Image */}
                 <div
                     className="absolute inset-0 transition-opacity duration-500"
@@ -68,10 +65,7 @@ export default function LandPropertiesCarousel() {
                         <p className="text-base text-slate-100 max-w-2xl mb-6">{current.description}</p>
 
                         <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                goToCampaign(current.id);
-                            }}
+                            onClick={() => goToCampaign(current.id)}
                             className="rounded-full bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-3 font-bold transition transform hover:scale-105"
                         >
                             See More Properties →
@@ -119,6 +113,8 @@ export default function LandPropertiesCarousel() {
                 <div className="absolute top-6 right-6 bg-black/50 backdrop-blur-sm text-white px-4 py-2 rounded-full text-sm font-bold">
                     {currentIndex + 1} / {campaigns.length}
                 </div>
+
+                <AdsBadge />
             </div>
         </section>
     );

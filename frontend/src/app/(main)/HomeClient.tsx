@@ -350,10 +350,6 @@ export default function HomePage() {
               a: 'Asset Credits are prepaid value that can be used across products and services on the platform.',
             },
             {
-              q: 'Why is there a quiz step?',
-              a: 'The quiz is mandatory to enter a free land gifting campaign.',
-            },
-            {
               q: 'Can I use my credits anytime?',
               a: 'Yes, credits can be used anytime in the Asset Store.',
             },

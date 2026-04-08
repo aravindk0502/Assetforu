@@ -19,28 +19,8 @@ export default function CampaignDetailPage() {
   const [remainingLimit, setRemainingLimit] = useState<number | null>(null);
   const [limitMessage, setLimitMessage] = useState('');
   const isDevUser = !!user?.id?.startsWith('dev_');
-  const [showQuiz, setShowQuiz] = useState(false);
-  const [quizIndex, setQuizIndex] = useState(0);
-  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
-  const [quizFeedback, setQuizFeedback] = useState<string | null>(null);
-  const [quizPassed, setQuizPassed] = useState(false);
 
   const campaign = useMemo(() => campaigns.find((item) => item.id === params?.id), [params?.id]);
-  const quizQuestions = useMemo(
-    () => [
-      {
-        question: 'What is used to verify land ownership?',
-        options: ['EC (Encumbrance Certificate)', 'Electricity bill', 'Passport'],
-        correctIndex: 0,
-      },
-      {
-        question: 'What is a common use of land?',
-        options: ['Farming', 'Email', 'Software'],
-        correctIndex: 0,
-      },
-    ],
-    []
-  );
 
   useEffect(() => {
     const loadLimit = async () => {
@@ -91,10 +71,6 @@ export default function CampaignDetailPage() {
   }, [campaign, token, user, isDevUser]);
 
   useEffect(() => {
-    setQuizPassed(false);
-  }, [campaign?.id]);
-
-  useEffect(() => {
     if (remainingLimit === null) return;
     if (remainingLimit <= 0) return;
     if (quantity > remainingLimit) setQuantity(remainingLimit);
@@ -113,48 +89,11 @@ export default function CampaignDetailPage() {
 
   const onProceed = () => {
     if (remainingLimit !== null && remainingLimit <= 0) return;
-    if (!quizPassed) {
-      setShowQuiz(true);
-      return;
-    }
     if (!user) {
       openSignupModal(() => router.push(`/campaigns/${campaign.id}/checkout?qty=${quantity}`));
       return;
     }
     router.push(`/campaigns/${campaign.id}/checkout?qty=${quantity}`);
-  };
-
-  const handleSubmitQuiz = () => {
-    if (selectedAnswer === null) {
-      setQuizFeedback('Please select an answer.');
-      return;
-    }
-    const current = quizQuestions[quizIndex];
-    if (selectedAnswer === current.correctIndex) {
-      if (quizIndex < quizQuestions.length - 1) {
-        setQuizFeedback('Correct. Continue to the next step.');
-        setTimeout(() => {
-          setQuizIndex((i) => i + 1);
-          setSelectedAnswer(null);
-          setQuizFeedback(null);
-        }, 500);
-      } else {
-        setQuizFeedback("You're all set! Continue to checkout.");
-        setQuizPassed(true);
-      }
-    } else {
-      setQuizFeedback(`Incorrect. Correct answer: ${current.options[current.correctIndex]}`);
-    }
-  };
-
-  const handleContinue = () => {
-    setShowQuiz(false);
-    if (quizPassed) {
-      if (campaign) {
-        sessionStorage.setItem(`af_quiz_token_${campaign.id}`, '1');
-      }
-      router.push(`/campaigns/${campaign?.id}/checkout?qty=${quantity}`);
-    }
   };
 
   return (
@@ -211,67 +150,6 @@ export default function CampaignDetailPage() {
         </div>
       </div>
 
-      {showQuiz && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4">
-          <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-xl">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs uppercase tracking-[0.25em] text-emerald-600">Step {quizIndex + 1} of {quizQuestions.length}</p>
-                <h3 className="text-2xl font-black text-slate-900 mt-2">Quick Knowledge Check</h3>
-                <p className="text-sm text-slate-500 mt-1">Complete this step to continue</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowQuiz(false)}
-                className="text-slate-400 hover:text-slate-600"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="mt-6">
-              <p className="text-sm font-bold text-slate-900">{quizQuestions[quizIndex].question}</p>
-              <div className="mt-3 space-y-2">
-                {quizQuestions[quizIndex].options.map((option, idx) => (
-                  <button
-                    key={option}
-                    type="button"
-                    onClick={() => setSelectedAnswer(idx)}
-                    className={`w-full text-left rounded-xl border px-4 py-3 text-sm font-semibold ${selectedAnswer === idx ? 'border-primary-700 bg-primary-50 text-primary-800' : 'border-slate-200 text-slate-700'
-                      }`}
-                  >
-                    {option}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {quizFeedback && (
-              <div className={`mt-4 rounded-xl px-4 py-3 text-sm ${quizFeedback.startsWith('Incorrect') ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700'}`}>
-                {quizFeedback}
-              </div>
-            )}
-
-            <div className="mt-5 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={handleSubmitQuiz}
-                className="flex-1 rounded-xl bg-primary-700 text-white py-3 text-sm font-bold"
-              >
-                Submit Answer
-              </button>
-              <button
-                type="button"
-                onClick={handleContinue}
-                disabled={!quizPassed}
-                className="flex-1 rounded-xl border border-primary-700 text-primary-700 py-3 text-sm font-bold disabled:opacity-60"
-              >
-                Continue
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

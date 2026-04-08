@@ -70,11 +70,6 @@ const faqs = [
         answer:
             'Campaign participation depends on meeting eligibility criteria and allocating the required credits. There is no guaranteed outcome or allocation from any campaign. Benefits provided are complimentary features of the platform.',
     },
-    {
-        question: 'Why is there a quiz step?',
-        answer:
-            'The quiz ensures users understand platform guidelines and participation requirements before accessing certain features. This helps maintain a compliant and informed user community.',
-    },
 ];
 
 export default function HelpPage() {

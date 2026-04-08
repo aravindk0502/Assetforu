@@ -68,7 +68,7 @@ export default function CartPage() {
                 <div className="mt-8 space-y-4">
                     {campaignItems.length > 0 && (
                         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-                            Campaign purchases must be completed by buying credits (quiz + payment). Stored credits are only for Asset Store.
+                            Campaign purchases must be completed by buying credits. Stored credits are only for Asset Store.
                             <div className="mt-3 flex flex-wrap gap-2">
                                 {campaignItems.map((item) => (
                                     <button
