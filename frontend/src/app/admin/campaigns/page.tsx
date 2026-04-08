@@ -6,23 +6,26 @@ import { Plus, Loader2, X, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import clsx from 'clsx';
 import BackNavigation from '@/components/BackNavigation';
+import AdminJsonModal from '@/components/admin/AdminJsonModal';
 
 export default function AdminCampaignsPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<'active' | 'upcoming' | 'closed'>('active');
   const [showForm, setShowForm] = useState(false);
+  const [viewCampaign, setViewCampaign] = useState<Campaign | null>(null);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState('');
   const [form, setForm] = useState({ title: '', description: '', location: '', image_url: '', credit_price: '', total_slots: '100', end_time: '', badge: '', is_featured: false });
 
   const loadCampaigns = async () => {
     try {
-      const res = await campaignAPI.list({ status: 'active', limit: 50 });
+      const res = await campaignAPI.list({ status: statusFilter, limit: 100 });
       setCampaigns(res.data.data);
     } catch { /* ignore */ } finally { setLoading(false); }
   };
 
-  useEffect(() => { loadCampaigns(); }, []);
+  useEffect(() => { setLoading(true); loadCampaigns(); }, [statusFilter]);
 
   const handleCreate = async () => {
     if (!form.title || !form.credit_price) return;
@@ -48,11 +51,28 @@ export default function AdminCampaignsPage() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-black text-white">Campaigns</h1>
-          <p className="text-slate-400 mt-1">{campaigns.length} active campaigns</p>
+          <p className="text-slate-400 mt-1">{campaigns.length} {statusFilter} campaigns</p>
         </div>
-        <button onClick={() => setShowForm(true)} className="flex items-center gap-2 bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-primary-600 transition-colors">
-          <Plus className="w-4 h-4" /> New Campaign
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="flex rounded-xl bg-slate-900 border border-slate-800 p-1">
+            {(['active', 'upcoming', 'closed'] as const).map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setStatusFilter(s)}
+                className={clsx(
+                  'px-3 py-2 text-xs font-bold rounded-lg transition-colors uppercase tracking-wide',
+                  statusFilter === s ? 'bg-primary-700 text-white' : 'text-slate-400 hover:text-white'
+                )}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+          <button onClick={() => setShowForm(true)} className="flex items-center gap-2 bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-primary-600 transition-colors">
+            <Plus className="w-4 h-4" /> New Campaign
+          </button>
+        </div>
       </div>
 
       {success && (
@@ -118,44 +138,59 @@ export default function AdminCampaignsPage() {
         <table className="w-full text-left">
           <thead className="bg-slate-800 border-b border-slate-700">
             <tr>
-              {['Campaign', 'Credit Price', 'Slots', 'End Time', 'Status', 'Actions'].map(h => (
+              {['ID', 'Campaign', 'Credit Price', 'Slots', 'Badge', 'Featured', 'Created', 'End Time', 'Status', 'Actions'].map(h => (
                 <th key={h} className="px-5 py-3.5 text-xs font-bold text-slate-400 uppercase tracking-wider">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800">
             {loading ? (
-              <tr><td colSpan={6} className="text-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary-400 mx-auto" /></td></tr>
+              <tr><td colSpan={10} className="text-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary-400 mx-auto" /></td></tr>
             ) : campaigns.length === 0 ? (
-              <tr><td colSpan={6} className="text-center py-12 text-slate-500">No campaigns yet.</td></tr>
+              <tr><td colSpan={10} className="text-center py-12 text-slate-500">No campaigns yet.</td></tr>
             ) : campaigns.map(c => (
               <tr key={c.id} className="hover:bg-slate-800/50 transition-colors">
+                <td className="px-5 py-4 text-slate-500 text-xs font-mono">{c.id}</td>
                 <td className="px-5 py-4">
                   <p className="text-white font-semibold text-sm">{c.title}</p>
                   <p className="text-slate-500 text-xs mt-0.5">{c.location}</p>
                 </td>
                 <td className="px-5 py-4 text-primary-400 font-black credit-number">₹{c.credit_price}</td>
                 <td className="px-5 py-4 text-slate-300 text-sm">{c.filled_slots}/{c.total_slots}</td>
+                <td className="px-5 py-4 text-slate-400 text-xs">{c.badge || '—'}</td>
+                <td className="px-5 py-4 text-slate-300 text-xs">{c.is_featured ? 'Yes' : 'No'}</td>
+                <td className="px-5 py-4 text-slate-400 text-xs">{c.created_at ? format(new Date(c.created_at), 'dd MMM yyyy') : '—'}</td>
                 <td className="px-5 py-4 text-slate-400 text-xs">{c.end_time ? format(new Date(c.end_time), 'dd MMM yyyy') : '—'}</td>
                 <td className="px-5 py-4">
                   <span className={clsx('badge', c.status === 'active' ? 'bg-green-900/50 text-green-400' : 'bg-slate-800 text-slate-500')}>{c.status}</span>
                 </td>
                 <td className="px-5 py-4">
-                  <select
-                    value={c.status}
-                    onChange={e => handleStatusChange(c.id, e.target.value)}
-                    className="bg-slate-800 border border-slate-700 text-slate-300 text-xs rounded-lg px-2 py-1 focus:ring-primary-700 focus:outline-none"
-                  >
-                    <option value="active">Active</option>
-                    <option value="closed">Close</option>
-                    <option value="upcoming">Upcoming</option>
-                  </select>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setViewCampaign(c)}
+                      className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-200 text-xs font-bold hover:bg-slate-700 transition-colors"
+                    >
+                      View
+                    </button>
+                    <select
+                      value={c.status}
+                      onChange={e => handleStatusChange(c.id, e.target.value)}
+                      className="bg-slate-800 border border-slate-700 text-slate-300 text-xs rounded-lg px-2 py-1 focus:ring-primary-700 focus:outline-none"
+                    >
+                      <option value="active">Active</option>
+                      <option value="closed">Close</option>
+                      <option value="upcoming">Upcoming</option>
+                    </select>
+                  </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      <AdminJsonModal title="Campaign" record={viewCampaign} onClose={() => setViewCampaign(null)} />
     </div>
   );
 }

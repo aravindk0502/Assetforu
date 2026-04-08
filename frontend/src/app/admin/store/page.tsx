@@ -5,20 +5,32 @@ import { StoreItem } from '@/types';
 import { Plus, Loader2, X, CheckCircle } from 'lucide-react';
 import clsx from 'clsx';
 import BackNavigation from '@/components/BackNavigation';
+import AdminJsonModal from '@/components/admin/AdminJsonModal';
 
 export default function AdminStorePage() {
   const [items, setItems] = useState<StoreItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [viewItem, setViewItem] = useState<StoreItem | null>(null);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState('');
   const [form, setForm] = useState({ title: '', description: '', image_url: '', type: 'service', category: 'legal', credit_cost: '', is_popular: false });
+  const [typeFilter, setTypeFilter] = useState<'all' | 'service' | 'product'>('all');
+  const [categoryFilter, setCategoryFilter] = useState<'all' | string>('all');
+  const [query, setQuery] = useState('');
 
-  const load = async () => {
-    try { const r = await storeAPI.listItems(); setItems(r.data.data); }
+  const load = async (opts?: { type?: string; category?: string }) => {
+    try { const r = await storeAPI.listItems(opts); setItems(r.data.data); }
     catch { /* ignore */ } finally { setLoading(false); }
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    setLoading(true);
+    load({
+      type: typeFilter === 'all' ? undefined : typeFilter,
+      category: categoryFilter === 'all' ? undefined : categoryFilter,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [typeFilter, categoryFilter]);
 
   const handleCreate = async () => {
     if (!form.title || !form.credit_cost) return;
@@ -33,6 +45,20 @@ export default function AdminStorePage() {
     } catch { /* ignore */ } finally { setSaving(false); }
   };
 
+  const visibleItems = items.filter((item) => {
+    const q = query.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      item.title.toLowerCase().includes(q) ||
+      item.description.toLowerCase().includes(q) ||
+      item.category.toLowerCase().includes(q) ||
+      item.type.toLowerCase().includes(q) ||
+      item.id.toLowerCase().includes(q)
+    );
+  });
+
+  const categories = Array.from(new Set(items.map((i) => i.category))).sort((a, b) => a.localeCompare(b));
+
   return (
     <div>
       <BackNavigation />
@@ -44,6 +70,38 @@ export default function AdminStorePage() {
         <button onClick={() => setShowForm(true)} className="flex items-center gap-2 bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-primary-600 transition-colors">
           <Plus className="w-4 h-4" /> Add Item
         </button>
+      </div>
+
+      <div className="flex flex-col md:flex-row md:items-center gap-3 mb-5">
+        <div className="flex items-center gap-3">
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value as 'all' | 'service' | 'product')}
+            className="bg-slate-900 border border-slate-800 text-slate-300 text-sm rounded-xl px-3 py-2.5 focus:ring-primary-700 focus:outline-none"
+          >
+            <option value="all">All types</option>
+            <option value="service">Service</option>
+            <option value="product">Product</option>
+          </select>
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="bg-slate-900 border border-slate-800 text-slate-300 text-sm rounded-xl px-3 py-2.5 focus:ring-primary-700 focus:outline-none"
+          >
+            <option value="all">All categories</option>
+            {categories.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </div>
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search store items…"
+          className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:ring-2 focus:ring-primary-700 focus:outline-none"
+        />
       </div>
 
       {success && (
@@ -103,25 +161,82 @@ export default function AdminStorePage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {loading ? (
-          Array.from({ length: 6 }).map((_, i) => <div key={i} className="skeleton h-40 rounded-2xl" />)
-        ) : items.map(item => (
-          <div key={item.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-            <div className="flex items-start justify-between gap-2 mb-3">
-              <div>
-                <span className={clsx('badge text-[10px] mb-2', item.type === 'service' ? 'bg-blue-900/50 text-blue-400' : 'bg-green-900/50 text-green-400')}>
-                  {item.type} · {item.category}
-                </span>
-                <h3 className="font-bold text-white text-sm leading-snug">{item.title}</h3>
-              </div>
-              {item.is_popular && <span className="badge bg-amber-900/50 text-amber-400 flex-shrink-0">⭐ Popular</span>}
-            </div>
-            <p className="text-slate-400 text-xs line-clamp-2 mb-3">{item.description}</p>
-            <p className="text-primary-400 font-black credit-number text-xl">₹{item.credit_cost}</p>
-          </div>
-        ))}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+        <table className="w-full text-left">
+          <thead className="bg-slate-800 border-b border-slate-700">
+            <tr>
+              {['ID', 'Title', 'Type', 'Category', 'Credit Cost', 'Popular', 'Image', 'Description', 'Actions'].map((h) => (
+                <th key={h} className="px-5 py-3.5 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-800">
+            {loading ? (
+              <tr>
+                <td colSpan={9} className="text-center py-12">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary-400 mx-auto" />
+                </td>
+              </tr>
+            ) : visibleItems.length === 0 ? (
+              <tr>
+                <td colSpan={9} className="text-center py-12 text-slate-500">
+                  No store items found.
+                </td>
+              </tr>
+            ) : (
+              visibleItems.map((item) => (
+                <tr key={item.id} className="hover:bg-slate-800/50 transition-colors">
+                  <td className="px-5 py-4 text-slate-500 text-xs font-mono">{item.id}</td>
+                  <td className="px-5 py-4">
+                    <p className="font-bold text-white text-sm leading-snug">{item.title}</p>
+                  </td>
+                  <td className="px-5 py-4">
+                    <span
+                      className={clsx(
+                        'badge text-[10px]',
+                        item.type === 'service' ? 'bg-blue-900/50 text-blue-400' : 'bg-green-900/50 text-green-400'
+                      )}
+                    >
+                      {item.type}
+                    </span>
+                  </td>
+                  <td className="px-5 py-4 text-slate-300 text-xs">{item.category}</td>
+                  <td className="px-5 py-4 text-primary-400 font-black credit-number">₹{item.credit_cost}</td>
+                  <td className="px-5 py-4 text-slate-300 text-xs">{item.is_popular ? 'Yes' : 'No'}</td>
+                  <td className="px-5 py-4 text-slate-400 text-xs">
+                    {item.image_url ? (
+                      <a
+                        href={item.image_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-primary-400 hover:text-primary-300 font-semibold"
+                      >
+                        Open
+                      </a>
+                    ) : (
+                      '—'
+                    )}
+                  </td>
+                  <td className="px-5 py-4 text-slate-400 text-xs max-w-[280px] truncate">{item.description}</td>
+                  <td className="px-5 py-4">
+                    <button
+                      type="button"
+                      onClick={() => setViewItem(item)}
+                      className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-200 text-xs font-bold hover:bg-slate-700 transition-colors"
+                    >
+                      View
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
+
+      <AdminJsonModal title="Store Item" record={viewItem} onClose={() => setViewItem(null)} />
     </div>
   );
 }

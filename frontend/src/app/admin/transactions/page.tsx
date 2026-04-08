@@ -5,15 +5,17 @@ import { Loader2, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 import { format } from 'date-fns';
 import clsx from 'clsx';
 import BackNavigation from '@/components/BackNavigation';
+import AdminJsonModal from '@/components/admin/AdminJsonModal';
 
 interface AdminTxn {
   id: string; phone: string; type: string; amount: number;
-  credits: number; direction: string; description: string; status: string; created_at: string;
+  credits: number; direction: string; description: string; status: string; created_at: string; reference_id?: string | null;
 }
 
 export default function AdminTransactionsPage() {
   const [txns, setTxns] = useState<AdminTxn[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewTxn, setViewTxn] = useState<AdminTxn | null>(null);
 
   useEffect(() => {
     adminAPI.getTransactions().then(r => setTxns(r.data.data)).catch(() => { }).finally(() => setLoading(false));
@@ -35,18 +37,19 @@ export default function AdminTransactionsPage() {
         <table className="w-full text-left">
           <thead className="bg-slate-800 border-b border-slate-700">
             <tr>
-              {['User', 'Type', 'Amount (₹)', 'Credits', 'Description', 'Status', 'Date'].map(h => (
+              {['ID', 'User', 'Type', 'Amount (₹)', 'Credits', 'Direction', 'Reference', 'Description', 'Status', 'Date', 'Actions'].map(h => (
                 <th key={h} className="px-5 py-3.5 text-xs font-bold text-slate-400 uppercase tracking-wider">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800">
             {loading ? (
-              <tr><td colSpan={7} className="text-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary-400 mx-auto" /></td></tr>
+              <tr><td colSpan={11} className="text-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary-400 mx-auto" /></td></tr>
             ) : txns.length === 0 ? (
-              <tr><td colSpan={7} className="text-center py-12 text-slate-500">No transactions yet.</td></tr>
+              <tr><td colSpan={11} className="text-center py-12 text-slate-500">No transactions yet.</td></tr>
             ) : txns.map(t => (
               <tr key={t.id} className="hover:bg-slate-800/50 transition-colors">
+                <td className="px-5 py-3.5 text-slate-500 text-xs font-mono">{t.id}</td>
                 <td className="px-5 py-3.5 text-slate-300 text-sm font-mono">+91 {t.phone}</td>
                 <td className="px-5 py-3.5">
                   <span className="badge bg-slate-800 text-slate-400 text-[10px]">{t.type.replace(/_/g, ' ')}</span>
@@ -58,16 +61,33 @@ export default function AdminTransactionsPage() {
                     ₹{Number(t.credits).toFixed(0)}
                   </span>
                 </td>
+                <td className="px-5 py-3.5">
+                  <span className={clsx('badge text-[10px]', t.direction === 'credit' ? 'bg-green-900/30 text-green-400' : 'bg-rose-900/30 text-rose-400')}>
+                    {t.direction}
+                  </span>
+                </td>
+                <td className="px-5 py-3.5 text-slate-400 text-xs font-mono">{t.reference_id || '—'}</td>
                 <td className="px-5 py-3.5 text-slate-400 text-xs max-w-[180px] truncate">{t.description}</td>
                 <td className="px-5 py-3.5">
                   <span className={clsx('badge text-[10px]', t.status === 'completed' ? 'bg-green-900/50 text-green-400' : 'bg-amber-900/50 text-amber-400')}>{t.status}</span>
                 </td>
                 <td className="px-5 py-3.5 text-slate-500 text-xs">{format(new Date(t.created_at), 'dd MMM yy, HH:mm')}</td>
+                <td className="px-5 py-3.5">
+                  <button
+                    type="button"
+                    onClick={() => setViewTxn(t)}
+                    className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-200 text-xs font-bold hover:bg-slate-700 transition-colors"
+                  >
+                    View
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      <AdminJsonModal title="Transaction" record={viewTxn} onClose={() => setViewTxn(null)} />
     </div>
   );
 }

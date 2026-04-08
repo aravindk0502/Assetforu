@@ -5,6 +5,7 @@ import { User, ShieldCheck, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import clsx from 'clsx';
 import BackNavigation from '@/components/BackNavigation';
+import AdminJsonModal from '@/components/admin/AdminJsonModal';
 
 interface AdminUser {
   id: string; phone: string; name?: string; email?: string;
@@ -16,11 +17,26 @@ export default function AdminUsersPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [query, setQuery] = useState('');
+  const [viewUser, setViewUser] = useState<AdminUser | null>(null);
 
   useEffect(() => {
     setLoading(true);
     adminAPI.getUsers(page).then(r => { setUsers(r.data.data); setTotal(r.data.meta.total); }).catch(() => { }).finally(() => setLoading(false));
   }, [page]);
+
+  const visibleUsers = users.filter((u) => {
+    const q = query.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      u.id.toLowerCase().includes(q) ||
+      u.phone.toLowerCase().includes(q) ||
+      (u.name || '').toLowerCase().includes(q) ||
+      (u.email || '').toLowerCase().includes(q) ||
+      u.role.toLowerCase().includes(q) ||
+      u.kyc_status.toLowerCase().includes(q)
+    );
+  });
 
   return (
     <div>
@@ -32,20 +48,32 @@ export default function AdminUsersPage() {
         </div>
       </div>
 
+      <div className="mb-5">
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search by name, phone, email, role, ID…"
+          className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:ring-2 focus:ring-primary-700 focus:outline-none"
+        />
+      </div>
+
       <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
         <table className="w-full text-left">
           <thead className="bg-slate-800 border-b border-slate-700">
             <tr>
-              {['User', 'Phone', 'Balance', 'KYC', 'Role', 'Joined'].map(h => (
+              {['ID', 'User', 'Phone', 'Email', 'Balance', 'KYC', 'Role', 'Joined', 'Actions'].map(h => (
                 <th key={h} className="px-5 py-3.5 text-xs font-bold text-slate-400 uppercase tracking-wider">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800">
             {loading ? (
-              <tr><td colSpan={6} className="text-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary-400 mx-auto" /></td></tr>
-            ) : users.map(u => (
+              <tr><td colSpan={9} className="text-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary-400 mx-auto" /></td></tr>
+            ) : visibleUsers.length === 0 ? (
+              <tr><td colSpan={9} className="text-center py-12 text-slate-500">No users found.</td></tr>
+            ) : visibleUsers.map(u => (
               <tr key={u.id} className="hover:bg-slate-800/50 transition-colors">
+                <td className="px-5 py-4 text-slate-500 text-xs font-mono">{u.id}</td>
                 <td className="px-5 py-4">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-primary-900 flex items-center justify-center">
@@ -53,11 +81,11 @@ export default function AdminUsersPage() {
                     </div>
                     <div>
                       <p className="text-white font-semibold text-sm">{u.name || 'No name'}</p>
-                      {u.email && <p className="text-slate-500 text-xs">{u.email}</p>}
                     </div>
                   </div>
                 </td>
                 <td className="px-5 py-4 text-slate-300 text-sm font-mono">+91 {u.phone}</td>
+                <td className="px-5 py-4 text-slate-300 text-sm">{u.email || '—'}</td>
                 <td className="px-5 py-4 text-primary-400 font-black text-sm credit-number">₹{Number(u.balance || 0).toFixed(0)}</td>
                 <td className="px-5 py-4">
                   <span className={clsx('badge', u.kyc_status === 'verified' ? 'bg-green-900/50 text-green-400' : 'bg-amber-900/50 text-amber-400')}>
@@ -70,6 +98,15 @@ export default function AdminUsersPage() {
                   </span>
                 </td>
                 <td className="px-5 py-4 text-slate-400 text-xs">{format(new Date(u.created_at), 'dd MMM yyyy')}</td>
+                <td className="px-5 py-4">
+                  <button
+                    type="button"
+                    onClick={() => setViewUser(u)}
+                    className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-200 text-xs font-bold hover:bg-slate-700 transition-colors"
+                  >
+                    View
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -85,6 +122,8 @@ export default function AdminUsersPage() {
           </div>
         )}
       </div>
+
+      <AdminJsonModal title="User" record={viewUser} onClose={() => setViewUser(null)} />
     </div>
   );
 }
