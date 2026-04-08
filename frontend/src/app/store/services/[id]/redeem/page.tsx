@@ -1,11 +1,12 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { servicesCatalog } from '@/data/storeCatalog';
 import { useAuthStore, useUIStore } from '@/store';
 import { formatCurrency } from '@/lib/currency';
 import BackNavigation from '@/components/BackNavigation';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { fetchPublicStoreItem } from '@/lib/publicStore';
 
 export default function ServiceRedeemPage() {
     const params = useParams();
@@ -16,19 +17,47 @@ export default function ServiceRedeemPage() {
     const [message, setMessage] = useState('');
     const [showTopUp, setShowTopUp] = useState(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
+    const [apiLoading, setApiLoading] = useState(false);
+    const [apiService, setApiService] = useState<null | { id: string; name: string; credits: number; description: string; image: string; category: string }>(null);
 
     const id = Array.isArray(params?.id) ? params.id[0] : params?.id;
-    const service = useMemo(
+    const staticService = useMemo(
         () => servicesCatalog.find((item) => item.id === id),
         [id]
     );
+    useEffect(() => {
+        const itemId = String(id || '');
+        if (!itemId) return;
+        if (staticService) return;
+        setApiLoading(true);
+        fetchPublicStoreItem(itemId)
+            .then((row) => {
+                if (!row || row.type !== 'service') {
+                    setApiService(null);
+                    return;
+                }
+                setApiService({
+                    id: row.id,
+                    name: row.title,
+                    credits: Number(row.credit_cost || 0),
+                    description: row.description || '',
+                    image: row.image_url,
+                    category: row.category || 'Store',
+                });
+            })
+            .finally(() => setApiLoading(false));
+    }, [id, staticService]);
+
+    const service = staticService
+        ? { id: staticService.id, name: staticService.name, credits: staticService.credits, description: staticService.description, image: staticService.image, category: staticService.category || 'Store' }
+        : apiService;
 
     const isAuthed = !!user || !!token;
 
     if (!service) {
         return (
             <div className="mx-auto max-w-5xl px-6 py-16 text-center">
-                <p className="text-slate-500">Service not found.</p>
+                <p className="text-slate-500">{apiLoading ? 'Loading service…' : 'Service not found.'}</p>
             </div>
         );
     }

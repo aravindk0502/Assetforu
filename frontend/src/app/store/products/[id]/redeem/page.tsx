@@ -1,11 +1,12 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { productCatalog } from '@/data/storeCatalog';
 import { useAuthStore, useUIStore } from '@/store';
 import { formatCurrency } from '@/lib/currency';
 import BackNavigation from '@/components/BackNavigation';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { fetchPublicStoreItem } from '@/lib/publicStore';
 
 type DeliveryAddress = {
   name: string;
@@ -38,16 +39,44 @@ export default function ProductRedeemPage() {
   const [message, setMessage] = useState('');
   const [showTopUp, setShowTopUp] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [apiLoading, setApiLoading] = useState(false);
+  const [apiProduct, setApiProduct] = useState<null | { id: string; name: string; credits: number; description: string; image: string }>(null);
 
   const id = Array.isArray(params?.id) ? params.id[0] : params?.id;
-  const product = useMemo(() => productCatalog.find((item) => item.id === id), [id]);
+  const staticProduct = useMemo(() => productCatalog.find((item) => item.id === id), [id]);
+
+  useEffect(() => {
+    const itemId = String(id || '');
+    if (!itemId) return;
+    if (staticProduct) return;
+    setApiLoading(true);
+    fetchPublicStoreItem(itemId)
+      .then((row) => {
+        if (!row || row.type !== 'product') {
+          setApiProduct(null);
+          return;
+        }
+        setApiProduct({
+          id: row.id,
+          name: row.title,
+          credits: Number(row.credit_cost || 0),
+          description: row.description || '',
+          image: row.image_url,
+        });
+      })
+      .finally(() => setApiLoading(false));
+  }, [id, staticProduct]);
+
+  const product = staticProduct
+    ? { id: staticProduct.id, name: staticProduct.name, credits: staticProduct.credits, description: staticProduct.description, image: staticProduct.image }
+    : apiProduct;
 
   const isAuthed = !!user || !!token;
 
   if (!product) {
     return (
       <div className="mx-auto max-w-5xl px-6 py-16 text-center">
-        <p className="text-slate-500">Product not found.</p>
+        <p className="text-slate-500">{apiLoading ? 'Loading product…' : 'Product not found.'}</p>
       </div>
     );
   }

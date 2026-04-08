@@ -8,6 +8,8 @@ import { BadgeCheck, Sparkles, Shield, Briefcase, Landmark, Leaf, Heart } from '
 import { productCatalog, servicesCatalog } from '@/data/storeCatalog';
 import { formatCurrency } from '@/lib/currency';
 import { addToast } from '@/components/Toast';
+import { fetchPublicStoreItems } from '@/lib/publicStore';
+import type { StoreItem } from '@/types';
 
 
 const serviceIconMap = {
@@ -42,6 +44,7 @@ function StoreContent() {
     const [query, setQuery] = useState('');
     const [category, setCategory] = useState('All');
     const [visibleCount, setVisibleCount] = useState(9);
+    const [dynamicItems, setDynamicItems] = useState<StoreItem[]>([]);
 
     // Read tab from URL params on mount
     useEffect(() => {
@@ -51,11 +54,47 @@ function StoreContent() {
         }
     }, [searchParams]);
 
+    // Load admin-created store items (Blob-backed)
+    useEffect(() => {
+        fetchPublicStoreItems().then((rows) => setDynamicItems(rows));
+    }, []);
+
+    const dynamicProducts = useMemo(() => {
+        return dynamicItems
+            .filter((i) => i.type === 'product')
+            .map((i) => ({
+                id: i.id,
+                name: i.title,
+                credits: Number(i.credit_cost || 0),
+                description: i.description || '',
+                image: i.image_url,
+                tag: i.is_popular ? 'Popular' : 'New',
+                category: i.category || 'Other',
+            }));
+    }, [dynamicItems]);
+
+    const dynamicServices = useMemo(() => {
+        return dynamicItems
+            .filter((i) => i.type === 'service')
+            .map((i) => ({
+                id: i.id,
+                name: i.title,
+                credits: Number(i.credit_cost || 0),
+                description: i.description || '',
+                image: i.image_url,
+                icon: 'Shield',
+                category: i.category || 'Other',
+            }));
+    }, [dynamicItems]);
+
     // For search - combine both products and services
-    const allItems = useMemo(() => [...productCatalog, ...servicesCatalog], []);
+    const allItems = useMemo(() => [...dynamicProducts, ...dynamicServices, ...productCatalog, ...servicesCatalog], [dynamicProducts, dynamicServices]);
 
     // For tab display - use only active tab items
-    const items = useMemo(() => (activeTab === 'products' ? productCatalog : servicesCatalog), [activeTab]);
+    const items = useMemo(
+        () => (activeTab === 'products' ? [...dynamicProducts, ...productCatalog] : [...dynamicServices, ...servicesCatalog]),
+        [activeTab, dynamicProducts, dynamicServices]
+    );
 
     // Categories based on active tab
     const categories = useMemo(() => {
@@ -104,7 +143,7 @@ function StoreContent() {
         }
     };
 
-    const handleAddToCart = (item: typeof productCatalog[number] | typeof servicesCatalog[number]) => {
+    const handleAddToCart = (item: any) => {
         if (!isAuthed) {
             openSignupModal(() => router.push('/store'));
             return;
@@ -116,7 +155,7 @@ function StoreContent() {
             description: item.description,
             image_url: item.image,
             type: activeTab === 'products' ? 'product' : 'service',
-            category: 'Store',
+            category: item.category || 'Store',
             credit_cost: item.credits,
             quantity: 1,
             subtotal: item.credits,

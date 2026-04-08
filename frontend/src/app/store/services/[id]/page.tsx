@@ -1,11 +1,12 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { productCatalog, servicesCatalog } from '@/data/storeCatalog';
 import { useAuthStore, useCartStore, useUIStore } from '@/store';
 import { formatCurrency } from '@/lib/currency';
 import { Heart } from 'lucide-react';
 import BackNavigation from '@/components/BackNavigation';
+import { fetchPublicStoreItem } from '@/lib/publicStore';
 
 export default function ServiceDetailPage() {
   const params = useParams();
@@ -15,18 +16,59 @@ export default function ServiceDetailPage() {
   const { walletBalance, setWalletBalance, addTransaction, addActivity, openSignupModal, currency, favorites, toggleFavorite } = useUIStore();
   const { addToCart } = useCartStore();
   const [message, setMessage] = useState('');
+  const [apiLoading, setApiLoading] = useState(false);
+  const [apiService, setApiService] = useState<null | {
+    id: string;
+    name: string;
+    credits: number;
+    description: string;
+    image: string;
+    category: string;
+  }>(null);
 
-  const service = useMemo(
-    () => servicesCatalog.find((item) => item.id === params?.id),
-    [params?.id]
-  );
+  const id = Array.isArray(params?.id) ? params.id[0] : params?.id;
+  const staticService = useMemo(() => servicesCatalog.find((item) => item.id === id), [id]);
+
+  useEffect(() => {
+    const itemId = String(id || '');
+    if (!itemId) return;
+    if (staticService) return;
+    setApiLoading(true);
+    fetchPublicStoreItem(itemId)
+      .then((row) => {
+        if (!row || row.type !== 'service') {
+          setApiService(null);
+          return;
+        }
+        setApiService({
+          id: row.id,
+          name: row.title,
+          credits: Number(row.credit_cost || 0),
+          description: row.description || '',
+          image: row.image_url,
+          category: row.category || 'Other',
+        });
+      })
+      .finally(() => setApiLoading(false));
+  }, [id, staticService]);
+
+  const service = staticService
+    ? {
+      id: staticService.id,
+      name: staticService.name,
+      credits: staticService.credits,
+      description: staticService.description,
+      image: staticService.image,
+      category: staticService.category || 'Store',
+    }
+    : apiService;
 
   const similarServices = useMemo(() => {
-    if (!service) return [];
-    const sameCategory = servicesCatalog.filter((item) => item.category === service.category && item.id !== service.id);
-    const fallback = servicesCatalog.filter((item) => item.id !== service.id);
+    if (!service || !staticService) return [];
+    const sameCategory = servicesCatalog.filter((item) => item.category === staticService.category && item.id !== staticService.id);
+    const fallback = servicesCatalog.filter((item) => item.id !== staticService.id);
     return (sameCategory.length ? sameCategory : fallback).slice(0, 3);
-  }, [service]);
+  }, [service, staticService]);
 
   const recommendedProducts = useMemo(() => productCatalog.slice(0, 4), []);
 
@@ -64,7 +106,7 @@ export default function ServiceDetailPage() {
   if (!service) {
     return (
       <div className="mx-auto max-w-5xl px-6 py-16 text-center">
-        <p className="text-slate-500">Service not found.</p>
+        <p className="text-slate-500">{apiLoading ? 'Loading service…' : 'Service not found.'}</p>
       </div>
     );
   }

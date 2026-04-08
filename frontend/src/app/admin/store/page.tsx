@@ -1,13 +1,15 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { adminAPI, storeAPI } from '@/lib/api';
+import { storeAPI } from '@/lib/api';
 import { StoreItem } from '@/types';
 import { Plus, Loader2, X, CheckCircle } from 'lucide-react';
 import clsx from 'clsx';
 import BackNavigation from '@/components/BackNavigation';
 import AdminJsonModal from '@/components/admin/AdminJsonModal';
+import { useAuthStore } from '@/store';
 
 export default function AdminStorePage() {
+  const token = useAuthStore((s) => s.token);
   const [items, setItems] = useState<StoreItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -19,10 +21,29 @@ export default function AdminStorePage() {
   const [typeFilter, setTypeFilter] = useState<'all' | 'service' | 'product'>('all');
   const [categoryFilter, setCategoryFilter] = useState<'all' | string>('all');
   const [query, setQuery] = useState('');
+  const [error, setError] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [useCustomCategory, setUseCustomCategory] = useState(false);
+  const [customCategory, setCustomCategory] = useState('');
 
   const load = async (opts?: { type?: string; category?: string }) => {
-    try { const r = await storeAPI.listItems(opts); setItems(r.data.data); }
-    catch { /* ignore */ } finally { setLoading(false); }
+    try {
+      const qs = new URLSearchParams();
+      if (opts?.type) qs.set('type', opts.type);
+      if (opts?.category) qs.set('category', opts.category);
+      const blobRes = await fetch(`/api/public/store-items${qs.toString() ? `?${qs.toString()}` : ''}`, { cache: 'no-store' });
+      const blobJson = (await blobRes.json().catch(() => ({}))) as { success?: boolean; data?: StoreItem[] };
+      if (blobRes.ok && blobJson?.success && Array.isArray(blobJson?.data)) {
+        setItems(blobJson.data);
+        return;
+      }
+      const r = await storeAPI.listItems(opts);
+      setItems(r.data.data);
+    } catch {
+      /* ignore */
+    } finally {
+      setLoading(false);
+    }
   };
   useEffect(() => {
     setLoading(true);
@@ -33,30 +54,102 @@ export default function AdminStorePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [typeFilter, categoryFilter]);
 
+  const compressToBlob = (file: File): Promise<Blob> =>
+    new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        try {
+          const maxW = 1400;
+          const scale = Math.min(1, maxW / img.width);
+          const w = Math.max(1, Math.round(img.width * scale));
+          const h = Math.max(1, Math.round(img.height * scale));
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) throw new Error('Canvas not supported');
+          ctx.drawImage(img, 0, 0, w, h);
+          canvas.toBlob(
+            (blob) => (blob ? resolve(blob) : reject(new Error('Failed to encode image'))),
+            'image/webp',
+            0.78
+          );
+        } catch (err) {
+          reject(err);
+        } finally {
+          URL.revokeObjectURL(url);
+        }
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error('Failed to load image'));
+      };
+      img.src = url;
+    });
+
+  const uploadImage = async (file: File) => {
+    const blob = await compressToBlob(file);
+    const formData = new FormData();
+    formData.append('file', new File([blob], file.name.replace(/\.[^.]+$/, '.webp'), { type: 'image/webp' }));
+    const res = await fetch('/api/upload', { method: 'POST', body: formData });
+    const json = (await res.json().catch(() => ({}))) as { success?: boolean; url?: string; message?: string };
+    if (!res.ok || !json?.url) throw new Error(json?.message || 'Upload failed');
+    return json.url;
+  };
+
+  const handleImagePick = async (file: File | null) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) return;
+    setError('');
+    try {
+      setUploading(true);
+      const url = await uploadImage(file);
+      setForm((f) => ({ ...f, image_url: url }));
+      setImagePreview(url);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Upload failed';
+      setError(`Image upload failed: ${msg}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleCreate = async () => {
-    if (!form.title || !form.credit_cost) return;
+    setError('');
+    if (!form.title || !form.credit_cost) { setError('Title and credit cost are required'); return; }
+    const category = (useCustomCategory ? customCategory.trim() : form.category.trim());
+    if (!category) { setError('Category is required'); return; }
+    if (!form.image_url) { setError('Image is required'); return; }
+
     setSaving(true);
     try {
-      await adminAPI.createStoreItem({ ...form, credit_cost: parseFloat(form.credit_cost) });
+      const bearer = token || (typeof window !== 'undefined' ? localStorage.getItem('af_token') : null);
+      if (!bearer) throw new Error('Not authenticated');
+
+      const payload = { ...form, category, credit_cost: parseFloat(form.credit_cost) };
+      const res = await fetch('/api/admin/store-items', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${bearer}` },
+        body: JSON.stringify(payload),
+      });
+      const json = (await res.json().catch(() => ({}))) as { success?: boolean; message?: string };
+      if (!res.ok || json?.success === false) throw new Error(json?.message || `HTTP ${res.status}`);
+
       setSuccess('Store item created!');
       setShowForm(false);
       setForm({ title: '', description: '', image_url: '', type: 'service', category: 'legal', credit_cost: '', is_popular: false });
       setImagePreview('');
+      setUseCustomCategory(false);
+      setCustomCategory('');
       await load();
       setTimeout(() => setSuccess(''), 3000);
-    } catch { /* ignore */ } finally { setSaving(false); }
-  };
-
-  const handleImagePick = (file: File | null) => {
-    if (!file) return;
-    if (!file.type.startsWith('image/')) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = String(reader.result || '');
-      setForm((f) => ({ ...f, image_url: dataUrl }));
-      setImagePreview(dataUrl);
-    };
-    reader.readAsDataURL(file);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Failed to add item';
+      setError(`Failed to add item: ${msg}`);
+    } finally {
+      setSaving(false);
+    }
   };
 
   useEffect(() => {
@@ -127,6 +220,11 @@ export default function AdminStorePage() {
           <CheckCircle className="w-4 h-4" /> {success}
         </div>
       )}
+      {error && (
+        <div className="bg-red-900/40 border border-red-800 text-red-300 rounded-xl px-4 py-3 mb-5 text-sm font-medium">
+          {error}
+        </div>
+      )}
 
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
@@ -149,7 +247,8 @@ export default function AdminStorePage() {
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={(e) => handleImagePick(e.target.files?.[0] || null)}
+                  onChange={(e) => void handleImagePick(e.target.files?.[0] || null)}
+                  disabled={uploading}
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-200 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-slate-700 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-white hover:file:bg-slate-600"
                 />
                 <p className="text-[11px] text-slate-500 mt-1">
@@ -169,7 +268,7 @@ export default function AdminStorePage() {
                         value={form.image_url}
                         onChange={(e) => { setForm((f) => ({ ...f, image_url: e.target.value })); setImagePreview(''); }}
                         className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:ring-2 focus:ring-primary-700 focus:outline-none"
-                        placeholder="https://… or data:image/…"
+                        placeholder="https://…"
                       />
                       <button
                         type="button"
@@ -193,10 +292,33 @@ export default function AdminStorePage() {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Category</label>
-                  <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none">
-                    {['legal', 'advisory', 'documentation', 'plants', 'home_items'].map(c => <option key={c} value={c}>{c}</option>)}
+                  <select
+                    value={useCustomCategory ? '__custom__' : form.category}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === '__custom__') {
+                        setUseCustomCategory(true);
+                        setCustomCategory(customCategory || '');
+                      } else {
+                        setUseCustomCategory(false);
+                        setForm((f) => ({ ...f, category: v }));
+                      }
+                    }}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none"
+                  >
+                    {['legal', 'advisory', 'documentation', 'plants', 'home_items'].map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                    <option value="__custom__">Custom…</option>
                   </select>
+                  {useCustomCategory && (
+                    <input
+                      value={customCategory}
+                      onChange={(e) => setCustomCategory(e.target.value)}
+                      placeholder="Enter category"
+                      className="mt-2 w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:ring-2 focus:ring-primary-700 focus:outline-none"
+                    />
+                  )}
                 </div>
               </div>
               <div>

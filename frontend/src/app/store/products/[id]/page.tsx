@@ -1,11 +1,12 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { productCatalog, servicesCatalog } from '@/data/storeCatalog';
 import { useAuthStore, useCartStore, useUIStore } from '@/store';
 import { formatCurrency } from '@/lib/currency';
 import { Heart } from 'lucide-react';
 import BackNavigation from '@/components/BackNavigation';
+import { fetchPublicStoreItem } from '@/lib/publicStore';
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -15,19 +16,62 @@ export default function ProductDetailPage() {
   const { walletBalance, setWalletBalance, addTransaction, addActivity, openSignupModal, currency, favorites, toggleFavorite } = useUIStore();
   const { addToCart } = useCartStore();
   const [message, setMessage] = useState('');
+  const [apiLoading, setApiLoading] = useState(false);
+  const [apiProduct, setApiProduct] = useState<null | {
+    id: string;
+    name: string;
+    credits: number;
+    description: string;
+    image: string;
+    category: string;
+  }>(null);
 
   const id = Array.isArray(params?.id) ? params.id[0] : params?.id;
-  const product = useMemo(
+  const staticProduct = useMemo(
     () => productCatalog.find((item) => item.id === id),
     [id]
   );
 
+  useEffect(() => {
+    const itemId = String(id || '');
+    if (!itemId) return;
+    if (staticProduct) return;
+    setApiLoading(true);
+    fetchPublicStoreItem(itemId)
+      .then((row) => {
+        if (!row || row.type !== 'product') {
+          setApiProduct(null);
+          return;
+        }
+        setApiProduct({
+          id: row.id,
+          name: row.title,
+          credits: Number(row.credit_cost || 0),
+          description: row.description || '',
+          image: row.image_url,
+          category: row.category || 'Other',
+        });
+      })
+      .finally(() => setApiLoading(false));
+  }, [id, staticProduct]);
+
+  const product = staticProduct
+    ? {
+      id: staticProduct.id,
+      name: staticProduct.name,
+      credits: staticProduct.credits,
+      description: staticProduct.description,
+      image: staticProduct.image,
+      category: staticProduct.category || 'Store',
+    }
+    : apiProduct;
+
   const similarProducts = useMemo(() => {
-    if (!product) return [];
-    const sameCategory = productCatalog.filter((item) => item.category === product.category && item.id !== product.id);
+    if (!product || !staticProduct) return [];
+    const sameCategory = productCatalog.filter((item) => item.category === staticProduct.category && item.id !== staticProduct.id);
     const fallback = productCatalog.filter((item) => item.id !== product.id);
     return (sameCategory.length ? sameCategory : fallback).slice(0, 3);
-  }, [product]);
+  }, [product, staticProduct]);
 
   const recommendedServices = useMemo(() => servicesCatalog.slice(0, 4), []);
 
@@ -65,7 +109,7 @@ export default function ProductDetailPage() {
   if (!product) {
     return (
       <div className="mx-auto max-w-5xl px-6 py-16 text-center">
-        <p className="text-slate-500">Product not found.</p>
+        <p className="text-slate-500">{apiLoading ? 'Loading product…' : 'Product not found.'}</p>
       </div>
     );
   }
