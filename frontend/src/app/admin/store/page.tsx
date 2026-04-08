@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { storeAPI } from '@/lib/api';
 import { StoreItem } from '@/types';
-import { Plus, Loader2, X, CheckCircle } from 'lucide-react';
+import { Plus, Loader2, X, CheckCircle, Trash2 } from 'lucide-react';
 import clsx from 'clsx';
 import BackNavigation from '@/components/BackNavigation';
 import AdminJsonModal from '@/components/admin/AdminJsonModal';
@@ -14,6 +14,7 @@ export default function AdminStorePage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [viewItem, setViewItem] = useState<StoreItem | null>(null);
+  const [editItem, setEditItem] = useState<StoreItem | null>(null);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState('');
   const [form, setForm] = useState({ title: '', description: '', image_url: '', type: 'service', category: 'legal', credit_cost: '', is_popular: false });
@@ -115,7 +116,39 @@ export default function AdminStorePage() {
     }
   };
 
-  const handleCreate = async () => {
+  const resetForm = () => {
+    setForm({ title: '', description: '', image_url: '', type: 'service', category: 'legal', credit_cost: '', is_popular: false });
+    setImagePreview('');
+    setUseCustomCategory(false);
+    setCustomCategory('');
+    setEditItem(null);
+    setError('');
+  };
+
+  const openCreate = () => {
+    resetForm();
+    setShowForm(true);
+  };
+
+  const openEdit = (item: StoreItem) => {
+    setEditItem(item);
+    setForm({
+      title: item.title || '',
+      description: item.description || '',
+      image_url: item.image_url || '',
+      type: item.type || 'service',
+      category: item.category || 'legal',
+      credit_cost: String(item.credit_cost ?? ''),
+      is_popular: Boolean(item.is_popular),
+    });
+    setImagePreview(item.image_url || '');
+    setUseCustomCategory(false);
+    setCustomCategory('');
+    setError('');
+    setShowForm(true);
+  };
+
+  const handleSave = async () => {
     setError('');
     if (!form.title || !form.credit_cost) { setError('Title and credit cost are required'); return; }
     const category = (useCustomCategory ? customCategory.trim() : form.category.trim());
@@ -128,20 +161,18 @@ export default function AdminStorePage() {
       if (!bearer) throw new Error('Not authenticated');
 
       const payload = { ...form, category, credit_cost: parseFloat(form.credit_cost) };
-      const res = await fetch('/api/admin/store-items', {
-        method: 'POST',
+      const isEdit = Boolean(editItem?.id);
+      const res = await fetch(isEdit ? `/api/admin/store-items/${editItem!.id}` : '/api/admin/store-items', {
+        method: isEdit ? 'PATCH' : 'POST',
         headers: { 'content-type': 'application/json', authorization: `Bearer ${bearer}` },
         body: JSON.stringify(payload),
       });
       const json = (await res.json().catch(() => ({}))) as { success?: boolean; message?: string };
       if (!res.ok || json?.success === false) throw new Error(json?.message || `HTTP ${res.status}`);
 
-      setSuccess('Store item created!');
+      setSuccess(isEdit ? 'Store item updated!' : 'Store item created!');
       setShowForm(false);
-      setForm({ title: '', description: '', image_url: '', type: 'service', category: 'legal', credit_cost: '', is_popular: false });
-      setImagePreview('');
-      setUseCustomCategory(false);
-      setCustomCategory('');
+      resetForm();
       await load();
       setTimeout(() => setSuccess(''), 3000);
     } catch (e: unknown) {
@@ -150,6 +181,15 @@ export default function AdminStorePage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleDelete = async (id: string) => {
+    const bearer = token || (typeof window !== 'undefined' ? localStorage.getItem('af_token') : null);
+    if (!bearer) return;
+    const ok = typeof window !== 'undefined' ? window.confirm('Delete this store item?') : false;
+    if (!ok) return;
+    await fetch(`/api/admin/store-items/${id}`, { method: 'DELETE', headers: { authorization: `Bearer ${bearer}` } });
+    await load();
   };
 
   useEffect(() => {
@@ -178,7 +218,7 @@ export default function AdminStorePage() {
           <h1 className="text-3xl font-black text-white">Store Items</h1>
           <p className="text-slate-400 mt-1">{items.length} items in store</p>
         </div>
-        <button onClick={() => setShowForm(true)} className="flex items-center gap-2 bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-primary-600 transition-colors">
+        <button onClick={openCreate} className="flex items-center gap-2 bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-primary-600 transition-colors">
           <Plus className="w-4 h-4" /> Add Item
         </button>
       </div>
@@ -230,7 +270,7 @@ export default function AdminStorePage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
           <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-bold text-white">Add Store Item</h2>
+              <h2 className="text-lg font-bold text-white">{editItem ? 'Edit Store Item' : 'Add Store Item'}</h2>
               <button onClick={() => setShowForm(false)} className="text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
             </div>
             <div className="space-y-4">
@@ -333,8 +373,8 @@ export default function AdminStorePage() {
             </div>
             <div className="flex gap-3 mt-6">
               <button onClick={() => setShowForm(false)} className="flex-1 py-2.5 rounded-xl border border-slate-700 text-slate-300 text-sm font-semibold hover:bg-slate-800 transition-colors">Cancel</button>
-              <button onClick={handleCreate} disabled={saving} className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary-700 text-white text-sm font-bold hover:bg-primary-600 transition-colors">
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null} Add Item
+              <button onClick={handleSave} disabled={saving} className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary-700 text-white text-sm font-bold hover:bg-primary-600 transition-colors">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null} {editItem ? 'Save Changes' : 'Add Item'}
               </button>
             </div>
           </div>
@@ -401,13 +441,30 @@ export default function AdminStorePage() {
                   </td>
                   <td className="px-5 py-4 text-slate-400 text-xs max-w-[280px] truncate">{item.description}</td>
                   <td className="px-5 py-4">
-                    <button
-                      type="button"
-                      onClick={() => setViewItem(item)}
-                      className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-200 text-xs font-bold hover:bg-slate-700 transition-colors"
-                    >
-                      View
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setViewItem(item)}
+                        className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-200 text-xs font-bold hover:bg-slate-700 transition-colors"
+                      >
+                        View
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openEdit(item)}
+                        className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-200 text-xs font-bold hover:bg-slate-700 transition-colors"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleDelete(item.id)}
+                        className="px-3 py-1.5 rounded-lg bg-rose-900/40 text-rose-200 text-xs font-bold hover:bg-rose-900/60 transition-colors"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))

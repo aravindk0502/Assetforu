@@ -29,6 +29,12 @@ export default function HomePage() {
     dreamCampaigns.map((c) => ({ ...c, source: 'static' }))
   );
   const [activeCampaignCount, setActiveCampaignCount] = useState<number | null>(null);
+  const activeCountLabel =
+    activeCampaignCount != null
+      ? activeCampaignCount
+      : homeCampaigns.some((c) => c.source === 'api')
+        ? homeCampaigns.length
+        : 0;
 
   const isDevUser = !!user?.id?.startsWith('dev_');
   const isAuthed = !!user || !!token;
@@ -177,8 +183,8 @@ export default function HomePage() {
           </div>
           <div className="mt-14 grid gap-4 md:grid-cols-3">
             {[
-            { label: 'Wallet Balance', value: `${formatCurrency(isAuthed ? walletBalance : 0, currency)}` },
-              { label: 'Active Campaigns', value: `${activeCampaignCount ?? homeCampaigns.length}` },
+              { label: 'Wallet Balance', value: `${formatCurrency(isAuthed ? walletBalance : 0, currency)}` },
+              { label: 'Active Campaigns', value: `${activeCountLabel}` },
               { label: 'Items in Cart', value: `${cartItems.length}` },
             ].map((stat) => (
               <div key={stat.label} className="rounded-[28px] bg-slate-900/70 border border-white/10 px-5 py-4 text-white backdrop-blur-sm shadow-xl shadow-slate-950/20">

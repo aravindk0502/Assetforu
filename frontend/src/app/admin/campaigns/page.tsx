@@ -2,14 +2,26 @@
 import { useEffect, useState } from 'react';
 import { campaignAPI } from '@/lib/api';
 import { Campaign } from '@/types';
-import { Plus, Loader2, X, CheckCircle } from 'lucide-react';
+import { Plus, Loader2, X, CheckCircle, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import clsx from 'clsx';
 import BackNavigation from '@/components/BackNavigation';
 import AdminJsonModal from '@/components/admin/AdminJsonModal';
 import type { CampaignLandMeta } from '@/lib/campaignMeta';
-import { buildCampaignDescription } from '@/lib/campaignMeta';
+import { buildCampaignDescription, parseCampaignMeta } from '@/lib/campaignMeta';
 import { useAuthStore } from '@/store';
+import { parseCampaignImages } from '@/lib/campaignImages';
+
+function safeFormatDate(value: unknown, fmt = 'dd MMM yyyy') {
+  if (!value) return '—';
+  const d = new Date(String(value));
+  if (Number.isNaN(d.getTime())) return '—';
+  try {
+    return format(d, fmt);
+  } catch {
+    return '—';
+  }
+}
 
 export default function AdminCampaignsPage() {
   const token = useAuthStore((s) => s.token);
@@ -18,6 +30,7 @@ export default function AdminCampaignsPage() {
   const [statusFilter, setStatusFilter] = useState<'active' | 'upcoming' | 'closed'>('active');
   const [showForm, setShowForm] = useState(false);
   const [viewCampaign, setViewCampaign] = useState<Campaign | null>(null);
+  const [editCampaign, setEditCampaign] = useState<Campaign | null>(null);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState('');
   const [form, setForm] = useState({
@@ -28,7 +41,9 @@ export default function AdminCampaignsPage() {
     end_time: '',
     badge: '',
     is_featured: false,
+    status: 'active' as 'active' | 'upcoming' | 'closed',
   });
+  const [maxQty, setMaxQty] = useState('3');
   const [descriptionText, setDescriptionText] = useState('');
   const [land, setLand] = useState<CampaignLandMeta>({
     city: '',
@@ -43,6 +58,14 @@ export default function AdminCampaignsPage() {
   const [imageUrlInput, setImageUrlInput] = useState('');
   const [error, setError] = useState('');
   const [uploading, setUploading] = useState(false);
+
+  const toDateTimeLocal = (iso: string | null | undefined) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
 
   const loadCampaigns = async () => {
     try {
@@ -65,7 +88,53 @@ export default function AdminCampaignsPage() {
 
   useEffect(() => { setLoading(true); loadCampaigns(); }, [statusFilter]);
 
-  const handleCreate = async () => {
+  const resetForm = () => {
+    setForm({ title: '', location: '', credit_price: '', total_slots: '100', end_time: '', badge: '', is_featured: false, status: statusFilter });
+    setDescriptionText('');
+    setLand({ city: '', state: '', country: 'India', priceLabel: '', contactPhone: '', whatsappNumber: '', mapUrl: '' });
+    setImageUrls([]);
+    setImageUrlInput('');
+    setMaxQty('3');
+    setEditCampaign(null);
+    setError('');
+  };
+
+  const openCreate = () => {
+    resetForm();
+    setShowForm(true);
+  };
+
+  const openEdit = (c: Campaign) => {
+    const meta = parseCampaignMeta(c.description, c.image_urls || c.image_url);
+    setEditCampaign(c);
+    setForm({
+      title: c.title || '',
+      location: c.location || '',
+      credit_price: String(c.credit_price ?? ''),
+      total_slots: String(c.total_slots ?? '100'),
+      end_time: toDateTimeLocal(c.end_time),
+      badge: c.badge || '',
+      is_featured: Boolean(c.is_featured),
+      status: (c.status || 'active') as any,
+    });
+    setDescriptionText(meta.text || c.description || '');
+    setLand({
+      city: meta.land?.city || '',
+      state: meta.land?.state || '',
+      country: meta.land?.country || 'India',
+      priceLabel: meta.land?.priceLabel || '',
+      contactPhone: meta.land?.contactPhone || '',
+      whatsappNumber: meta.land?.whatsappNumber || '',
+      mapUrl: meta.land?.mapUrl || '',
+    });
+    const imgs = meta.images.length ? meta.images : parseCampaignImages(c.image_urls || c.image_url);
+    setImageUrls(imgs.slice(0, 5));
+    setMaxQty(String(meta.maxQty ?? 3));
+    setError('');
+    setShowForm(true);
+  };
+
+  const handleSave = async () => {
     setError('');
     if (!form.title.trim()) { setError('Title is required'); return; }
     if (!descriptionText.trim()) { setError('Description is required'); return; }
@@ -80,6 +149,7 @@ export default function AdminCampaignsPage() {
       const description = buildCampaignDescription({
         text: descriptionText,
         images: imageUrls,
+        maxQty: maxQty ? Math.max(1, Math.min(20, parseInt(maxQty) || 3)) : undefined,
         land: {
           city: land.city?.trim() || undefined,
           state: land.state?.trim() || undefined,
@@ -99,8 +169,9 @@ export default function AdminCampaignsPage() {
         image_url: imageUrls[0],
         image_urls: imageUrls,
       };
-      const res = await fetch('/api/admin/campaigns', {
-        method: 'POST',
+      const isEdit = Boolean(editCampaign?.id);
+      const res = await fetch(isEdit ? `/api/admin/campaigns/${editCampaign!.id}` : '/api/admin/campaigns', {
+        method: isEdit ? 'PATCH' : 'POST',
         headers: {
           'content-type': 'application/json',
           authorization: `Bearer ${bearer}`,
@@ -111,28 +182,38 @@ export default function AdminCampaignsPage() {
       if (!res.ok || json?.success === false) {
         throw new Error(json?.message || `HTTP ${res.status}`);
       }
-      setSuccess('Campaign created!');
+      setSuccess(isEdit ? 'Campaign updated!' : 'Campaign created!');
       setShowForm(false);
-      setForm({ title: '', location: '', credit_price: '', total_slots: '100', end_time: '', badge: '', is_featured: false });
-      setDescriptionText('');
-      setLand({ city: '', state: '', country: 'India', priceLabel: '', contactPhone: '', whatsappNumber: '', mapUrl: '' });
-      setImageUrls([]);
-      setImageUrlInput('');
+      resetForm();
       await loadCampaigns();
       setTimeout(() => setSuccess(''), 3000);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Failed to create campaign';
-      setError(`Failed to create campaign: ${msg}`);
+      setError(`Failed to save campaign: ${msg}`);
     } finally { setSaving(false); }
   };
 
-  const handleStatusChange = async (id: string, status: string) => {
+  const handleStatusChange = async (id: string, statusRaw: string) => {
+    const status = statusRaw === 'close' ? 'closed' : statusRaw;
     const bearer = token || (typeof window !== 'undefined' ? localStorage.getItem('af_token') : null);
     if (!bearer) return;
     await fetch(`/api/admin/campaigns/${id}`, {
       method: 'PATCH',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${bearer}` },
       body: JSON.stringify({ status }),
+    });
+    if (status !== statusFilter) setStatusFilter(status as any);
+    else await loadCampaigns();
+  };
+
+  const handleDelete = async (id: string) => {
+    const bearer = token || (typeof window !== 'undefined' ? localStorage.getItem('af_token') : null);
+    if (!bearer) return;
+    const ok = typeof window !== 'undefined' ? window.confirm('Delete this campaign?') : false;
+    if (!ok) return;
+    await fetch(`/api/admin/campaigns/${id}`, {
+      method: 'DELETE',
+      headers: { authorization: `Bearer ${bearer}` },
     });
     await loadCampaigns();
   };
@@ -144,6 +225,8 @@ export default function AdminCampaignsPage() {
       setError('');
       setDescriptionText('');
       setLand({ city: '', state: '', country: 'India', priceLabel: '', contactPhone: '', whatsappNumber: '', mapUrl: '' });
+      setMaxQty('3');
+      setEditCampaign(null);
     }
   }, [showForm]);
 
@@ -242,7 +325,7 @@ export default function AdminCampaignsPage() {
               </button>
             ))}
           </div>
-          <button onClick={() => setShowForm(true)} className="flex items-center gap-2 bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-primary-600 transition-colors">
+          <button onClick={openCreate} className="flex items-center gap-2 bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-primary-600 transition-colors">
             <Plus className="w-4 h-4" /> New Campaign
           </button>
         </div>
@@ -259,7 +342,7 @@ export default function AdminCampaignsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
           <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-bold text-white">Create Campaign</h2>
+              <h2 className="text-lg font-bold text-white">{editCampaign ? 'Edit Campaign' : 'Create Campaign'}</h2>
               <button onClick={() => setShowForm(false)} className="text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
             </div>
             <div className="space-y-4">
@@ -281,6 +364,32 @@ export default function AdminCampaignsPage() {
                   />
                 </div>
               ))}
+
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Status</label>
+                <select
+                  value={form.status}
+                  onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as any }))}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:ring-2 focus:ring-primary-700 focus:border-primary-700 focus:outline-none"
+                >
+                  <option value="active">Active</option>
+                  <option value="upcoming">Upcoming</option>
+                  <option value="closed">Closed</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Max selectable packs</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={maxQty}
+                  onChange={(e) => setMaxQty(e.target.value)}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:ring-2 focus:ring-primary-700 focus:border-primary-700 focus:outline-none"
+                />
+                <p className="text-[11px] text-slate-500 mt-1">Controls how many packs (1..N) a user can select on the campaign page.</p>
+              </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Images (up to 5)</label>
@@ -391,8 +500,8 @@ export default function AdminCampaignsPage() {
             </div>
             <div className="flex gap-3 mt-6">
               <button onClick={() => setShowForm(false)} className="flex-1 py-2.5 rounded-xl border border-slate-700 text-slate-300 text-sm font-semibold hover:bg-slate-800 transition-colors">Cancel</button>
-              <button onClick={handleCreate} disabled={saving} className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary-700 text-white text-sm font-bold hover:bg-primary-600 transition-colors">
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null} Create Campaign
+              <button onClick={handleSave} disabled={saving} className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary-700 text-white text-sm font-bold hover:bg-primary-600 transition-colors">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null} {editCampaign ? 'Save Changes' : 'Create Campaign'}
               </button>
             </div>
           </div>
@@ -425,10 +534,13 @@ export default function AdminCampaignsPage() {
                 <td className="px-5 py-4 text-slate-300 text-sm">{c.filled_slots}/{c.total_slots}</td>
                 <td className="px-5 py-4 text-slate-400 text-xs">{c.badge || '—'}</td>
                 <td className="px-5 py-4 text-slate-300 text-xs">{c.is_featured ? 'Yes' : 'No'}</td>
-                <td className="px-5 py-4 text-slate-400 text-xs">{c.created_at ? format(new Date(c.created_at), 'dd MMM yyyy') : '—'}</td>
-                <td className="px-5 py-4 text-slate-400 text-xs">{c.end_time ? format(new Date(c.end_time), 'dd MMM yyyy') : '—'}</td>
+                <td className="px-5 py-4 text-slate-400 text-xs">{safeFormatDate(c.created_at)}</td>
+                <td className="px-5 py-4 text-slate-400 text-xs">{safeFormatDate(c.end_time)}</td>
                 <td className="px-5 py-4">
-                  <span className={clsx('badge', c.status === 'active' ? 'bg-green-900/50 text-green-400' : 'bg-slate-800 text-slate-500')}>{c.status}</span>
+                  <span className={clsx(
+                    'badge',
+                    c.status === 'active' ? 'bg-green-900/50 text-green-400' : c.status === 'upcoming' ? 'bg-amber-900/40 text-amber-300' : 'bg-slate-800 text-slate-500'
+                  )}>{c.status}</span>
                 </td>
                 <td className="px-5 py-4">
                   <div className="flex items-center gap-2">
@@ -439,14 +551,29 @@ export default function AdminCampaignsPage() {
                     >
                       View
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => openEdit(c)}
+                      className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-200 text-xs font-bold hover:bg-slate-700 transition-colors"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleDelete(c.id)}
+                      className="px-3 py-1.5 rounded-lg bg-rose-900/40 text-rose-200 text-xs font-bold hover:bg-rose-900/60 transition-colors"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                     <select
                       value={c.status}
                       onChange={e => handleStatusChange(c.id, e.target.value)}
                       className="bg-slate-800 border border-slate-700 text-slate-300 text-xs rounded-lg px-2 py-1 focus:ring-primary-700 focus:outline-none"
                     >
                       <option value="active">Active</option>
-                      <option value="closed">Close</option>
                       <option value="upcoming">Upcoming</option>
+                      <option value="closed">Closed</option>
                     </select>
                   </div>
                 </td>

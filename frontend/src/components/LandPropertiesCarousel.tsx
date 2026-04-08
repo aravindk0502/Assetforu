@@ -3,39 +3,73 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { campaigns } from '@/data/dreamCampaigns';
+import { campaigns as dreamCampaigns } from '@/data/dreamCampaigns';
 import { AdsBadge } from '@/components/AdsBadge';
+import { parseCampaignMeta } from '@/lib/campaignMeta';
 
 export default function LandPropertiesCarousel() {
     const router = useRouter();
     const [currentIndex, setCurrentIndex] = useState(0);
     const [autoScroll, setAutoScroll] = useState(true);
+    const [slides, setSlides] = useState<Array<{ id: string; title: string; location: string; description: string; imageUrl: string }>>(
+        dreamCampaigns.map((c) => ({ id: c.id, title: c.title, location: c.location, description: c.description, imageUrl: c.imageUrl }))
+    );
 
     useEffect(() => {
         if (!autoScroll) return;
 
         const interval = setInterval(() => {
-            setCurrentIndex((prev) => (prev + 1) % campaigns.length);
+            setCurrentIndex((prev) => (prev + 1) % Math.max(1, slides.length));
         }, 5000); // Auto-scroll every 5 seconds
 
         return () => clearInterval(interval);
-    }, [autoScroll]);
+    }, [autoScroll, slides.length]);
+
+    // Load featured properties from admin-created campaigns (Blob-backed)
+    useEffect(() => {
+        const load = async () => {
+            try {
+                const res = await fetch('/api/public/campaigns?status=active&limit=200', { cache: 'no-store' });
+                const json = (await res.json().catch(() => ({}))) as { success?: boolean; data?: Array<any> };
+                const rows = res.ok && json?.success && Array.isArray(json.data) ? json.data : [];
+                if (!rows.length) return;
+                const featured = rows.filter((r) => r.is_featured).slice(0, 6);
+                const base = (featured.length ? featured : rows.slice(0, 6)).map((r) => {
+                    const meta = parseCampaignMeta(r.description, r.image_urls || r.image_url);
+                    return {
+                        id: String(r.id),
+                        title: String(r.title || 'Property'),
+                        location: String(r.location || meta.land?.city || 'India'),
+                        description: String(meta.text || r.description || ''),
+                        imageUrl: String(meta.images?.[0] || r.image_url || dreamCampaigns[0]?.imageUrl),
+                    };
+                });
+                if (base.length) {
+                    setSlides(base);
+                    setCurrentIndex(0);
+                }
+            } catch {
+                // ignore
+            }
+        };
+        load();
+    }, []);
 
     const goToCampaign = (campaignId: string) => {
-        router.push(`/land-listings`);
+        router.push(`/land-listings/${campaignId}`);
     };
 
     const goToPrevious = () => {
         setAutoScroll(false);
-        setCurrentIndex((prev) => (prev - 1 + campaigns.length) % campaigns.length);
+        setCurrentIndex((prev) => (prev - 1 + slides.length) % slides.length);
     };
 
     const goToNext = () => {
         setAutoScroll(false);
-        setCurrentIndex((prev) => (prev + 1) % campaigns.length);
+        setCurrentIndex((prev) => (prev + 1) % slides.length);
     };
 
-    const current = campaigns[currentIndex];
+    const current = slides[Math.min(currentIndex, Math.max(0, slides.length - 1))];
 
     return (
         <section className="mx-auto max-w-7xl px-6 lg:px-10 py-8">
@@ -84,7 +118,7 @@ export default function LandPropertiesCarousel() {
 
                         {/* Indicators */}
                         <div className="flex gap-2">
-                            {campaigns.map((_, idx) => (
+                            {slides.map((_, idx) => (
                                 <button
                                     key={idx}
                                     onClick={() => {
@@ -111,7 +145,7 @@ export default function LandPropertiesCarousel() {
 
                 {/* Slide Counter */}
                 <div className="absolute top-6 right-6 bg-black/50 backdrop-blur-sm text-white px-4 py-2 rounded-full text-sm font-bold">
-                    {currentIndex + 1} / {campaigns.length}
+                    {currentIndex + 1} / {slides.length}
                 </div>
 
                 <AdsBadge />

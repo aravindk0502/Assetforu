@@ -1,5 +1,6 @@
 import { put, list } from '@vercel/blob';
 import type { StoreItem } from '@/types';
+import { getBlobReadWriteToken, hasBlobReadWriteToken } from '@/app/api/_utils/blobToken';
 
 const STORE_ITEMS_KEY = 'store/store-items.json';
 
@@ -12,7 +13,7 @@ function safeArray<T>(value: unknown): T[] {
 }
 
 export async function loadStoreItems(): Promise<StoreItem[]> {
-  if (!process.env.BLOB_READ_WRITE_TOKEN) return [];
+  if (!hasBlobReadWriteToken()) return [];
   try {
     const res = await list({ prefix: STORE_ITEMS_KEY } as any);
     const blobs = safeArray<{ url: string; uploadedAt?: string }>((res as any)?.blobs);
@@ -28,7 +29,8 @@ export async function loadStoreItems(): Promise<StoreItem[]> {
 }
 
 export async function saveStoreItems(items: StoreItem[]) {
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+  const token = getBlobReadWriteToken();
+  if (!token) {
     throw new Error('BLOB_READ_WRITE_TOKEN is not configured');
   }
   const payload = JSON.stringify({ updated_at: nowIso(), data: items }, null, 2);
@@ -36,6 +38,6 @@ export async function saveStoreItems(items: StoreItem[]) {
     access: 'public',
     contentType: 'application/json',
     addRandomSuffix: false,
+    token,
   } as any);
 }
-

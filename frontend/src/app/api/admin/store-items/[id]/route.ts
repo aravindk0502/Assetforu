@@ -1,7 +1,7 @@
 export const runtime = 'nodejs';
 
 import { verifyJwtHS256 } from '@/app/api/_utils/jwt';
-import { loadCampaigns, saveCampaigns } from '@/app/api/_utils/blobCampaigns';
+import { loadStoreItems, saveStoreItems } from '@/app/api/_utils/blobStoreItems';
 
 function getBearer(req: Request) {
   const auth = req.headers.get('authorization') || '';
@@ -19,14 +19,6 @@ function requireAdmin(req: Request) {
   return { ok: true as const };
 }
 
-function normalizeStatus(raw: unknown) {
-  const s = String(raw ?? '').trim().toLowerCase();
-  if (!s) return undefined;
-  if (s === 'close') return 'closed';
-  if (s === 'closed' || s === 'active' || s === 'upcoming') return s;
-  return undefined;
-}
-
 export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const auth = requireAdmin(req);
   if (!auth.ok) return Response.json({ success: false, message: auth.message }, { status: auth.status });
@@ -34,20 +26,20 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   const { id } = await ctx.params;
   const updates = (await req.json().catch(() => ({}))) as Record<string, unknown>;
 
-  const campaigns = await loadCampaigns();
-  const idx = campaigns.findIndex((c) => String(c.id) === String(id));
-  if (idx < 0) return Response.json({ success: false, message: 'Campaign not found' }, { status: 404 });
+  const items = await loadStoreItems();
+  const idx = items.findIndex((i) => String(i.id) === String(id));
+  if (idx < 0) return Response.json({ success: false, message: 'Item not found' }, { status: 404 });
 
-  const allowed = new Set(['title', 'description', 'location', 'image_url', 'image_urls', 'credit_price', 'total_slots', 'status', 'end_time', 'badge', 'is_featured']);
-  const next = campaigns.slice();
-  const current = next[idx];
-  const merged: Record<string, unknown> = { ...current, ...updates };
-  const normalizedStatus = normalizeStatus(merged.status);
-  if (normalizedStatus) merged.status = normalizedStatus;
+  const allowed = new Set(['title', 'description', 'image_url', 'type', 'category', 'credit_cost', 'is_popular']);
+  const merged: Record<string, unknown> = { ...items[idx], ...updates };
 
-  next[idx] = Object.fromEntries(Object.entries(merged).filter(([k]) => k in current || allowed.has(k))) as any;
+  // Normalize fields
+  if (merged.type && typeof merged.type === 'string') merged.type = merged.type.toLowerCase();
+  if (merged.credit_cost != null) merged.credit_cost = Number(merged.credit_cost);
 
-  await saveCampaigns(next);
+  const next = items.slice();
+  next[idx] = Object.fromEntries(Object.entries(merged).filter(([k]) => k in items[idx] || allowed.has(k))) as any;
+  await saveStoreItems(next);
   return Response.json({ success: true, data: next[idx] });
 }
 
@@ -56,8 +48,9 @@ export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }
   if (!auth.ok) return Response.json({ success: false, message: auth.message }, { status: auth.status });
 
   const { id } = await ctx.params;
-  const campaigns = await loadCampaigns();
-  const next = campaigns.filter((c) => String(c.id) !== String(id));
-  await saveCampaigns(next);
+  const items = await loadStoreItems();
+  const next = items.filter((i) => String(i.id) !== String(id));
+  await saveStoreItems(next);
   return Response.json({ success: true });
 }
+

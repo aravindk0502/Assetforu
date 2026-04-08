@@ -1,10 +1,11 @@
 import { put } from '@vercel/blob';
+import { getBlobReadWriteToken } from '@/app/api/_utils/blobToken';
 
 export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
   try {
-    const token = process.env.BLOB_READ_WRITE_TOKEN;
+    const token = getBlobReadWriteToken();
     if (!token) {
       return Response.json(
         { success: false, message: 'Blob storage is not configured (BLOB_READ_WRITE_TOKEN missing)' },

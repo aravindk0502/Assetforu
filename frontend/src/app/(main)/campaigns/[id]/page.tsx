@@ -34,6 +34,12 @@ export default function CampaignDetailPage() {
   const isDevUser = !!user?.id?.startsWith('dev_');
 
   const campaign = useMemo(() => campaigns.find((item) => item.id === params?.id), [params?.id]);
+  const adminMaxQty = useMemo(() => {
+    if (campaign) return undefined as number | undefined;
+    if (!apiCampaign) return undefined;
+    const meta = parseCampaignMeta(apiCampaign?.description, apiCampaign?.image_urls || apiCampaign?.image_url);
+    return meta.maxQty;
+  }, [campaign, apiCampaign]);
 
   useEffect(() => {
     if (campaign) return;
@@ -114,7 +120,9 @@ export default function CampaignDetailPage() {
   useEffect(() => {
     if (remainingLimit === null) return;
     if (remainingLimit <= 0) return;
-    if (quantity > remainingLimit) setQuantity(remainingLimit);
+    const adminCap = adminMaxQty ?? 10;
+    const cap = Math.min(adminCap, remainingLimit);
+    if (quantity > cap) setQuantity(cap);
   }, [remainingLimit, quantity]);
 
   if (!campaign && apiLoading) {
@@ -174,7 +182,9 @@ export default function CampaignDetailPage() {
     })();
 
   const totalAmount = effective.creditPack * quantity;
-  const maxSelectable = remainingLimit === null ? 10 : Math.min(10, remainingLimit);
+  const adminCap = adminMaxQty ?? 10;
+  const limitCap = remainingLimit === null ? adminCap : Math.min(adminCap, remainingLimit);
+  const maxSelectable = Math.max(1, limitCap);
 
   const onProceed = () => {
     if (remainingLimit !== null && remainingLimit <= 0) return;

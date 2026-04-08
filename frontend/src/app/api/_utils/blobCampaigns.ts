@@ -1,5 +1,6 @@
 import { put, list } from '@vercel/blob';
 import type { Campaign } from '@/types';
+import { getBlobReadWriteToken, hasBlobReadWriteToken } from '@/app/api/_utils/blobToken';
 
 const CAMPAIGNS_KEY = 'campaigns/campaigns.json';
 
@@ -13,7 +14,7 @@ function safeArray<T>(value: unknown): T[] {
 
 export async function loadCampaigns(): Promise<Campaign[]> {
   // If Blob isn't configured, treat as "no campaigns" and let callers fallback.
-  if (!process.env.BLOB_READ_WRITE_TOKEN) return [];
+  if (!hasBlobReadWriteToken()) return [];
   try {
     const res = await list({ prefix: CAMPAIGNS_KEY } as any);
     const blobs = safeArray<{ url: string; uploadedAt?: string }>((res as any)?.blobs);
@@ -29,13 +30,15 @@ export async function loadCampaigns(): Promise<Campaign[]> {
 }
 
 export async function saveCampaigns(campaigns: Campaign[]) {
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+  const token = getBlobReadWriteToken();
+  if (!token) {
     throw new Error('BLOB_READ_WRITE_TOKEN is not configured');
   }
   const putOptions: any = {
     access: 'public',
     contentType: 'application/json',
     addRandomSuffix: false,
+    token,
   };
   const payload = JSON.stringify({ updated_at: nowIso(), data: campaigns }, null, 2);
   return put(CAMPAIGNS_KEY, payload, putOptions);
