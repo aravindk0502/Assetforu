@@ -28,6 +28,7 @@ export default function HomePage() {
   const [homeCampaigns, setHomeCampaigns] = useState<HomeCampaign[]>(
     dreamCampaigns.map((c) => ({ ...c, source: 'static' }))
   );
+  const [activeCampaignCount, setActiveCampaignCount] = useState<number | null>(null);
 
   const isDevUser = !!user?.id?.startsWith('dev_');
   const isAuthed = !!user || !!token;
@@ -50,14 +51,14 @@ export default function HomePage() {
     const load = async () => {
       try {
         // 1) Prefer Blob-backed campaigns (same-origin, no CORS)
-        const blobRes = await fetch('/api/public/campaigns?status=active&limit=3', { cache: 'no-store' });
+        const blobRes = await fetch('/api/public/campaigns?status=active&limit=200', { cache: 'no-store' });
         const blobJson = (await blobRes.json().catch(() => ({}))) as { success?: boolean; data?: unknown[] };
         const blobRows = (blobRes.ok && blobJson?.success && Array.isArray(blobJson.data)) ? blobJson.data : [];
 
         // 2) Fallback to backend API
         const apiRows = blobRows.length
           ? []
-          : (((await campaignAPI.list({ status: 'active', limit: 3 })).data?.data || []) as unknown[]);
+          : (((await campaignAPI.list({ status: 'active', limit: 200 })).data?.data || []) as unknown[]);
 
         const rows = (blobRows.length ? blobRows : apiRows) as Array<{
           id: string;
@@ -68,9 +69,12 @@ export default function HomePage() {
           image_url?: string;
           image_urls?: string[];
         }>;
+        setActiveCampaignCount(rows.length);
         if (!rows.length) return;
 
-        const mapped: HomeCampaign[] = rows.map((r) => {
+        const visible = rows.slice(0, 3);
+
+        const mapped: HomeCampaign[] = visible.map((r) => {
           const meta = parseCampaignMeta(r.description, r.image_urls || r.image_url);
           const imageUrl = meta.images[0] || 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200';
           return {
@@ -173,8 +177,8 @@ export default function HomePage() {
           </div>
           <div className="mt-14 grid gap-4 md:grid-cols-3">
             {[
-              { label: 'Wallet Balance', value: `${formatCurrency(isAuthed ? walletBalance : 0, currency)}` },
-              { label: 'Active Campaigns', value: `3` },
+            { label: 'Wallet Balance', value: `${formatCurrency(isAuthed ? walletBalance : 0, currency)}` },
+              { label: 'Active Campaigns', value: `${activeCampaignCount ?? homeCampaigns.length}` },
               { label: 'Items in Cart', value: `${cartItems.length}` },
             ].map((stat) => (
               <div key={stat.label} className="rounded-[28px] bg-slate-900/70 border border-white/10 px-5 py-4 text-white backdrop-blur-sm shadow-xl shadow-slate-950/20">
