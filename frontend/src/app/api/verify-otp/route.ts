@@ -1,0 +1,94 @@
+import crypto from 'node:crypto';
+
+export const runtime = 'nodejs';
+
+function normalizeMobile(phoneRaw: string): { mobile: string; local10?: string } {
+  const digits = String(phoneRaw || '').replace(/\D/g, '');
+  if (digits.length === 10) return { mobile: `91${digits}`, local10: digits };
+  if (digits.length >= 11 && digits.length <= 15) return { mobile: digits };
+  throw new Error('Valid phone number required');
+}
+
+function base64Url(input: Buffer | string) {
+  const buf = Buffer.isBuffer(input) ? input : Buffer.from(input);
+  return buf
+    .toString('base64')
+    .replace(/=/g, '')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_');
+}
+
+function signJwtHS256(payload: Record<string, unknown>, secret: string, expiresInSeconds = 60 * 60 * 24 * 7) {
+  const header = { alg: 'HS256', typ: 'JWT' };
+  const iat = Math.floor(Date.now() / 1000);
+  const exp = iat + expiresInSeconds;
+  const fullPayload = { ...payload, iat, exp };
+  const headerPart = base64Url(JSON.stringify(header));
+  const payloadPart = base64Url(JSON.stringify(fullPayload));
+  const signingInput = `${headerPart}.${payloadPart}`;
+  const sig = crypto.createHmac('sha256', secret).update(signingInput).digest();
+  return `${signingInput}.${base64Url(sig)}`;
+}
+
+export async function POST(req: Request) {
+  try {
+    const body = (await req.json()) as { phone?: string; otp?: string; terms_accepted?: boolean };
+    const phone = body.phone;
+    const otp = body.otp;
+    const termsAccepted = Boolean(body.terms_accepted);
+
+    if (!phone || !otp) {
+      return Response.json({ success: false, message: 'Phone and OTP are required' }, { status: 400 });
+    }
+
+    const { mobile, local10 } = normalizeMobile(phone);
+
+    const apiKey = process.env.MSG91_API_KEY;
+    if (!apiKey) return Response.json({ success: false, message: 'MSG91 is not configured' }, { status: 500 });
+
+    const url = new URL('https://control.msg91.com/api/v5/otp/verify');
+    url.searchParams.set('mobile', mobile);
+    url.searchParams.set('otp', String(otp));
+
+    const res = await fetch(url.toString(), {
+      method: 'GET',
+      headers: {
+        authkey: apiKey,
+      },
+      cache: 'no-store',
+    });
+
+    const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    if (!res.ok) {
+      return Response.json(
+        { success: false, message: (data?.message as string) || 'Invalid OTP', details: data },
+        { status: 400 }
+      );
+    }
+
+    const jwtSecret = process.env.JWT_SECRET || apiKey;
+    const id = `phone:${local10 || mobile}`;
+    const user = {
+      id,
+      phone: local10 || mobile,
+      role: 'user' as const,
+      kyc_status: 'pending' as const,
+      isNew: true,
+    };
+
+    const token = signJwtHS256(
+      { sub: id, phone: user.phone, role: user.role, kyc_status: user.kyc_status, termsAccepted },
+      jwtSecret
+    );
+
+    return Response.json({
+      success: true,
+      message: 'Logged in successfully',
+      token,
+      user,
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Verification failed';
+    return Response.json({ success: false, message: msg }, { status: 500 });
+  }
+}
