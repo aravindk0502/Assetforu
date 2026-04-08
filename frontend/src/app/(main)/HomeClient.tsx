@@ -11,6 +11,7 @@ import { campaignAPI } from '@/lib/api';
 import { formatCurrency } from '@/lib/currency';
 import LandPropertiesCarousel from '@/components/LandPropertiesCarousel';
 import { CampaignImageCarousel } from '@/components/CampaignImageCarousel';
+import { AdsBadge } from '@/components/AdsBadge';
 
 const campaignTags = ['Just Launched', 'Closing Soon', 'Exclusive Series', 'Trending'];
 
@@ -155,7 +156,10 @@ export default function HomePage() {
                     {campaign.images && campaign.images.length > 0 ? (
                       <CampaignImageCarousel images={campaign.images} title={campaign.title} />
                     ) : (
-                      <img src={campaign.imageUrl} alt={campaign.title} className="w-full h-full object-cover" />
+                      <>
+                        <img src={campaign.imageUrl} alt={campaign.title} className="w-full h-full object-cover" />
+                        <AdsBadge />
+                      </>
                     )}
                     {/* Campaign Tag */}
                     <span className="absolute top-3 left-3 rounded-full bg-emerald-600 text-white px-3 py-1 text-xs font-bold z-10">

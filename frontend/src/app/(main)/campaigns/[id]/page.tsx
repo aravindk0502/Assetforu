@@ -7,6 +7,7 @@ import { campaigns } from '@/data/dreamCampaigns';
 import { campaignAPI } from '@/lib/api';
 import { formatCurrency } from '@/lib/currency';
 import BackNavigation from '@/components/BackNavigation';
+import { AdsBadge } from '@/components/AdsBadge';
 
 export default function CampaignDetailPage() {
   const router = useRouter();
@@ -162,7 +163,10 @@ export default function CampaignDetailPage() {
 
       <div className="grid gap-8 lg:grid-cols-2">
         <div>
-          <img src={campaign.imageUrl} alt={campaign.title} className="w-full h-80 rounded-2xl object-cover border border-slate-200" />
+          <div className="relative">
+            <img src={campaign.imageUrl} alt={campaign.title} className="w-full h-80 rounded-2xl object-cover border border-slate-200" />
+            <AdsBadge />
+          </div>
           <h1 className="mt-6 text-3xl font-black text-slate-900">{campaign.title}</h1>
           <p className="text-xs uppercase tracking-wide text-primary-700 font-semibold mt-2">Featured Land Opportunity</p>
           <p className="text-sm text-slate-600 mt-2">{campaign.location}</p>

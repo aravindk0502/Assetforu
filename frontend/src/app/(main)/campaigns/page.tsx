@@ -6,6 +6,7 @@ import { useAuthStore, useUIStore } from '@/store';
 import { campaigns } from '@/data/dreamCampaigns';
 import { formatCurrency } from '@/lib/currency';
 import BackNavigation from '@/components/BackNavigation';
+import { AdsBadge } from '@/components/AdsBadge';
 
 export default function CampaignsPage() {
   const router = useRouter();
@@ -30,7 +31,10 @@ export default function CampaignsPage() {
       <div className="grid gap-6 lg:grid-cols-3">
         {campaigns.map((campaign) => (
           <article key={campaign.id} className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden hover:shadow-lg transition">
-            <img src={campaign.imageUrl} alt={campaign.title} className="h-44 w-full object-cover" />
+            <div className="relative">
+              <img src={campaign.imageUrl} alt={campaign.title} className="h-44 w-full object-cover" />
+              <AdsBadge />
+            </div>
             <div className="p-5">
               <h2 className="text-xl font-bold text-slate-900">{campaign.title}</h2>
               <p className="text-xs uppercase tracking-wide text-slate-500 mt-1">{campaign.location}</p>

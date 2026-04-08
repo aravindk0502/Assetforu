@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { AdsBadge } from '@/components/AdsBadge';
 
 interface CampaignImageCarouselProps {
     images: string[];
@@ -67,6 +68,8 @@ export function CampaignImageCarousel({ images, title }: CampaignImageCarouselPr
                     alt={`${title} - Slide ${currentIndex + 1}`}
                     className="absolute inset-0 w-full h-full object-cover transition-opacity duration-500"
                 />
+
+                <AdsBadge />
 
                 {/* Previous Button */}
                 <button
