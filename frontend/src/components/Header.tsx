@@ -127,6 +127,15 @@ export function Header() {
                             <Bell className="w-4 h-4" />
                         </button>
 
+                        {/* Favourites - Desktop */}
+                        <Link
+                            href="/favourites"
+                            className="relative hidden sm:flex items-center justify-center h-9 w-9 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
+                            aria-label="Favourites"
+                        >
+                            <Heart className={`w-4 h-4 ${favorites.length > 0 ? 'fill-rose-500 text-rose-500' : ''}`} />
+                        </Link>
+
                         {/* Cart */}
                         <Link href="/cart" className="relative flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 sm:px-3 py-2 text-slate-700 hover:bg-slate-50">
                             <ShoppingCart className="w-4 h-4" />

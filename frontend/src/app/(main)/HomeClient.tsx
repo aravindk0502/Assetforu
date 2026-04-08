@@ -108,6 +108,7 @@ export default function HomePage() {
             <p className="mt-6 text-sm text-slate-200/70 max-w-xl">Campaign-related benefits are complimentary platform features and not the primary purpose of credit purchase.</p>
             <div className="mt-10 flex flex-wrap items-center gap-4">
               <button onClick={() => router.push('/campaigns')} className="rounded-full bg-emerald-300 text-slate-950 px-6 py-3 text-sm font-semibold shadow-xl shadow-emerald-500/20 transition hover:bg-emerald-200">Get Started</button>
+              <button onClick={() => router.push('/store')} className="rounded-full border border-emerald-200/75 text-white px-6 py-3 text-sm font-semibold transition hover:bg-white/10">Explore Store</button>
             </div>
           </div>
           <div className="mt-14 grid gap-4 md:grid-cols-3">

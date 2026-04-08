@@ -5,6 +5,7 @@ import { servicesCatalog } from '@/data/storeCatalog';
 import { useAuthStore, useUIStore } from '@/store';
 import { formatCurrency } from '@/lib/currency';
 import BackNavigation from '@/components/BackNavigation';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 
 export default function ServiceRedeemPage() {
     const params = useParams();
@@ -14,6 +15,7 @@ export default function ServiceRedeemPage() {
     const { walletBalance, setWalletBalance, addTransaction, addActivity, openSignupModal, currency } = useUIStore();
     const [message, setMessage] = useState('');
     const [showTopUp, setShowTopUp] = useState(false);
+    const [confirmOpen, setConfirmOpen] = useState(false);
 
     const id = Array.isArray(params?.id) ? params.id[0] : params?.id;
     const service = useMemo(
@@ -43,6 +45,11 @@ export default function ServiceRedeemPage() {
             return;
         }
 
+        setConfirmOpen(true);
+    };
+
+    const handleConfirmRedeem = () => {
+        setConfirmOpen(false);
         setWalletBalance(walletBalance - service.credits);
         addTransaction({ type: 'debit', description: `Redeemed ${service.name} (service)`, credits: service.credits });
         addActivity({ campaignId: service.id, campaignName: service.name, creditsUsed: service.credits, status: 'Active Campaign' });
@@ -144,6 +151,16 @@ export default function ServiceRedeemPage() {
                     </div>
                 </div>
             )}
+
+            <ConfirmDialog
+                open={confirmOpen}
+                title="Redeem Now?"
+                description="Are you sure you want to redeem now? This will deduct credits from your wallet."
+                confirmText="Yes, Redeem"
+                cancelText="No"
+                onConfirm={handleConfirmRedeem}
+                onCancel={() => setConfirmOpen(false)}
+            />
         </div>
     );
 }

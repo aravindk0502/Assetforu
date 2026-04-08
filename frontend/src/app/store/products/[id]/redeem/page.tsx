@@ -5,6 +5,7 @@ import { productCatalog } from '@/data/storeCatalog';
 import { useAuthStore, useUIStore } from '@/store';
 import { formatCurrency } from '@/lib/currency';
 import BackNavigation from '@/components/BackNavigation';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 
 type DeliveryAddress = {
   name: string;
@@ -36,6 +37,7 @@ export default function ProductRedeemPage() {
   const [address, setAddress] = useState<DeliveryAddress>(loadAddress());
   const [message, setMessage] = useState('');
   const [showTopUp, setShowTopUp] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const id = Array.isArray(params?.id) ? params.id[0] : params?.id;
   const product = useMemo(() => productCatalog.find((item) => item.id === id), [id]);
@@ -65,6 +67,11 @@ export default function ProductRedeemPage() {
       return;
     }
 
+    setConfirmOpen(true);
+  };
+
+  const handleConfirmRedeem = () => {
+    setConfirmOpen(false);
     localStorage.setItem('af_delivery_address', JSON.stringify(address));
     setWalletBalance(walletBalance - product.credits);
     addTransaction({ type: 'debit', description: `Redeemed ${product.name} (product)`, credits: product.credits });
@@ -205,6 +212,16 @@ export default function ProductRedeemPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Redeem Now?"
+        description="Are you sure you want to redeem now? This will deduct credits from your wallet."
+        confirmText="Yes, Redeem"
+        cancelText="No"
+        onConfirm={handleConfirmRedeem}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </div>
   );
 }
