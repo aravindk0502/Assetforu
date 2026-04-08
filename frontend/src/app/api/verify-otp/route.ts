@@ -25,6 +25,11 @@ function parsePhones(raw: string | undefined): Set<string> {
   return parseAdminPhones(raw);
 }
 
+function envTrue(raw: string | undefined) {
+  if (!raw) return false;
+  return ['true', '1', 'yes', 'y', 'on'].includes(raw.trim().toLowerCase());
+}
+
 function base64Url(input: Buffer | string) {
   const buf = Buffer.isBuffer(input) ? input : Buffer.from(input);
   return buf
@@ -60,7 +65,7 @@ export async function POST(req: Request) {
     const { mobile, local10 } = normalizeMobile(phone);
 
     const apiKey = process.env.MSG91_API_KEY;
-    const devOtpEnabled = process.env.DEV_OTP_ENABLED === 'true';
+    const devOtpEnabled = envTrue(process.env.DEV_OTP_ENABLED);
     const jwtSecret = process.env.JWT_SECRET || apiKey || 'dev-secret';
     const last10 = (local10 || mobile).replace(/\D/g, '').slice(-10);
 

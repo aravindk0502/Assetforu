@@ -19,6 +19,11 @@ function parsePhones(raw: string | undefined): Set<string> {
   return set;
 }
 
+function envTrue(raw: string | undefined) {
+  if (!raw) return false;
+  return ['true', '1', 'yes', 'y', 'on'].includes(raw.trim().toLowerCase());
+}
+
 export async function POST(req: Request) {
   try {
     const { phone } = (await req.json()) as { phone?: string };
@@ -28,7 +33,7 @@ export async function POST(req: Request) {
 
     const apiKey = process.env.MSG91_API_KEY;
     const templateId = process.env.MSG91_TEMPLATE_ID;
-    const devOtpEnabled = process.env.DEV_OTP_ENABLED === 'true';
+    const devOtpEnabled = envTrue(process.env.DEV_OTP_ENABLED);
     if (!apiKey || !templateId) {
       if (!devOtpEnabled) {
         return Response.json({ success: false, message: 'MSG91 is not configured' }, { status: 500 });
