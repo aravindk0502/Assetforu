@@ -9,6 +9,18 @@ function normalizeMobile(phoneRaw: string): { mobile: string; local10?: string }
   throw new Error('Valid phone number required');
 }
 
+function parseAdminPhones(raw: string | undefined): Set<string> {
+  const set = new Set<string>();
+  if (!raw) return set;
+  for (const part of raw.split(',')) {
+    const digits = part.trim().replace(/\D/g, '');
+    if (!digits) continue;
+    if (digits.length === 10) set.add(digits);
+    else if (digits.length > 10) set.add(digits.slice(-10));
+  }
+  return set;
+}
+
 function base64Url(input: Buffer | string) {
   const buf = Buffer.isBuffer(input) ? input : Buffer.from(input);
   return buf
@@ -68,10 +80,13 @@ export async function POST(req: Request) {
 
     const jwtSecret = process.env.JWT_SECRET || apiKey;
     const id = `phone:${local10 || mobile}`;
+    const adminPhones = parseAdminPhones(process.env.ADMIN_PHONES);
+    const last10 = (local10 || mobile).replace(/\D/g, '').slice(-10);
+    const role = adminPhones.has(last10) ? ('admin' as const) : ('user' as const);
     const user = {
       id,
       phone: local10 || mobile,
-      role: 'user' as const,
+      role,
       kyc_status: 'pending' as const,
       isNew: true,
     };
