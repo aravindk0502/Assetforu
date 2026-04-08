@@ -9,7 +9,7 @@ import { formatCurrency } from '@/lib/currency';
 import BackNavigation from '@/components/BackNavigation';
 import { AdsBadge } from '@/components/AdsBadge';
 import { MapPin, MessageCircle, Phone } from 'lucide-react';
-import { parseCampaignImages } from '@/lib/campaignImages';
+import { parseCampaignMeta } from '@/lib/campaignMeta';
 import { CampaignImageCarousel } from '@/components/CampaignImageCarousel';
 
 export default function CampaignDetailPage() {
@@ -137,23 +137,23 @@ export default function CampaignDetailPage() {
       rich: true as const,
     }
     : (() => {
-      const images = parseCampaignImages(apiCampaign?.image_urls || apiCampaign?.image_url);
-      const imageUrl = images[0] || 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200';
+      const meta = parseCampaignMeta(apiCampaign?.description, apiCampaign?.image_urls || apiCampaign?.image_url);
+      const imageUrl = meta.images[0] || 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200';
       return {
         id: apiCampaign!.id,
         title: apiCampaign!.title,
-        description: apiCampaign!.description,
+        description: meta.text || apiCampaign!.description,
         location: apiCampaign!.location || 'India',
-        images,
+        images: meta.images,
         imageUrl,
         creditPack: Number(apiCampaign!.credit_price || 0),
-        contactPhone: '',
-        whatsappNumber: '',
-        mapUrl: undefined,
-        city: apiCampaign!.location || 'India',
-        state: 'India',
-        country: 'India',
-        priceLabel: '—',
+        contactPhone: meta.land?.contactPhone || '',
+        whatsappNumber: meta.land?.whatsappNumber || '',
+        mapUrl: meta.land?.mapUrl,
+        city: meta.land?.city || apiCampaign!.location || 'India',
+        state: meta.land?.state || 'India',
+        country: meta.land?.country || 'India',
+        priceLabel: meta.land?.priceLabel || '—',
         rich: false as const,
       };
     })();
@@ -204,22 +204,26 @@ export default function CampaignDetailPage() {
                 <span className="text-slate-500">Price</span>
                 <span className="font-extrabold text-slate-900">{effective.priceLabel}</span>
               </div>
-              {effective.rich && (
+              {(effective.rich || Boolean(effective.contactPhone || effective.whatsappNumber || effective.mapUrl)) && (
                 <div className="flex flex-wrap items-center gap-3 pt-2">
-                  <a
-                    href={`tel:${effective.contactPhone.replace(/\\s/g, '')}`}
-                    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-800 hover:bg-slate-50"
-                  >
-                    <Phone className="h-4 w-4" /> Call
-                  </a>
-                  <a
-                    href={`https://wa.me/${effective.whatsappNumber}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700"
-                  >
-                    <MessageCircle className="h-4 w-4" /> WhatsApp
-                  </a>
+                  {effective.contactPhone && (
+                    <a
+                      href={`tel:${effective.contactPhone.replace(/\\s/g, '')}`}
+                      className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-800 hover:bg-slate-50"
+                    >
+                      <Phone className="h-4 w-4" /> Call
+                    </a>
+                  )}
+                  {effective.whatsappNumber && (
+                    <a
+                      href={`https://wa.me/${effective.whatsappNumber}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700"
+                    >
+                      <MessageCircle className="h-4 w-4" /> WhatsApp
+                    </a>
+                  )}
                   {effective.mapUrl && (
                     <a
                       href={effective.mapUrl}

@@ -7,6 +7,8 @@ import { format } from 'date-fns';
 import clsx from 'clsx';
 import BackNavigation from '@/components/BackNavigation';
 import AdminJsonModal from '@/components/admin/AdminJsonModal';
+import type { CampaignLandMeta } from '@/lib/campaignMeta';
+import { buildCampaignDescription } from '@/lib/campaignMeta';
 
 export default function AdminCampaignsPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -18,7 +20,6 @@ export default function AdminCampaignsPage() {
   const [success, setSuccess] = useState('');
   const [form, setForm] = useState({
     title: '',
-    description: '',
     location: '',
     credit_price: '',
     total_slots: '100',
@@ -26,9 +27,20 @@ export default function AdminCampaignsPage() {
     badge: '',
     is_featured: false,
   });
+  const [descriptionText, setDescriptionText] = useState('');
+  const [land, setLand] = useState<CampaignLandMeta>({
+    city: '',
+    state: '',
+    country: 'India',
+    priceLabel: '',
+    contactPhone: '',
+    whatsappNumber: '',
+    mapUrl: '',
+  });
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [imageUrlInput, setImageUrlInput] = useState('');
   const [error, setError] = useState('');
+  const [uploading, setUploading] = useState(false);
 
   const loadCampaigns = async () => {
     try {
@@ -42,30 +54,48 @@ export default function AdminCampaignsPage() {
   const handleCreate = async () => {
     setError('');
     if (!form.title.trim()) { setError('Title is required'); return; }
-    if (!form.description.trim()) { setError('Description is required'); return; }
+    if (!descriptionText.trim()) { setError('Description is required'); return; }
     if (!form.credit_price) { setError('Credit price is required'); return; }
     if (!imageUrls.length) { setError('Add at least 1 image (up to 5)'); return; }
 
     setSaving(true);
     try {
+      const description = buildCampaignDescription({
+        text: descriptionText,
+        images: imageUrls,
+        land: {
+          city: land.city?.trim() || undefined,
+          state: land.state?.trim() || undefined,
+          country: land.country?.trim() || undefined,
+          priceLabel: land.priceLabel?.trim() || undefined,
+          contactPhone: land.contactPhone?.trim() || undefined,
+          whatsappNumber: land.whatsappNumber?.trim() || undefined,
+          mapUrl: land.mapUrl?.trim() || undefined,
+        },
+      });
       const payload = {
         ...form,
+        description,
         credit_price: parseFloat(form.credit_price),
         total_slots: parseInt(form.total_slots),
         end_time: form.end_time ? new Date(form.end_time).toISOString() : null,
-        image_url: JSON.stringify(imageUrls.slice(0, 5)),
+        image_url: imageUrls[0],
       };
       await adminAPI.createCampaign(payload);
       setSuccess('Campaign created!');
       setShowForm(false);
-      setForm({ title: '', description: '', location: '', credit_price: '', total_slots: '100', end_time: '', badge: '', is_featured: false });
+      setForm({ title: '', location: '', credit_price: '', total_slots: '100', end_time: '', badge: '', is_featured: false });
+      setDescriptionText('');
+      setLand({ city: '', state: '', country: 'India', priceLabel: '', contactPhone: '', whatsappNumber: '', mapUrl: '' });
       setImageUrls([]);
       setImageUrlInput('');
       await loadCampaigns();
       setTimeout(() => setSuccess(''), 3000);
     } catch (e: unknown) {
-      const err = e as { response?: { data?: { message?: string } } };
-      setError(err.response?.data?.message || 'Failed to create campaign');
+      const err = e as { response?: { status?: number; data?: { message?: string } } };
+      const status = err.response?.status;
+      const msg = err.response?.data?.message;
+      setError(status ? `Failed to create campaign (HTTP ${status})${msg ? `: ${msg}` : ''}` : (msg || 'Failed to create campaign'));
     } finally { setSaving(false); }
   };
 
@@ -79,16 +109,18 @@ export default function AdminCampaignsPage() {
       setImageUrls([]);
       setImageUrlInput('');
       setError('');
+      setDescriptionText('');
+      setLand({ city: '', state: '', country: 'India', priceLabel: '', contactPhone: '', whatsappNumber: '', mapUrl: '' });
     }
   }, [showForm]);
 
-  const compressToDataUrl = (file: File): Promise<string> =>
+  const compressToBlob = (file: File): Promise<Blob> =>
     new Promise((resolve, reject) => {
       const img = new Image();
       const url = URL.createObjectURL(file);
       img.onload = () => {
         try {
-          const maxW = 1600;
+          const maxW = 1400;
           const scale = Math.min(1, maxW / img.width);
           const w = Math.max(1, Math.round(img.width * scale));
           const h = Math.max(1, Math.round(img.height * scale));
@@ -98,8 +130,11 @@ export default function AdminCampaignsPage() {
           const ctx = canvas.getContext('2d');
           if (!ctx) throw new Error('Canvas not supported');
           ctx.drawImage(img, 0, 0, w, h);
-          const dataUrl = canvas.toDataURL('image/webp', 0.82);
-          resolve(dataUrl);
+          canvas.toBlob(
+            (blob) => (blob ? resolve(blob) : reject(new Error('Failed to encode image'))),
+            'image/webp',
+            0.78
+          );
         } catch (err) {
           reject(err);
         } finally {
@@ -113,6 +148,16 @@ export default function AdminCampaignsPage() {
       img.src = url;
     });
 
+  const uploadImage = async (file: File) => {
+    const blob = await compressToBlob(file);
+    const formData = new FormData();
+    formData.append('file', new File([blob], file.name.replace(/\\.[^.]+$/, '.webp'), { type: 'image/webp' }));
+    const res = await fetch('/api/upload', { method: 'POST', body: formData });
+    const json = (await res.json().catch(() => ({}))) as { success?: boolean; url?: string; message?: string };
+    if (!res.ok || !json?.url) throw new Error(json?.message || 'Upload failed');
+    return json.url;
+  };
+
   const addImages = async (files: FileList | null) => {
     if (!files || !files.length) return;
     setError('');
@@ -120,10 +165,13 @@ export default function AdminCampaignsPage() {
     if (remaining <= 0) return;
     const selected = Array.from(files).slice(0, remaining);
     try {
-      const dataUrls = await Promise.all(selected.map((f) => compressToDataUrl(f)));
-      setImageUrls((prev) => [...prev, ...dataUrls].slice(0, 5));
+      setUploading(true);
+      const urls = await Promise.all(selected.map((f) => uploadImage(f)));
+      setImageUrls((prev) => [...prev, ...urls].slice(0, 5));
     } catch {
-      setError('Failed to read image. Try a smaller file.');
+      setError('Failed to upload image. Configure Vercel Blob (BLOB_READ_WRITE_TOKEN) or use hosted URLs.');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -208,10 +256,11 @@ export default function AdminCampaignsPage() {
                   accept="image/*"
                   multiple
                   onChange={(e) => void addImages(e.target.files)}
+                  disabled={uploading}
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-200 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-slate-700 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-white hover:file:bg-slate-600"
                 />
                 <p className="text-[11px] text-slate-500 mt-1">
-                  You can select multiple images. We compress to WebP for upload. For best performance, use hosted URLs.
+                  {uploading ? 'Uploading…' : 'Select multiple images (we upload to Vercel Blob). You can also add hosted URLs.'}
                 </p>
                 <div className="mt-3 flex items-center gap-2">
                   <input
@@ -248,13 +297,58 @@ export default function AdminCampaignsPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Description</label>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Description *</label>
                 <textarea
                   rows={3}
-                  value={form.description}
-                  onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                  value={descriptionText}
+                  onChange={e => setDescriptionText(e.target.value)}
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:ring-2 focus:ring-primary-700 focus:outline-none resize-none"
                 />
+              </div>
+
+              <div className="rounded-xl border border-slate-700 bg-slate-950/40 p-4">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Land Details (Optional)</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">City</label>
+                    <input value={land.city || ''} onChange={(e) => setLand((l) => ({ ...l, city: e.target.value }))}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:ring-2 focus:ring-primary-700 focus:outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">State</label>
+                    <input value={land.state || ''} onChange={(e) => setLand((l) => ({ ...l, state: e.target.value }))}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:ring-2 focus:ring-primary-700 focus:outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Country</label>
+                    <input value={land.country || ''} onChange={(e) => setLand((l) => ({ ...l, country: e.target.value }))}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:ring-2 focus:ring-primary-700 focus:outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Price Label</label>
+                    <input value={land.priceLabel || ''} onChange={(e) => setLand((l) => ({ ...l, priceLabel: e.target.value }))}
+                      placeholder="e.g. ₹48 Lakhs"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:ring-2 focus:ring-primary-700 focus:outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Call Phone</label>
+                    <input value={land.contactPhone || ''} onChange={(e) => setLand((l) => ({ ...l, contactPhone: e.target.value }))}
+                      placeholder="+91…"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:ring-2 focus:ring-primary-700 focus:outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">WhatsApp</label>
+                    <input value={land.whatsappNumber || ''} onChange={(e) => setLand((l) => ({ ...l, whatsappNumber: e.target.value }))}
+                      placeholder="9190…"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:ring-2 focus:ring-primary-700 focus:outline-none" />
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Map URL</label>
+                  <input value={land.mapUrl || ''} onChange={(e) => setLand((l) => ({ ...l, mapUrl: e.target.value }))}
+                    placeholder="https://maps.google.com/?q=…"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:ring-2 focus:ring-primary-700 focus:outline-none" />
+                </div>
               </div>
               {error && <p className="text-sm text-rose-400 font-semibold">{error}</p>}
               <label className="flex items-center gap-3 cursor-pointer">

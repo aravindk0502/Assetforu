@@ -8,7 +8,7 @@ import { formatCurrency } from '@/lib/currency';
 import BackNavigation from '@/components/BackNavigation';
 import { AdsBadge } from '@/components/AdsBadge';
 import { campaignAPI } from '@/lib/api';
-import { parseCampaignImages } from '@/lib/campaignImages';
+import { parseCampaignMeta } from '@/lib/campaignMeta';
 import { CampaignImageCarousel } from '@/components/CampaignImageCarousel';
 
 export default function CampaignsPage() {
@@ -41,22 +41,22 @@ export default function CampaignsPage() {
         }>;
         if (!rows.length) return;
         const mapped: CampaignInfo[] = rows.map((r) => {
-          const images = parseCampaignImages(r.image_urls || r.image_url);
-          const imageUrl = images[0] || 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200';
+          const meta = parseCampaignMeta(r.description, r.image_urls || r.image_url);
+          const imageUrl = meta.images[0] || 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200';
           return {
             id: r.id,
             title: r.title,
             location: r.location || 'India',
-            city: r.location || 'India',
-            state: 'India',
-            country: 'India',
-            priceLabel: '—',
-            contactPhone: '+91 90000 00000',
-            whatsappNumber: '919000000000',
-            mapUrl: undefined,
+            city: meta.land?.city || r.location || 'India',
+            state: meta.land?.state || 'India',
+            country: meta.land?.country || 'India',
+            priceLabel: meta.land?.priceLabel || '—',
+            contactPhone: meta.land?.contactPhone || '+91 90000 00000',
+            whatsappNumber: meta.land?.whatsappNumber || '919000000000',
+            mapUrl: meta.land?.mapUrl,
             imageUrl,
-            images,
-            description: r.description,
+            images: meta.images,
+            description: meta.text || r.description,
             creditPack: Number(r.credit_price || 0),
           };
         });
