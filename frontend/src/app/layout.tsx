@@ -1,9 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Providers } from './providers';
-import { Header } from '@/components/Header';
-import { Footer } from '@/components/Footer';
-import { BottomNav } from '@/components/BottomNav';
+import AppChrome from './AppChrome';
 
 // Force all pages to be dynamic - this cascades to all routes
 export const dynamic = 'force-dynamic';
@@ -21,10 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className="font-display antialiased bg-[#f6f8f7] text-slate-900 min-h-screen">
         <Providers>
-          <Header />
-          <main className="pb-20 md:pb-0">{children}</main>
-          <Footer />
-          <BottomNav />
+          <AppChrome>{children}</AppChrome>
         </Providers>
       </body>
     </html>
