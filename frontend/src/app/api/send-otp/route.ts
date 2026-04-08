@@ -7,20 +7,44 @@ function normalizeMobile(phoneRaw: string): { mobile: string; local10?: string }
   throw new Error('Valid phone number required');
 }
 
+function parsePhones(raw: string | undefined): Set<string> {
+  const set = new Set<string>();
+  if (!raw) return set;
+  for (const part of raw.split(',')) {
+    const digits = part.trim().replace(/\D/g, '');
+    if (!digits) continue;
+    if (digits.length === 10) set.add(digits);
+    else if (digits.length > 10) set.add(digits.slice(-10));
+  }
+  return set;
+}
+
 export async function POST(req: Request) {
   try {
     const { phone } = (await req.json()) as { phone?: string };
     if (!phone) return Response.json({ success: false, message: 'Phone is required' }, { status: 400 });
 
-    const { mobile } = normalizeMobile(phone);
+    const { mobile, local10 } = normalizeMobile(phone);
 
     const apiKey = process.env.MSG91_API_KEY;
     const templateId = process.env.MSG91_TEMPLATE_ID;
+    const devOtpEnabled = process.env.DEV_OTP_ENABLED === 'true';
     if (!apiKey || !templateId) {
-      return Response.json(
-        { success: false, message: 'MSG91 is not configured' },
-        { status: 500 }
-      );
+      if (!devOtpEnabled) {
+        return Response.json({ success: false, message: 'MSG91 is not configured' }, { status: 500 });
+      }
+
+      // Dev fallback (only allowlisted phones)
+      const allow = parsePhones(process.env.DEV_AUTH_PHONES || process.env.ADMIN_PHONES);
+      const last10 = (local10 || mobile).replace(/\D/g, '').slice(-10);
+      if (!allow.size || !allow.has(last10)) {
+        return Response.json({ success: false, message: 'OTP is temporarily unavailable for this number' }, { status: 403 });
+      }
+
+      return Response.json({
+        success: true,
+        message: 'DEV OTP enabled',
+      });
     }
 
     const url = new URL('https://control.msg91.com/api/v5/otp');
@@ -52,4 +76,3 @@ export async function POST(req: Request) {
     return Response.json({ success: false, message: msg }, { status: 500 });
   }
 }
-

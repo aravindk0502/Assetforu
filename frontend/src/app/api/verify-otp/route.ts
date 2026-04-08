@@ -21,6 +21,10 @@ function parseAdminPhones(raw: string | undefined): Set<string> {
   return set;
 }
 
+function parsePhones(raw: string | undefined): Set<string> {
+  return parseAdminPhones(raw);
+}
+
 function base64Url(input: Buffer | string) {
   const buf = Buffer.isBuffer(input) ? input : Buffer.from(input);
   return buf
@@ -56,7 +60,47 @@ export async function POST(req: Request) {
     const { mobile, local10 } = normalizeMobile(phone);
 
     const apiKey = process.env.MSG91_API_KEY;
-    if (!apiKey) return Response.json({ success: false, message: 'MSG91 is not configured' }, { status: 500 });
+    const devOtpEnabled = process.env.DEV_OTP_ENABLED === 'true';
+    const jwtSecret = process.env.JWT_SECRET || apiKey || 'dev-secret';
+    const last10 = (local10 || mobile).replace(/\D/g, '').slice(-10);
+
+    // Dev OTP fallback (explicit opt-in)
+    if (!apiKey) {
+      if (!devOtpEnabled) return Response.json({ success: false, message: 'MSG91 is not configured' }, { status: 500 });
+
+      const allow = parsePhones(process.env.DEV_AUTH_PHONES || process.env.ADMIN_PHONES);
+      if (!allow.size || !allow.has(last10)) {
+        return Response.json({ success: false, message: 'OTP is temporarily unavailable for this number' }, { status: 403 });
+      }
+
+      const expected = process.env.DEV_OTP_CODE || '123456';
+      if (String(otp) !== expected) {
+        return Response.json({ success: false, message: 'Invalid OTP' }, { status: 400 });
+      }
+
+      const id = `phone:${local10 || mobile}`;
+      const adminPhones = parseAdminPhones(process.env.ADMIN_PHONES);
+      const role = adminPhones.has(last10) ? ('admin' as const) : ('user' as const);
+      const user = {
+        id,
+        phone: local10 || mobile,
+        role,
+        kyc_status: 'pending' as const,
+        isNew: true,
+      };
+
+      const token = signJwtHS256(
+        { sub: id, phone: user.phone, role: user.role, kyc_status: user.kyc_status, termsAccepted },
+        jwtSecret
+      );
+
+      return Response.json({
+        success: true,
+        message: 'Logged in successfully',
+        token,
+        user,
+      });
+    }
 
     const url = new URL('https://control.msg91.com/api/v5/otp/verify');
     url.searchParams.set('mobile', mobile);
@@ -78,10 +122,8 @@ export async function POST(req: Request) {
       );
     }
 
-    const jwtSecret = process.env.JWT_SECRET || apiKey;
     const id = `phone:${local10 || mobile}`;
     const adminPhones = parseAdminPhones(process.env.ADMIN_PHONES);
-    const last10 = (local10 || mobile).replace(/\D/g, '').slice(-10);
     const role = adminPhones.has(last10) ? ('admin' as const) : ('user' as const);
     const user = {
       id,
