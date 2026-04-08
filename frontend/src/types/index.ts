@@ -14,6 +14,9 @@ export interface Campaign {
   description: string;
   location: string;
   image_url: string;
+  // For backwards/forwards compatibility: some APIs may provide separate list field,
+  // or we may store a JSON-stringified array into `image_url`.
+  image_urls?: string[];
   credit_price: number;
   total_slots: number;
   filled_slots: number;
@@ -21,6 +24,7 @@ export interface Campaign {
   end_time: string;
   badge?: string;
   is_featured: boolean;
+  created_at?: string;
   userParticipation?: Participation | null;
 }
 

@@ -10,6 +10,8 @@ import { useState } from 'react';
 import { MapPin, Clock, Loader2, CheckCircle } from 'lucide-react';
 import clsx from 'clsx';
 import { formatDistanceToNow } from 'date-fns';
+import { parseCampaignImages } from '@/lib/campaignImages';
+import { CampaignImageCarousel } from '@/components/CampaignImageCarousel';
 
 interface Props {
   campaign: Campaign;
@@ -25,6 +27,7 @@ export function CampaignCard({ campaign, onParticipated }: Props) {
   const isParticipated = !!campaign.userParticipation;
   const isClosed = campaign.status !== 'active';
   const fillPct = Math.min(100, Math.round((campaign.filled_slots / campaign.total_slots) * 100));
+  const images = parseCampaignImages(campaign.image_urls || campaign.image_url);
 
   const handleAccess = () => {
     protect(async () => {
@@ -50,13 +53,17 @@ export function CampaignCard({ campaign, onParticipated }: Props) {
     <div className="group bg-white rounded-2xl border border-slate-200 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 overflow-hidden flex flex-col">
       {/* Image */}
       <div className="relative h-48 overflow-hidden">
-        <Image
-          src={campaign.image_url || 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=800'}
-          alt={campaign.title}
-          fill
-          className="object-cover transition-transform duration-500 group-hover:scale-110"
-          sizes="(max-width: 768px) 100vw, 33vw"
-        />
+        {images.length > 1 ? (
+          <CampaignImageCarousel images={images} title={campaign.title} />
+        ) : (
+          <Image
+            src={images[0] || 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=800'}
+            alt={campaign.title}
+            fill
+            className="object-cover transition-transform duration-500 group-hover:scale-110"
+            sizes="(max-width: 768px) 100vw, 33vw"
+          />
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
 
         {campaign.badge && (

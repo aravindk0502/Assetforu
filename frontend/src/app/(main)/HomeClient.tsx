@@ -4,15 +4,18 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore, useCartStore, useUIStore } from '@/store';
 import { addToast } from '@/components/Toast';
-import { campaigns } from '@/data/dreamCampaigns';
+import { campaigns as dreamCampaigns, type CampaignInfo } from '@/data/dreamCampaigns';
 import { Sparkles, Ticket, ArrowUpRight, Heart, Wallet, BadgeCheck, ChevronDown } from 'lucide-react';
 import { campaignAPI } from '@/lib/api';
 import { formatCurrency } from '@/lib/currency';
 import LandPropertiesCarousel from '@/components/LandPropertiesCarousel';
 import { CampaignImageCarousel } from '@/components/CampaignImageCarousel';
 import { AdsBadge } from '@/components/AdsBadge';
+import { parseCampaignImages } from '@/lib/campaignImages';
 
 const campaignTags = ['Just Launched', 'Closing Soon', 'Exclusive Series', 'Trending'];
+
+type HomeCampaign = CampaignInfo & { source?: 'static' | 'api' };
 
 export default function HomePage() {
   const router = useRouter();
@@ -22,6 +25,9 @@ export default function HomePage() {
   const { addToCart, items: cartItems } = useCartStore();
   const [limitMap, setLimitMap] = useState<Record<string, number>>({});
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [homeCampaigns, setHomeCampaigns] = useState<HomeCampaign[]>(
+    dreamCampaigns.map((c) => ({ ...c, source: 'static' }))
+  );
 
   const isDevUser = !!user?.id?.startsWith('dev_');
   const isAuthed = !!user || !!token;
@@ -30,7 +36,7 @@ export default function HomePage() {
     try {
       const raw = localStorage.getItem('af_dev_campaign_purchases');
       const map = raw ? JSON.parse(raw) as Record<string, number> : {};
-      const topThreeCampaigns = campaigns.slice(0, 3);
+      const topThreeCampaigns = homeCampaigns.slice(0, 3);
       const entries = topThreeCampaigns.map((c) => [c.id, Math.max(0, 3 - (map[c.id] || 0))] as const);
       setLimitMap(Object.fromEntries(entries));
     } catch (error) {
@@ -38,6 +44,51 @@ export default function HomePage() {
       setLimitMap({});
     }
   };
+
+  // Load campaigns from API (admin-created), fallback to static list.
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await campaignAPI.list({ status: 'active', limit: 3 });
+        const rows = (res.data?.data || []) as Array<{
+          id: string;
+          title: string;
+          description: string;
+          location: string;
+          credit_price: number;
+          image_url?: string;
+          image_urls?: string[];
+        }>;
+        if (!rows.length) return;
+
+        const mapped: HomeCampaign[] = rows.map((r) => {
+          const images = parseCampaignImages(r.image_urls || r.image_url);
+          const imageUrl = images[0] || 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200';
+          return {
+            id: r.id,
+            title: r.title,
+            location: r.location || 'India',
+            city: r.location || 'India',
+            state: 'India',
+            country: 'India',
+            priceLabel: '—',
+            contactPhone: '+91 90000 00000',
+            whatsappNumber: '919000000000',
+            mapUrl: undefined,
+            imageUrl,
+            images,
+            description: r.description,
+            creditPack: Number(r.credit_price || 0),
+            source: 'api',
+          };
+        });
+        setHomeCampaigns(mapped);
+      } catch {
+        // ignore, keep static campaigns
+      }
+    };
+    load();
+  }, []);
 
   useEffect(() => {
     const loadLimits = async () => {
@@ -47,7 +98,7 @@ export default function HomePage() {
         return;
       }
       try {
-        const topThreeCampaigns = campaigns.slice(0, 3);
+        const topThreeCampaigns = homeCampaigns.slice(0, 3);
         const entries = await Promise.all(
           topThreeCampaigns.map(async (c) => {
             try {
@@ -76,7 +127,7 @@ export default function HomePage() {
         window.removeEventListener('campaign:purchase', onFocus);
       };
     }
-  }, [token, user, isDevUser]);
+  }, [token, user, isDevUser, homeCampaigns]);
 
   const goToCampaign = (id: string) => router.push(`/campaigns/${id}`);
 
@@ -147,7 +198,7 @@ export default function HomePage() {
           </div>
 
           <div className="space-y-5">
-            {campaigns.slice(0, 3).map((campaign, idx) => (
+            {homeCampaigns.slice(0, 3).map((campaign, idx) => (
               <div
                 key={campaign.id}
                 role="button"

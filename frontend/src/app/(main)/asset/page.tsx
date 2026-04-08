@@ -10,6 +10,8 @@ import { useAuthStore, useUIStore } from '@/store';
 import { Wallet, CreditCard, Package, Loader2, Gift, MapPin, Clock } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import clsx from 'clsx';
+import { parseCampaignImages } from '@/lib/campaignImages';
+import { CampaignImageCarousel } from '@/components/CampaignImageCarousel';
 
 export default function AssetPage() {
     const router = useRouter();
@@ -87,14 +89,19 @@ export default function AssetPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {assets.map((asset) => {
                         const rate = Math.ceil(asset.credit_price || 0);
+                        const images = parseCampaignImages(asset.image_urls || asset.image_url);
                         return (
                             <div key={asset.id} className="bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-lg transition-all overflow-hidden">
                                 <div className="relative h-44 bg-slate-100">
-                                    <img
-                                        src={asset.image_url || 'https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=800'}
-                                        alt={asset.title}
-                                        className="h-full w-full object-cover"
-                                    />
+                                    {images.length > 1 ? (
+                                        <CampaignImageCarousel images={images} title={asset.title} />
+                                    ) : (
+                                        <img
+                                            src={images[0] || 'https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=800'}
+                                            alt={asset.title}
+                                            className="h-full w-full object-cover"
+                                        />
+                                    )}
                                     <div className="absolute top-3 left-3 bg-yellow-400 text-slate-800 text-xs font-bold px-3 py-1 rounded-full shadow">{asset.location || 'India'}</div>
                                 </div>
                                 <div className="p-4 space-y-3">

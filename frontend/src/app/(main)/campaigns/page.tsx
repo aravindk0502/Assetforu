@@ -1,18 +1,22 @@
 'use client';
 
-
 import { useRouter } from 'next/navigation';
 import { useAuthStore, useUIStore } from '@/store';
-import { campaigns } from '@/data/dreamCampaigns';
+import { useEffect, useState } from 'react';
+import { campaigns as dreamCampaigns, type CampaignInfo } from '@/data/dreamCampaigns';
 import { formatCurrency } from '@/lib/currency';
 import BackNavigation from '@/components/BackNavigation';
 import { AdsBadge } from '@/components/AdsBadge';
+import { campaignAPI } from '@/lib/api';
+import { parseCampaignImages } from '@/lib/campaignImages';
+import { CampaignImageCarousel } from '@/components/CampaignImageCarousel';
 
 export default function CampaignsPage() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const { openSignupModal } = useUIStore();
   const currency = useUIStore((state) => state.currency);
+  const [list, setList] = useState<CampaignInfo[]>(dreamCampaigns);
 
   const handleBuy = (id: string) => {
     if (!user) {
@@ -22,6 +26,48 @@ export default function CampaignsPage() {
     router.push(`/campaigns/${id}`);
   };
 
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await campaignAPI.list({ status: 'active', limit: 50 });
+        const rows = (res.data?.data || []) as Array<{
+          id: string;
+          title: string;
+          description: string;
+          location: string;
+          credit_price: number;
+          image_url?: string;
+          image_urls?: string[];
+        }>;
+        if (!rows.length) return;
+        const mapped: CampaignInfo[] = rows.map((r) => {
+          const images = parseCampaignImages(r.image_urls || r.image_url);
+          const imageUrl = images[0] || 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200';
+          return {
+            id: r.id,
+            title: r.title,
+            location: r.location || 'India',
+            city: r.location || 'India',
+            state: 'India',
+            country: 'India',
+            priceLabel: '—',
+            contactPhone: '+91 90000 00000',
+            whatsappNumber: '919000000000',
+            mapUrl: undefined,
+            imageUrl,
+            images,
+            description: r.description,
+            creditPack: Number(r.credit_price || 0),
+          };
+        });
+        setList(mapped);
+      } catch {
+        // ignore
+      }
+    };
+    load();
+  }, []);
+
   return (
     <div className="page-enter mx-auto max-w-7xl px-6 py-10">
       <BackNavigation />
@@ -29,7 +75,7 @@ export default function CampaignsPage() {
       <p className="text-slate-600 mb-8">Select a campaign and purchase Asset Credits to join automatically.</p>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        {campaigns.map((campaign) => (
+        {list.map((campaign) => (
           <article
             key={campaign.id}
             role="button"
@@ -39,8 +85,16 @@ export default function CampaignsPage() {
             className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden hover:shadow-lg transition cursor-pointer"
           >
             <div className="relative">
-              <img src={campaign.imageUrl} alt={campaign.title} className="h-44 w-full object-cover" />
-              <AdsBadge />
+              {campaign.images && campaign.images.length > 1 ? (
+                <div className="h-44">
+                  <CampaignImageCarousel images={campaign.images} title={campaign.title} />
+                </div>
+              ) : (
+                <>
+                  <img src={campaign.imageUrl} alt={campaign.title} className="h-44 w-full object-cover" />
+                  <AdsBadge />
+                </>
+              )}
             </div>
             <div className="p-5">
               <h2 className="text-xl font-bold text-slate-900">{campaign.title}</h2>

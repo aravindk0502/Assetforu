@@ -16,8 +16,19 @@ export default function AdminCampaignsPage() {
   const [viewCampaign, setViewCampaign] = useState<Campaign | null>(null);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState('');
-  const [form, setForm] = useState({ title: '', description: '', location: '', image_url: '', credit_price: '', total_slots: '100', end_time: '', badge: '', is_featured: false });
-  const [imagePreview, setImagePreview] = useState<string>('');
+  const [form, setForm] = useState({
+    title: '',
+    description: '',
+    location: '',
+    credit_price: '',
+    total_slots: '100',
+    end_time: '',
+    badge: '',
+    is_featured: false,
+  });
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [imageUrlInput, setImageUrlInput] = useState('');
+  const [error, setError] = useState('');
 
   const loadCampaigns = async () => {
     try {
@@ -29,17 +40,33 @@ export default function AdminCampaignsPage() {
   useEffect(() => { setLoading(true); loadCampaigns(); }, [statusFilter]);
 
   const handleCreate = async () => {
-    if (!form.title || !form.credit_price) return;
+    setError('');
+    if (!form.title.trim()) { setError('Title is required'); return; }
+    if (!form.description.trim()) { setError('Description is required'); return; }
+    if (!form.credit_price) { setError('Credit price is required'); return; }
+    if (!imageUrls.length) { setError('Add at least 1 image (up to 5)'); return; }
+
     setSaving(true);
     try {
-      await adminAPI.createCampaign({ ...form, credit_price: parseFloat(form.credit_price), total_slots: parseInt(form.total_slots) });
+      const payload = {
+        ...form,
+        credit_price: parseFloat(form.credit_price),
+        total_slots: parseInt(form.total_slots),
+        end_time: form.end_time ? new Date(form.end_time).toISOString() : null,
+        image_url: JSON.stringify(imageUrls.slice(0, 5)),
+      };
+      await adminAPI.createCampaign(payload);
       setSuccess('Campaign created!');
       setShowForm(false);
-      setForm({ title: '', description: '', location: '', image_url: '', credit_price: '', total_slots: '100', end_time: '', badge: '', is_featured: false });
-      setImagePreview('');
+      setForm({ title: '', description: '', location: '', credit_price: '', total_slots: '100', end_time: '', badge: '', is_featured: false });
+      setImageUrls([]);
+      setImageUrlInput('');
       await loadCampaigns();
       setTimeout(() => setSuccess(''), 3000);
-    } catch { /* ignore */ } finally { setSaving(false); }
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      setError(err.response?.data?.message || 'Failed to create campaign');
+    } finally { setSaving(false); }
   };
 
   const handleStatusChange = async (id: string, status: string) => {
@@ -49,20 +76,65 @@ export default function AdminCampaignsPage() {
 
   useEffect(() => {
     if (!showForm) {
-      setImagePreview('');
+      setImageUrls([]);
+      setImageUrlInput('');
+      setError('');
     }
   }, [showForm]);
 
-  const handleImagePick = (file: File | null) => {
-    if (!file) return;
-    if (!file.type.startsWith('image/')) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = String(reader.result || '');
-      setForm((f) => ({ ...f, image_url: dataUrl }));
-      setImagePreview(dataUrl);
-    };
-    reader.readAsDataURL(file);
+  const compressToDataUrl = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        try {
+          const maxW = 1600;
+          const scale = Math.min(1, maxW / img.width);
+          const w = Math.max(1, Math.round(img.width * scale));
+          const h = Math.max(1, Math.round(img.height * scale));
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) throw new Error('Canvas not supported');
+          ctx.drawImage(img, 0, 0, w, h);
+          const dataUrl = canvas.toDataURL('image/webp', 0.82);
+          resolve(dataUrl);
+        } catch (err) {
+          reject(err);
+        } finally {
+          URL.revokeObjectURL(url);
+        }
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error('Failed to load image'));
+      };
+      img.src = url;
+    });
+
+  const addImages = async (files: FileList | null) => {
+    if (!files || !files.length) return;
+    setError('');
+    const remaining = Math.max(0, 5 - imageUrls.length);
+    if (remaining <= 0) return;
+    const selected = Array.from(files).slice(0, remaining);
+    try {
+      const dataUrls = await Promise.all(selected.map((f) => compressToDataUrl(f)));
+      setImageUrls((prev) => [...prev, ...dataUrls].slice(0, 5));
+    } catch {
+      setError('Failed to read image. Try a smaller file.');
+    }
+  };
+
+  const addImageUrl = () => {
+    const url = imageUrlInput.trim();
+    if (!url) return;
+    setImageUrls((prev) => {
+      const next = [...prev, url];
+      return next.slice(0, 5);
+    });
+    setImageUrlInput('');
   };
 
   return (
@@ -130,40 +202,47 @@ export default function AdminCampaignsPage() {
               ))}
 
               <div>
-                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Image (Gallery)</label>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Images (up to 5)</label>
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={(e) => handleImagePick(e.target.files?.[0] || null)}
+                  multiple
+                  onChange={(e) => void addImages(e.target.files)}
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-200 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-slate-700 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-white hover:file:bg-slate-600"
                 />
                 <p className="text-[11px] text-slate-500 mt-1">
-                  Selecting an image will auto-fill `image_url`. For best performance, use a hosted URL when possible.
+                  You can select multiple images. We compress to WebP for upload. For best performance, use hosted URLs.
                 </p>
-                {(imagePreview || form.image_url) && (
-                  <div className="mt-3 flex items-start gap-3">
-                    <img
-                      src={imagePreview || form.image_url}
-                      alt="Preview"
-                      className="h-16 w-24 rounded-lg object-cover border border-slate-700 bg-slate-950"
-                    />
-                    <div className="flex-1">
-                      <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Image URL</label>
-                      <input
-                        type="url"
-                        value={form.image_url}
-                        onChange={(e) => { setForm((f) => ({ ...f, image_url: e.target.value })); setImagePreview(''); }}
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:ring-2 focus:ring-primary-700 focus:outline-none"
-                        placeholder="https://… or data:image/…"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => { setForm((f) => ({ ...f, image_url: '' })); setImagePreview(''); }}
-                        className="mt-2 text-xs font-bold text-slate-400 hover:text-white"
-                      >
-                        Clear image
-                      </button>
-                    </div>
+                <div className="mt-3 flex items-center gap-2">
+                  <input
+                    type="url"
+                    value={imageUrlInput}
+                    onChange={(e) => setImageUrlInput(e.target.value)}
+                    placeholder="Paste hosted image URL and click Add"
+                    className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:ring-2 focus:ring-primary-700 focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={addImageUrl}
+                    className="px-4 py-2.5 rounded-xl bg-slate-700 text-white text-sm font-bold hover:bg-slate-600"
+                  >
+                    Add
+                  </button>
+                </div>
+                {imageUrls.length > 0 && (
+                  <div className="mt-3 grid grid-cols-3 gap-2">
+                    {imageUrls.map((src, idx) => (
+                      <div key={idx} className="relative">
+                        <img src={src} alt={`Image ${idx + 1}`} className="h-20 w-full rounded-lg object-cover border border-slate-700 bg-slate-950" />
+                        <button
+                          type="button"
+                          onClick={() => setImageUrls((prev) => prev.filter((_, i) => i !== idx))}
+                          className="absolute top-1 right-1 rounded-md bg-black/60 text-white text-xs px-2 py-1 hover:bg-black/80"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -177,6 +256,7 @@ export default function AdminCampaignsPage() {
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:ring-2 focus:ring-primary-700 focus:outline-none resize-none"
                 />
               </div>
+              {error && <p className="text-sm text-rose-400 font-semibold">{error}</p>}
               <label className="flex items-center gap-3 cursor-pointer">
                 <input type="checkbox" checked={form.is_featured} onChange={e => setForm(f => ({ ...f, is_featured: e.target.checked }))} className="accent-primary-700 w-4 h-4" />
                 <span className="text-sm text-slate-300 font-medium">Featured on homepage</span>
