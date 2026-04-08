@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore, useCartStore, useUIStore } from '@/store';
 import { addToast } from '@/components/Toast';
 import { campaigns } from '@/data/dreamCampaigns';
-import { productCatalog, servicesCatalog } from '@/data/storeCatalog';
-import { Sparkles, Ticket, ArrowUpRight, Heart, Wallet, Store, BadgeCheck, Activity, ChevronDown } from 'lucide-react';
+import { Sparkles, Ticket, ArrowUpRight, Heart, Wallet, BadgeCheck, ChevronDown } from 'lucide-react';
 import { campaignAPI } from '@/lib/api';
 import { formatCurrency } from '@/lib/currency';
 import LandPropertiesCarousel from '@/components/LandPropertiesCarousel';
@@ -104,12 +103,11 @@ export default function HomePage() {
         <div className="relative z-10 mx-auto max-w-7xl px-6 lg:px-10 py-24 md:py-28">
           <div className="max-w-3xl text-white">
             <p className="text-xs uppercase tracking-[0.35em] text-emerald-200/80 mb-4">Digital Platform Experience</p>
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight tracking-tight">Explore Products and Services Through Asset Credits</h1>
-            <p className="mt-6 max-w-2xl text-base sm:text-lg text-slate-100/85 leading-8">Use Asset Credits to access platform services such as legal consultation, land advisory, and related offerings, designed to enhance your overall experience.</p>
-            <p className="mt-6 text-sm text-slate-200/70 max-w-xl">As part of the platform experience, users may receive access to promotional campaigns. These benefits are complimentary and not the primary purpose of credit purchase.</p>
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight tracking-tight">Explore Premium Land Opportunities with Asset Credits</h1>
+            <p className="mt-6 max-w-2xl text-base sm:text-lg text-slate-100/85 leading-8">Access curated land campaigns, view property details, and enter complimentary benefits when you purchase Asset Credits.</p>
+            <p className="mt-6 text-sm text-slate-200/70 max-w-xl">Campaign-related benefits are complimentary platform features and not the primary purpose of credit purchase.</p>
             <div className="mt-10 flex flex-wrap items-center gap-4">
               <button onClick={() => router.push('/campaigns')} className="rounded-full bg-emerald-300 text-slate-950 px-6 py-3 text-sm font-semibold shadow-xl shadow-emerald-500/20 transition hover:bg-emerald-200">Get Started</button>
-              <button onClick={() => router.push('/store')} className="rounded-full border border-emerald-200/75 text-white px-6 py-3 text-sm font-semibold transition hover:bg-white/10">Explore Store</button>
             </div>
           </div>
           <div className="mt-14 grid gap-4 md:grid-cols-3">
@@ -149,7 +147,14 @@ export default function HomePage() {
 
           <div className="space-y-5">
             {campaigns.slice(0, 3).map((campaign, idx) => (
-              <div key={campaign.id} className="rounded-3xl bg-white border border-slate-200 shadow-sm overflow-hidden">
+              <div
+                key={campaign.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => goToCampaign(campaign.id)}
+                onKeyDown={(e) => e.key === 'Enter' && goToCampaign(campaign.id)}
+                className="rounded-3xl bg-white border border-slate-200 shadow-sm overflow-hidden cursor-pointer hover:shadow-md transition"
+              >
                 <div className="grid md:grid-cols-[250px_1fr] gap-0">
                   {/* Carousel/Image Section */}
                   <div className="relative h-48 md:h-64 bg-slate-200 overflow-hidden">
@@ -189,7 +194,8 @@ export default function HomePage() {
                       </div>
                       <div className="flex gap-2">
                         <button
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             const isFavorited = favorites.some((f) => f.id === campaign.id);
                             toggleFavorite({
                               id: campaign.id,
@@ -215,7 +221,7 @@ export default function HomePage() {
                           />
                         </button>
                         <button
-                          onClick={() => handleBuy(campaign.id)}
+                          onClick={(e) => { e.stopPropagation(); handleBuy(campaign.id); }}
                           disabled={limitMap[campaign.id] === 0}
                           className="rounded-xl bg-primary-700 text-white px-4 py-2 text-sm font-bold disabled:opacity-60"
                         >
@@ -224,7 +230,8 @@ export default function HomePage() {
                             : `Buy ${formatCurrency(campaign.creditPack, currency)} Credits & Enter a free Land Gifting Campaign${limitMap[campaign.id] ? ` (${limitMap[campaign.id]} left)` : ''}`}
                         </button>
                         <button
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             if (!isAuthed) {
                               openSignupModal(() => goToCampaign(campaign.id));
                               return;
@@ -276,20 +283,6 @@ export default function HomePage() {
         </section>
       )}
 
-      <section className="mx-auto max-w-7xl px-6 lg:px-10 py-8">
-        <div className="rounded-3xl bg-gradient-to-r from-emerald-500 to-emerald-600 p-8 md:p-10 text-white">
-          <h3 className="text-2xl md:text-3xl font-black mb-4">Explore Products & Services</h3>
-          <ul className="space-y-2 mb-6 text-sm md:text-base">
-            <li className="flex items-center gap-2"><span className="text-emerald-200">✓</span> Premium products curated for quality</li>
-            <li className="flex items-center gap-2"><span className="text-emerald-200">✓</span> Expert services available instantly</li>
-            <li className="flex items-center gap-2"><span className="text-emerald-200">✓</span> Use your Asset Credits to purchase</li>
-          </ul>
-          <button onClick={() => router.push('/store')} className="rounded-full bg-white text-emerald-600 px-6 py-3 text-sm font-bold hover:bg-emerald-50 transition">
-            Shop Now →
-          </button>
-        </div>
-      </section>
-
       <section className="mx-auto max-w-7xl px-6 lg:px-10 py-12">
         <div className="flex items-end justify-between gap-6 mb-8">
           <div>
@@ -299,7 +292,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {[
             {
               title: 'Add Credits',
@@ -307,14 +300,9 @@ export default function HomePage() {
               icon: Wallet,
             },
             {
-              title: 'Complete Quick Check',
-              text: 'Answer a simple question to continue',
-              icon: Activity,
-            },
-            {
               title: 'Secure Credits',
               text: 'Your credits are added to your wallet after payment',
-              icon: Store,
+              icon: BadgeCheck,
             },
             {
               title: 'Access Campaigns',
@@ -386,138 +374,15 @@ export default function HomePage() {
       </section>
 
       <section className="mx-auto max-w-7xl px-6 lg:px-10 py-12">
-        <div className="rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-900 overflow-hidden shadow-2xl">
-          <div className="relative p-8 md:p-12">
-            <div className="absolute inset-0 opacity-10">
-              <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-cyan-400 blur-3xl" />
-            </div>
-            <div className="relative z-10">
-              <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
-                <div className="flex-1">
-                  <p className="text-xs uppercase tracking-[0.3em] text-emerald-300 font-bold mb-3">Unlock Exclusive Benefits</p>
-                  <h2 className="text-3xl md:text-4xl font-black text-white mb-4 leading-tight">
-                    Your Asset Credits Await
-                  </h2>
-                  <p className="text-lg text-slate-200 mb-3">
-                    Access premium products, expert services, and exclusive campaign opportunities with every credit you purchase.
-                  </p>
-                  <ul className="space-y-2 mb-6">
-                    <li className="flex items-center gap-3 text-slate-100">
-                      <span className="text-emerald-400 font-bold">✓</span> Instant account credit allocation
-                    </li>
-                    <li className="flex items-center gap-3 text-slate-100">
-                      <span className="text-emerald-400 font-bold">✓</span> Use across all platform services
-                    </li>
-                    <li className="flex items-center gap-3 text-slate-100">
-                      <span className="text-emerald-400 font-bold">✓</span> Transparent, zero hidden charges
-                    </li>
-                  </ul>
-                  <button
-                    onClick={() => router.push('/store')}
-                    className="rounded-full bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-3 text-sm font-bold transition shadow-lg hover:shadow-emerald-500/50"
-                  >
-                    Explore Now →
-                  </button>
-                </div>
-                <div className="flex-1 text-center">
-                  <div className="inline-block">
-                    <div className="rounded-2xl bg-white/10 backdrop-blur-sm border border-emerald-400/20 p-8 shadow-xl">
-                      <div className="text-5xl font-black text-emerald-400 mb-2">∞</div>
-                      <p className="text-white font-bold text-sm">Unlimited Opportunities</p>
-                      <p className="text-slate-300 text-xs mt-1">Credits never expire</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-7xl px-6 lg:px-10 py-12">
         <div className="rounded-3xl border border-emerald-100 bg-emerald-50 p-8">
           <p className="text-xs uppercase tracking-[0.25em] text-emerald-700">Platform Information</p>
           <h2 className="text-3xl font-black text-slate-900 mt-2">Platform Information</h2>
           <div className="mt-4 text-sm text-emerald-900/90 space-y-3">
-            <p>AssetForU is a platform where users purchase Asset Credits to access products and services.</p>
-            <p>A simple knowledge step is included as part of the platform experience before completing a transaction.</p>
+            <p>AssetForU is a platform where users purchase Asset Credits to access curated experiences and platform benefits.</p>
             <p>Campaign-related benefits are provided as a complimentary feature and are not the primary purpose of purchase.</p>
-            <p>Credits hold value within the platform and can be used across available products and services.</p>
+            <p>Credits hold value within the platform and can be used across available platform experiences.</p>
             <p>No guaranteed allocation or outcome is associated with any campaign.</p>
             <p>Users are encouraged to review all terms and conditions before purchasing credits.</p>
-          </div>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-7xl px-6 lg:px-10 pb-14">
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-          <div>
-            <p className="text-xs uppercase tracking-[0.25em] text-emerald-600">Asset Store</p>
-            <button
-              onClick={() => router.push('/store')}
-              className="mt-2 text-left text-3xl font-black text-slate-900 hover:text-primary-700 underline-offset-4 hover:underline"
-            >
-              Products & Services
-            </button>
-            <p className="text-slate-500 mt-2">Premium lifestyle products and land services in one place.</p>
-          </div>
-        </div>
-
-        <div className="space-y-10">
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-black text-slate-900">Products</h3>
-              <button
-                onClick={() => router.push('/store')}
-                className="text-xs font-bold text-primary-700"
-              >
-                View All
-              </button>
-            </div>
-            <div className="flex gap-4 overflow-x-auto pb-2">
-              {productCatalog.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => router.push(`/store/products/${item.id}`)}
-                  className="min-w-[240px] text-left rounded-3xl bg-white border border-slate-200 overflow-hidden shadow-sm hover:-translate-y-0.5 transition"
-                >
-                  <img src={item.image} alt={item.name} className="h-40 w-full object-cover" />
-                  <div className="p-4">
-                    <h3 className="text-sm font-bold text-slate-900">{item.name}</h3>
-                    <p className="text-xs text-slate-500 mt-1">{formatCurrency(item.credits, currency)} · {item.credits} Credits</p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-black text-slate-900">Services</h3>
-              <button
-                onClick={() => router.push('/store')}
-                className="text-xs font-bold text-primary-700"
-              >
-                View All
-              </button>
-            </div>
-            <div className="flex gap-4 overflow-x-auto pb-2">
-              {servicesCatalog.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => router.push(`/store/services/${item.id}`)}
-                  className="min-w-[240px] text-left rounded-3xl bg-white border border-slate-200 overflow-hidden shadow-sm hover:-translate-y-0.5 transition"
-                >
-                  <img src={item.image} alt={item.name} className="h-40 w-full object-cover" />
-                  <div className="p-4">
-                    <h3 className="text-sm font-bold text-slate-900">{item.name}</h3>
-                    <p className="text-xs text-slate-500 mt-1">{formatCurrency(item.credits, currency)} · {item.credits} Credits</p>
-                  </div>
-                </button>
-              ))}
-            </div>
           </div>
         </div>
       </section>

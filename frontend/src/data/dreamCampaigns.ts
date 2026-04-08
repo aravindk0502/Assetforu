@@ -2,6 +2,13 @@ export interface CampaignInfo {
     id: string;
     title: string;
     location: string;
+    city: string;
+    state: string;
+    country: string;
+    priceLabel: string;
+    contactPhone: string;
+    whatsappNumber: string;
+    mapUrl?: string;
     imageUrl: string;
     images?: string[];
     description: string;
@@ -13,6 +20,13 @@ export const campaigns: CampaignInfo[] = [
         id: 'dxb-1',
         title: 'Ocean View Land Parcel',
         location: 'Goa, India',
+        city: 'Panaji',
+        state: 'Goa',
+        country: 'India',
+        priceLabel: '₹48 Lakhs',
+        contactPhone: '+91 90000 00001',
+        whatsappNumber: '919000000001',
+        mapUrl: 'https://maps.google.com/?q=Goa%2C%20India',
         imageUrl: 'https://images.unsplash.com/photo-1499346030926-9a72daac6c63?w=1200',
         images: [
             'https://images.unsplash.com/photo-1499346030926-9a72daac6c63?w=1200',
@@ -28,6 +42,13 @@ export const campaigns: CampaignInfo[] = [
         id: 'dxb-2',
         title: 'Heritage Orchard Land',
         location: 'Maharashtra, India',
+        city: 'Nashik',
+        state: 'Maharashtra',
+        country: 'India',
+        priceLabel: '₹32 Lakhs',
+        contactPhone: '+91 90000 00002',
+        whatsappNumber: '919000000002',
+        mapUrl: 'https://maps.google.com/?q=Nashik%2C%20Maharashtra%2C%20India',
         imageUrl: 'https://images.unsplash.com/photo-1535914254981-b5012eebbd15?w=1200',
         images: [
             'https://images.unsplash.com/photo-1535914254981-b5012eebbd15?w=1200',
@@ -43,6 +64,13 @@ export const campaigns: CampaignInfo[] = [
         id: 'dxb-3',
         title: 'Emerging City Plot',
         location: 'Hyderabad, India',
+        city: 'Hyderabad',
+        state: 'Telangana',
+        country: 'India',
+        priceLabel: '₹28 Lakhs',
+        contactPhone: '+91 90000 00003',
+        whatsappNumber: '919000000003',
+        mapUrl: 'https://maps.google.com/?q=Hyderabad%2C%20Telangana%2C%20India',
         imageUrl: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=1200',
         images: [
             'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=1200',

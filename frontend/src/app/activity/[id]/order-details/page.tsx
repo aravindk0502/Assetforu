@@ -12,14 +12,20 @@ function OrderDetailsContent() {
     const params = useParams();
     const searchParams = useSearchParams();
     const user = useAuthStore((state) => state.user);
-    const { activity } = useUIStore();
+    const { activity, transactions } = useUIStore();
 
     const id = Array.isArray(params?.id) ? params.id[0] : params?.id;
     const orderNo = searchParams.get('orderNo') || '';
 
-    const order = useMemo(() => {
-        return activity.find((item) => item.id === id && typeof item.ticketNumber !== 'number');
+    const activityOrder = useMemo(() => {
+        if (!id) return null;
+        return activity.find((item) => item.id === id && typeof item.ticketNumber !== 'number') || null;
     }, [id, activity]);
+
+    const transaction = useMemo(() => {
+        if (!id) return null;
+        return (transactions as any[]).find((t) => t.id === id || t.reference_id === id) || null;
+    }, [id, transactions]);
 
     if (!user) {
         return (
@@ -30,7 +36,7 @@ function OrderDetailsContent() {
         );
     }
 
-    if (!order) {
+    if (!activityOrder && !transaction) {
         return (
             <div className="mx-auto max-w-4xl px-6 py-20 text-center">
                 <p className="text-xl font-semibold text-slate-700">Order not found</p>
@@ -38,6 +44,14 @@ function OrderDetailsContent() {
             </div>
         );
     }
+
+    const createdAtRaw = activityOrder?.createdAt || transaction?.createdAt;
+    const createdAt = createdAtRaw ? new Date(createdAtRaw) : null;
+    const title = activityOrder?.campaignName || transaction?.description || 'Order';
+    const credits = typeof activityOrder?.creditsUsed === 'number'
+        ? activityOrder.creditsUsed
+        : Number(transaction?.credits ?? 0);
+    const status = activityOrder?.status || 'Completed';
 
     return (
         <div className="page-enter mx-auto max-w-4xl px-6 py-10">
@@ -57,11 +71,11 @@ function OrderDetailsContent() {
                     <div className="grid gap-6 md:grid-cols-2">
                         <div>
                             <p className="text-xs uppercase tracking-[0.25em] text-slate-500 mb-2">Order Number</p>
-                            <p className="text-2xl font-black text-slate-900">{orderNo}</p>
+                            <p className="text-2xl font-black text-slate-900">{orderNo || id}</p>
                         </div>
                         <div>
                             <p className="text-xs uppercase tracking-[0.25em] text-slate-500 mb-2">Order Date</p>
-                            <p className="text-lg font-semibold text-slate-900">{new Date(order.createdAt).toLocaleDateString()}</p>
+                            <p className="text-lg font-semibold text-slate-900">{createdAt ? createdAt.toLocaleDateString() : '-'}</p>
                         </div>
                     </div>
                 </div>
@@ -71,18 +85,20 @@ function OrderDetailsContent() {
                     <div className="space-y-4">
                         <div className="flex items-center justify-between pb-4 border-b border-slate-200">
                             <div>
-                                <p className="font-semibold text-slate-900">{order.campaignName}</p>
-                                <p className="text-sm text-slate-500 mt-1">Order Time: {new Date(order.createdAt).toLocaleTimeString()}</p>
+                                <p className="font-semibold text-slate-900">{title}</p>
+                                {createdAt && (
+                                    <p className="text-sm text-slate-500 mt-1">Order Time: {createdAt.toLocaleTimeString()}</p>
+                                )}
                             </div>
                         </div>
                         <div className="flex items-center justify-between pt-2">
-                            <p className="text-slate-600">Credits Used</p>
-                            <p className="text-xl font-black text-slate-900">₹{order.creditsUsed}</p>
+                            <p className="text-slate-600">{transaction?.type === 'debit' ? 'Credits Debited' : 'Credits'}</p>
+                            <p className="text-xl font-black text-slate-900">₹{credits}</p>
                         </div>
                         <div className="flex items-center justify-between">
                             <p className="text-slate-600">Status</p>
                             <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-sm font-semibold text-emerald-700">
-                                {order.status}
+                                {status}
                             </span>
                         </div>
                     </div>

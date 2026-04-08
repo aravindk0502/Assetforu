@@ -30,7 +30,14 @@ export default function CampaignsPage() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         {campaigns.map((campaign) => (
-          <article key={campaign.id} className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden hover:shadow-lg transition">
+          <article
+            key={campaign.id}
+            role="button"
+            tabIndex={0}
+            onClick={() => router.push(`/campaigns/${campaign.id}`)}
+            onKeyDown={(e) => e.key === 'Enter' && router.push(`/campaigns/${campaign.id}`)}
+            className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden hover:shadow-lg transition cursor-pointer"
+          >
             <div className="relative">
               <img src={campaign.imageUrl} alt={campaign.title} className="h-44 w-full object-cover" />
               <AdsBadge />
@@ -41,7 +48,7 @@ export default function CampaignsPage() {
               <p className="mt-3 text-sm text-slate-600">{campaign.description}</p>
               <p className="mt-4 text-sm text-slate-500">{formatCurrency(campaign.creditPack, currency)} Asset Credits pack</p>
               <button
-                onClick={() => handleBuy(campaign.id)}
+                onClick={(e) => { e.stopPropagation(); handleBuy(campaign.id); }}
                 className="mt-5 w-full rounded-xl bg-primary-700 text-white py-3 font-semibold hover:bg-primary-800 transition"
               >
                 Buy {formatCurrency(campaign.creditPack, currency)} Credits & Enter a free Land Gifting Campaign
