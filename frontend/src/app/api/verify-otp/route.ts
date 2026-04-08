@@ -69,13 +69,18 @@ export async function POST(req: Request) {
     const jwtSecret = process.env.JWT_SECRET || apiKey || 'dev-secret';
     const last10 = (local10 || mobile).replace(/\D/g, '').slice(-10);
 
-    // Dev OTP fallback (explicit opt-in)
+    // Dev OTP fallback
     if (!apiKey) {
-      if (!devOtpEnabled) return Response.json({ success: false, message: 'MSG91 is not configured' }, { status: 500 });
-
       const allow = parsePhones(process.env.DEV_AUTH_PHONES || process.env.ADMIN_PHONES);
-      if (!allow.size || !allow.has(last10)) {
-        return Response.json({ success: false, message: 'OTP is temporarily unavailable for this number' }, { status: 403 });
+      const adminAllow = parsePhones(process.env.ADMIN_PHONES);
+      const isAllowed = allow.size > 0 && allow.has(last10);
+      const isAdminAllowed = adminAllow.size > 0 && adminAllow.has(last10);
+      // Require explicit opt-in (DEV_OTP_ENABLED) unless it's an admin allowlisted number.
+      if (!devOtpEnabled && !isAdminAllowed) {
+        return Response.json({ success: false, message: 'MSG91 is not configured' }, { status: 500 });
+      }
+      if (!isAllowed && !isAdminAllowed) {
+        return Response.json({ success: false, message: 'MSG91 is not configured' }, { status: 500 });
       }
 
       const expected = process.env.DEV_OTP_CODE || '123456';

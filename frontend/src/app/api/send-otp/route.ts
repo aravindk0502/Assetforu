@@ -35,20 +35,30 @@ export async function POST(req: Request) {
     const templateId = process.env.MSG91_TEMPLATE_ID;
     const devOtpEnabled = envTrue(process.env.DEV_OTP_ENABLED);
     if (!apiKey || !templateId) {
-      if (!devOtpEnabled) {
-        return Response.json({ success: false, message: 'MSG91 is not configured' }, { status: 500 });
-      }
-
-      // Dev fallback (only allowlisted phones)
+      // Dev fallback (only allowlisted phones). For admin numbers, allow even if DEV_OTP_ENABLED is not set.
       const allow = parsePhones(process.env.DEV_AUTH_PHONES || process.env.ADMIN_PHONES);
       const last10 = (local10 || mobile).replace(/\D/g, '').slice(-10);
       if (!allow.size || !allow.has(last10)) {
-        return Response.json({ success: false, message: 'OTP is temporarily unavailable for this number' }, { status: 403 });
+        return Response.json(
+          { success: false, message: 'MSG91 is not configured' },
+          { status: 500 }
+        );
+      }
+
+      if (!devOtpEnabled) {
+        // If DEV_OTP_ENABLED is off, only allow when the phone is explicitly in ADMIN_PHONES.
+        const adminAllow = parsePhones(process.env.ADMIN_PHONES);
+        if (!adminAllow.has(last10)) {
+          return Response.json(
+            { success: false, message: 'MSG91 is not configured' },
+            { status: 500 }
+          );
+        }
       }
 
       return Response.json({
         success: true,
-        message: 'DEV OTP enabled',
+        message: 'DEV OTP enabled (admin fallback)',
       });
     }
 
