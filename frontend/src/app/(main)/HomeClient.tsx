@@ -248,11 +248,11 @@ export default function HomePage() {
                   {/* Carousel/Image Section */}
                   <div className="relative h-48 md:h-64 bg-slate-200 overflow-hidden">
                     {campaign.images && campaign.images.length > 0 ? (
-                      <CampaignImageCarousel images={campaign.images} title={campaign.title} showAds={(campaign as any).isAd ?? false} />
+                      <CampaignImageCarousel images={campaign.images} title={campaign.title} showAds />
                     ) : (
                       <>
                         <img src={campaign.imageUrl} alt={campaign.title} className="w-full h-full object-cover" />
-                        <AdsBadge show={(campaign as any).isAd ?? false} />
+                        <AdsBadge show />
                       </>
                     )}
                     {/* Campaign Tag */}

@@ -119,7 +119,7 @@ export default function AdminAdsPage() {
       description: '',
       placement: 'home_carousel',
       href: '',
-      cta_label: '',
+      cta_label: 'See Properties',
       priority: '0',
       is_active: true,
       start_time: '',
@@ -143,7 +143,7 @@ export default function AdminAdsPage() {
       description: ad.description || '',
       placement: ad.placement || 'home_carousel',
       href: ad.href || '',
-      cta_label: ad.cta_label || '',
+      cta_label: ad.cta_label || 'See Properties',
       priority: String(ad.priority ?? 0),
       is_active: Boolean(ad.is_active),
       start_time: toDateTimeLocal(ad.start_time ?? null),
@@ -185,6 +185,7 @@ export default function AdminAdsPage() {
 
   const handleSave = async () => {
     setError('');
+    if (uploading) return setError('Please wait for image upload to complete.');
     if (!form.title.trim()) return setError('Title is required');
     if (!imageUrls.length) return setError('Add at least 1 image (up to 5)');
 
@@ -348,7 +349,7 @@ export default function AdminAdsPage() {
                   <input
                     value={form.cta_label}
                     onChange={(e) => setForm((f) => ({ ...f, cta_label: e.target.value }))}
-                    placeholder="Learn more"
+                    placeholder="See Properties"
                     className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none"
                   />
                 </div>
@@ -409,8 +410,13 @@ export default function AdminAdsPage() {
               <button onClick={() => setShowForm(false)} className="flex-1 py-2.5 rounded-xl border border-slate-700 text-slate-300 text-sm font-semibold hover:bg-slate-800 transition-colors">
                 Cancel
               </button>
-              <button onClick={handleSave} disabled={saving} className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary-700 text-white text-sm font-bold hover:bg-primary-600 transition-colors">
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null} {editAd ? 'Save Changes' : 'Create Ad'}
+              <button
+                onClick={handleSave}
+                disabled={saving || uploading}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary-700 text-white text-sm font-bold hover:bg-primary-600 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {saving || uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}{' '}
+                {uploading ? 'Uploading…' : editAd ? 'Save Changes' : 'Create Ad'}
               </button>
             </div>
           </div>
@@ -494,4 +500,3 @@ export default function AdminAdsPage() {
     </div>
   );
 }
-

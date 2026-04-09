@@ -83,9 +83,16 @@ export default function LandPropertiesCarousel() {
     }, []);
 
     const goToCampaign = (s: (typeof slides)[number]) => {
-        if (s.isAd && s.href) {
-            if (s.href.startsWith('/')) router.push(s.href);
-            else window.open(s.href, '_blank', 'noopener,noreferrer');
+        // Ads/placements are independent of campaigns. Never route ads to `/land-listings/:id`,
+        // otherwise users hit "Property Not Found" (ad ids aren't campaign ids).
+        if (s.isAd) {
+            const href = (s.href || '').trim();
+            if (href) {
+                if (href.startsWith('/')) router.push(href);
+                else window.open(href, '_blank', 'noopener,noreferrer');
+            } else {
+                router.push('/campaigns');
+            }
             return;
         }
         router.push(`/land-listings/${s.id}`);

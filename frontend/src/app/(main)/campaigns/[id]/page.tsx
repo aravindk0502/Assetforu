@@ -243,12 +243,12 @@ export default function CampaignDetailPage() {
           <div className="relative">
             {effective.images.length > 1 ? (
               <div className="w-full h-80 rounded-2xl overflow-hidden border border-slate-200">
-                <CampaignImageCarousel images={effective.images} title={effective.title} showAds={effective.isAd} />
+                <CampaignImageCarousel images={effective.images} title={effective.title} showAds />
               </div>
             ) : (
               <>
                 <img src={effective.imageUrl} alt={effective.title} className="w-full h-80 rounded-2xl object-cover border border-slate-200" />
-                <AdsBadge show={effective.isAd} />
+                <AdsBadge show />
               </>
             )}
           </div>
