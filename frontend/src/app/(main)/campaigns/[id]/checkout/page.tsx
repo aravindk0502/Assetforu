@@ -4,10 +4,12 @@ import { Suspense } from 'react';
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
 import { useAuthStore, useUIStore } from '@/store';
-import { campaigns } from '@/data/dreamCampaigns';
+import { campaigns, type CampaignInfo } from '@/data/dreamCampaigns';
 import { campaignAPI } from '@/lib/api';
 import { formatCurrency } from '@/lib/currency';
 import BackNavigation from '@/components/BackNavigation';
+import { parseCampaignMeta } from '@/lib/campaignMeta';
+import { parseCampaignImages } from '@/lib/campaignImages';
 
 function CampaignCheckoutContent() {
     const router = useRouter();
@@ -25,10 +27,98 @@ function CampaignCheckoutContent() {
     const [cardExpiry, setCardExpiry] = useState('');
     const [cardCvv, setCardCvv] = useState('');
 
-    const campaign = campaigns.find((item) => item.id === params?.id);
+    const campaignId = (params?.id as string) || '';
+    const [campaign, setCampaign] = useState<CampaignInfo | null>(() => campaigns.find((item) => item.id === campaignId) || null);
+    const [isBlobCampaign, setIsBlobCampaign] = useState(false);
+    const [maxQty, setMaxQty] = useState(3);
     const qty = Number(searchParams.get('qty') || '1');
     const currentQty = Number.isNaN(qty) || qty < 1 ? 1 : Math.min(10, qty);
     const totalCredits = campaign ? campaign.creditPack * currentQty : 0;
+
+    useEffect(() => {
+        if (!campaignId) return;
+        let cancelled = false;
+
+        const local = campaigns.find((item) => item.id === campaignId) || null;
+        if (local) {
+            setCampaign(local);
+            setIsBlobCampaign(false);
+            setMaxQty(3);
+        }
+
+        const load = async () => {
+            try {
+                // Prefer blob-backed campaign (admin-created) first.
+                const res = await fetch(`/api/public/campaigns/${campaignId}`, { cache: 'no-store' });
+                const json = (await res.json().catch(() => ({}))) as any;
+                const row = (res.ok && json?.success && json?.data) ? json.data : null;
+                if (!row) throw new Error('not-found');
+
+                const meta = parseCampaignMeta(row.description, row.image_urls || row.image_url);
+                const images = meta.images.length ? meta.images : parseCampaignImages(row.image_urls || row.image_url);
+                const imageUrl = images[0] || 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200';
+
+                const mapped: CampaignInfo = {
+                    id: row.id,
+                    title: row.title,
+                    location: row.location || 'India',
+                    city: meta.land?.city || row.location || 'India',
+                    state: meta.land?.state || 'India',
+                    country: meta.land?.country || 'India',
+                    priceLabel: meta.land?.priceLabel || '—',
+                    contactPhone: meta.land?.contactPhone || '+91 90000 00000',
+                    whatsappNumber: meta.land?.whatsappNumber || '919000000000',
+                    mapUrl: meta.land?.mapUrl,
+                    imageUrl,
+                    images,
+                    description: meta.text || row.description,
+                    creditPack: Number(row.credit_price || 0),
+                };
+
+                if (cancelled) return;
+                setCampaign(mapped);
+                setIsBlobCampaign(true);
+                setMaxQty(Number.isFinite(meta.maxQty as any) ? Number(meta.maxQty) : 3);
+            } catch {
+                // Fallback to backend API (legacy)
+                try {
+                    const res = await campaignAPI.get(campaignId);
+                    const row = res?.data?.data;
+                    if (!row) return;
+
+                    const meta = parseCampaignMeta(row.description, row.image_urls || row.image_url);
+                    const images = meta.images.length ? meta.images : parseCampaignImages(row.image_urls || row.image_url);
+                    const imageUrl = images[0] || 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200';
+                    const mapped: CampaignInfo = {
+                        id: row.id,
+                        title: row.title,
+                        location: row.location || 'India',
+                        city: meta.land?.city || row.location || 'India',
+                        state: meta.land?.state || 'India',
+                        country: meta.land?.country || 'India',
+                        priceLabel: meta.land?.priceLabel || '—',
+                        contactPhone: meta.land?.contactPhone || '+91 90000 00000',
+                        whatsappNumber: meta.land?.whatsappNumber || '919000000000',
+                        mapUrl: meta.land?.mapUrl,
+                        imageUrl,
+                        images,
+                        description: meta.text || row.description,
+                        creditPack: Number(row.credit_price || 0),
+                    };
+                    if (cancelled) return;
+                    setCampaign(mapped);
+                    setIsBlobCampaign(false);
+                    setMaxQty(Number.isFinite(meta.maxQty as any) ? Number(meta.maxQty) : 3);
+                } catch {
+                    // ignore
+                }
+            }
+        };
+
+        // Only load remote if not found in static list.
+        if (!local) void load();
+        return () => { cancelled = true; };
+    }, [campaignId]);
 
     useEffect(() => {
         if (!campaign) return;
@@ -49,27 +139,43 @@ function CampaignCheckoutContent() {
                     }
                     return;
                 }
+                if (isBlobCampaign) {
+                    const key = `af_campaign_purchases_${user?.id || user?.phone || 'user'}`;
+                    const raw = localStorage.getItem(key);
+                    const map = raw ? JSON.parse(raw) as Record<string, number> : {};
+                    const purchased = map[campaign.id] || 0;
+                    const remaining = Math.max(0, maxQty - purchased);
+                    setRemainingLimit(remaining);
+                    if (remaining <= 0) {
+                        setLimitMessage('Maximum participation limit reached for this campaign');
+                    } else if (remaining < maxQty) {
+                        setLimitMessage(`You can access up to ${remaining} more for this campaign`);
+                    } else {
+                        setLimitMessage('');
+                    }
+                    return;
+                }
                 const res = await campaignAPI.limit(campaign.id);
-                const remaining = Number(res.data?.data?.remaining_limit ?? 3);
+                const remaining = Number(res.data?.data?.remaining_limit ?? maxQty);
                 setRemainingLimit(remaining);
                 if (remaining <= 0) {
                     setLimitMessage('Maximum participation limit reached for this campaign');
-                } else if (remaining < 3) {
+                } else if (remaining < maxQty) {
                     setLimitMessage(`You can access up to ${remaining} more for this campaign`);
                 } else {
                     setLimitMessage('');
                 }
             } catch {
-                setRemainingLimit(3);
+                setRemainingLimit(maxQty);
                 setLimitMessage('');
             }
         };
         if (token || user) loadLimit();
-        else setRemainingLimit(3);
+        else setRemainingLimit(maxQty);
         const onPurchase = () => loadLimit();
         window.addEventListener('campaign:purchase', onPurchase);
         return () => window.removeEventListener('campaign:purchase', onPurchase);
-    }, [campaign, token, user, isDevUser, router]);
+    }, [campaign, token, user, isDevUser, router, isBlobCampaign, maxQty]);
 
     if (!campaign) {
         return <div className="mx-auto max-w-4xl px-6 py-16 text-center">Campaign not found.</div>;
@@ -89,26 +195,31 @@ function CampaignCheckoutContent() {
 
         let allocatedTickets: number[] = [];
         try {
-            if (!user.id?.startsWith('dev_')) {
+            if (!user.id?.startsWith('dev_') && !isBlobCampaign) {
                 const res = await campaignAPI.participate(campaign.id, currentQty);
                 allocatedTickets = res?.data?.data?.allocated_tickets || [];
             } else {
-                const raw = localStorage.getItem('af_dev_campaign_purchases');
+                const purchaseKey = user.id?.startsWith('dev_')
+                    ? 'af_dev_campaign_purchases'
+                    : `af_campaign_purchases_${user?.id || user?.phone || 'user'}`;
+
+                const raw = localStorage.getItem(purchaseKey);
                 const map = raw ? JSON.parse(raw) as Record<string, number> : {};
-                const soldRaw = localStorage.getItem('af_dev_campaign_sold');
+                const soldKey = user.id?.startsWith('dev_') ? 'af_dev_campaign_sold' : 'af_campaign_sold';
+                const soldRaw = localStorage.getItem(soldKey);
                 const soldMap = soldRaw ? JSON.parse(soldRaw) as Record<string, number> : {};
                 const alreadySold = soldMap[campaign.id] || 0;
                 allocatedTickets = Array.from({ length: currentQty }, (_, i) => alreadySold + i + 1);
                 const nextPurchased = (map[campaign.id] || 0) + currentQty;
                 map[campaign.id] = nextPurchased;
-                localStorage.setItem('af_dev_campaign_purchases', JSON.stringify(map));
+                localStorage.setItem(purchaseKey, JSON.stringify(map));
                 soldMap[campaign.id] = alreadySold + currentQty;
-                localStorage.setItem('af_dev_campaign_sold', JSON.stringify(soldMap));
-                const remaining = Math.max(0, 3 - nextPurchased);
+                localStorage.setItem(soldKey, JSON.stringify(soldMap));
+                const remaining = Math.max(0, (user.id?.startsWith('dev_') ? 3 : maxQty) - nextPurchased);
                 setRemainingLimit(remaining);
                 if (remaining <= 0) {
                     setLimitMessage('Maximum participation limit reached for this campaign');
-                } else if (remaining < 3) {
+                } else if (remaining < (user.id?.startsWith('dev_') ? 3 : maxQty)) {
                     setLimitMessage(`You can access up to ${remaining} more for this campaign`);
                 } else {
                     setLimitMessage('');

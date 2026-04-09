@@ -1,11 +1,15 @@
 'use client';
 
 import { Suspense } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
 import { useUIStore } from '@/store';
-import { campaigns } from '@/data/dreamCampaigns';
+import { campaigns, type CampaignInfo } from '@/data/dreamCampaigns';
 import { formatCurrency } from '@/lib/currency';
 import BackNavigation from '@/components/BackNavigation';
+import { campaignAPI } from '@/lib/api';
+import { parseCampaignMeta } from '@/lib/campaignMeta';
+import { parseCampaignImages } from '@/lib/campaignImages';
 
 function CampaignSuccessContent() {
     const router = useRouter();
@@ -13,7 +17,8 @@ function CampaignSuccessContent() {
     const searchParams = useSearchParams();
     const { walletBalance, currency } = useUIStore();
 
-    const campaign = campaigns.find((item) => item.id === params?.id);
+    const campaignId = (params?.id as string) || '';
+    const [campaign, setCampaign] = useState<CampaignInfo | null>(() => campaigns.find((item) => item.id === campaignId) || null);
     const qty = Number(searchParams.get('qty') || '1');
     const currentQty = Number.isNaN(qty) || qty < 1 ? 1 : Math.min(10, qty);
     const ticketsRaw = searchParams.get('tickets') || '';
@@ -21,6 +26,76 @@ function CampaignSuccessContent() {
         .split(',')
         .map((t) => Number(t))
         .filter((t) => !Number.isNaN(t) && t > 0);
+
+    useEffect(() => {
+        if (!campaignId) return;
+        const local = campaigns.find((item) => item.id === campaignId) || null;
+        if (local) {
+            setCampaign(local);
+            return;
+        }
+        let cancelled = false;
+        const load = async () => {
+            try {
+                const res = await fetch(`/api/public/campaigns/${campaignId}`, { cache: 'no-store' });
+                const json = (await res.json().catch(() => ({}))) as any;
+                const row = (res.ok && json?.success && json?.data) ? json.data : null;
+                if (!row) throw new Error('not-found');
+                const meta = parseCampaignMeta(row.description, row.image_urls || row.image_url);
+                const images = meta.images.length ? meta.images : parseCampaignImages(row.image_urls || row.image_url);
+                const imageUrl = images[0] || 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200';
+                const mapped: CampaignInfo = {
+                    id: row.id,
+                    title: row.title,
+                    location: row.location || 'India',
+                    city: meta.land?.city || row.location || 'India',
+                    state: meta.land?.state || 'India',
+                    country: meta.land?.country || 'India',
+                    priceLabel: meta.land?.priceLabel || '—',
+                    contactPhone: meta.land?.contactPhone || '+91 90000 00000',
+                    whatsappNumber: meta.land?.whatsappNumber || '919000000000',
+                    mapUrl: meta.land?.mapUrl,
+                    imageUrl,
+                    images,
+                    description: meta.text || row.description,
+                    creditPack: Number(row.credit_price || 0),
+                };
+                if (cancelled) return;
+                setCampaign(mapped);
+            } catch {
+                try {
+                    const res = await campaignAPI.get(campaignId);
+                    const row = res?.data?.data;
+                    if (!row) return;
+                    const meta = parseCampaignMeta(row.description, row.image_urls || row.image_url);
+                    const images = meta.images.length ? meta.images : parseCampaignImages(row.image_urls || row.image_url);
+                    const imageUrl = images[0] || 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200';
+                    const mapped: CampaignInfo = {
+                        id: row.id,
+                        title: row.title,
+                        location: row.location || 'India',
+                        city: meta.land?.city || row.location || 'India',
+                        state: meta.land?.state || 'India',
+                        country: meta.land?.country || 'India',
+                        priceLabel: meta.land?.priceLabel || '—',
+                        contactPhone: meta.land?.contactPhone || '+91 90000 00000',
+                        whatsappNumber: meta.land?.whatsappNumber || '919000000000',
+                        mapUrl: meta.land?.mapUrl,
+                        imageUrl,
+                        images,
+                        description: meta.text || row.description,
+                        creditPack: Number(row.credit_price || 0),
+                    };
+                    if (cancelled) return;
+                    setCampaign(mapped);
+                } catch {
+                    // ignore
+                }
+            }
+        };
+        void load();
+        return () => { cancelled = true; };
+    }, [campaignId]);
 
     if (!campaign) {
         return <div className="mx-auto max-w-4xl px-6 py-16 text-center">Campaign not found.</div>;
