@@ -18,6 +18,9 @@ function deriveStatus(c: any) {
       : status === 'close'
         ? 'closed'
         : 'active';
+  const filled = Number(c?.filled_slots);
+  const total = Number(c?.total_slots);
+  if (Number.isFinite(filled) && Number.isFinite(total) && total > 0 && filled >= total) return 'closed';
   const endRaw = c?.end_time;
   if (endRaw) {
     const value = String(endRaw ?? '').trim();

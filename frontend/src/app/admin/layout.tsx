@@ -30,7 +30,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     if (user.role !== 'admin') router.replace('/');
   }, [user, isLoaded, router]);
 
-  if (!user || user.role !== 'admin') return null;
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-200">
+        Loading admin panel…
+      </div>
+    );
+  }
+  if (!user || user.role !== 'admin') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-200">
+        Redirecting…
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex bg-slate-950">

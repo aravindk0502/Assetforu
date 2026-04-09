@@ -36,6 +36,9 @@ function parseFlexibleDate(raw: unknown): number | null {
 
 function deriveStatus(c: any) {
   const fromField = normalizeStatus(c?.status) || 'active';
+  const filled = Number(c?.filled_slots);
+  const total = Number(c?.total_slots);
+  if (Number.isFinite(filled) && Number.isFinite(total) && total > 0 && filled >= total) return 'closed';
   const endRaw = c?.end_time;
   if (endRaw) {
     const endMs = parseFlexibleDate(endRaw);

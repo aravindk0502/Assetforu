@@ -29,6 +29,11 @@ export default function CampaignDetailPage() {
     description: string;
     location: string;
     credit_price: number;
+    total_slots?: number;
+    filled_slots?: number;
+    status?: 'active' | 'upcoming' | 'closed';
+    max_qty?: number;
+    sold_out_announcement?: string;
     image_url?: string;
     image_urls?: string[];
   }>(null);
@@ -49,7 +54,8 @@ export default function CampaignDetailPage() {
     if (campaign) return undefined as number | undefined;
     if (!apiCampaignForRoute) return undefined;
     const meta = parseCampaignMeta(apiCampaignForRoute?.description, apiCampaignForRoute?.image_urls || apiCampaignForRoute?.image_url);
-    return meta.maxQty;
+    const fromField = Number.isFinite(Number((apiCampaignForRoute as any).max_qty)) ? Number((apiCampaignForRoute as any).max_qty) : undefined;
+    return fromField ?? meta.maxQty;
   }, [campaign, apiCampaignForRoute]);
 
   useEffect(() => {
@@ -200,6 +206,19 @@ export default function CampaignDetailPage() {
     : (() => {
       const meta = parseCampaignMeta(apiCampaignForRoute?.description, apiCampaignForRoute?.image_urls || apiCampaignForRoute?.image_url);
       const imageUrl = meta.images[0] || 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200';
+      const totalSlots = Number.isFinite(Number((apiCampaignForRoute as any)?.total_slots)) ? Number((apiCampaignForRoute as any).total_slots) : undefined;
+      const filledSlots = Number.isFinite(Number((apiCampaignForRoute as any)?.filled_slots)) ? Number((apiCampaignForRoute as any).filled_slots) : undefined;
+      const status = ((apiCampaignForRoute as any)?.status || 'active') as 'active' | 'upcoming' | 'closed';
+      const soldOut = Boolean(
+        status !== 'active' ||
+          (typeof totalSlots === 'number' &&
+            typeof filledSlots === 'number' &&
+            totalSlots > 0 &&
+            filledSlots >= totalSlots)
+      );
+      const soldOutAnnouncement =
+        String((apiCampaignForRoute as any)?.sold_out_announcement || '').trim() ||
+        'Campaign closed — will announce live event soon.';
       return {
         id: apiCampaignForRoute!.id,
         title: apiCampaignForRoute!.title,
@@ -217,6 +236,8 @@ export default function CampaignDetailPage() {
         priceLabel: meta.land?.priceLabel || '—',
         isAd: meta.isAd ?? false,
         rich: false as const,
+        soldOut,
+        soldOutAnnouncement,
       };
     })();
 
@@ -224,8 +245,10 @@ export default function CampaignDetailPage() {
   const adminCap = adminMaxQty ?? 10;
   const limitCap = remainingLimit === null ? adminCap : Math.min(adminCap, remainingLimit);
   const maxSelectable = Math.max(1, limitCap);
+  const isSoldOut = Boolean((effective as any).soldOut);
 
   const onProceed = () => {
+    if (isSoldOut) return;
     if (remainingLimit !== null && remainingLimit <= 0) return;
     // Cache the campaign payload so `/campaigns/:id/checkout` can recover even if APIs fail.
     // This avoids "Campaign not found" in environments where Blob/legacy API is temporarily unavailable.
@@ -343,10 +366,17 @@ export default function CampaignDetailPage() {
               <button
                 key={n}
                 onClick={() => setQuantity(n)}
+                disabled={isSoldOut}
                 className={`rounded-lg py-2 text-sm font-bold ${n === quantity ? 'bg-primary-700 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
               >{n}</button>
             ))}
           </div>
+
+          {isSoldOut && (
+            <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+              {(effective as any).soldOutAnnouncement}
+            </div>
+          )}
 
           {limitMessage && (
             <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
@@ -361,7 +391,7 @@ export default function CampaignDetailPage() {
 
           <button
             onClick={onProceed}
-            disabled={remainingLimit !== null && remainingLimit <= 0}
+            disabled={isSoldOut || (remainingLimit !== null && remainingLimit <= 0)}
             className="mt-5 w-full rounded-xl bg-primary-700 text-white py-3 font-bold hover:bg-primary-800 transition disabled:opacity-60"
           >
             Buy {formatCurrency(effective.creditPack, currency)} Credits & Enter a free Land Gifting Campaign
@@ -380,7 +410,7 @@ export default function CampaignDetailPage() {
           </div>
           <button
             onClick={onProceed}
-            disabled={remainingLimit !== null && remainingLimit <= 0}
+            disabled={isSoldOut || (remainingLimit !== null && remainingLimit <= 0)}
             className="rounded-full bg-primary-700 text-white px-8 py-3 text-sm font-bold hover:bg-primary-800 transition disabled:opacity-60"
           >
             Buy {formatCurrency(effective.creditPack, currency)} Credits

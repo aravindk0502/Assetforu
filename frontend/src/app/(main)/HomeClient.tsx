@@ -17,7 +17,14 @@ import { fetchSiteContent } from '@/lib/siteContent';
 const campaignTags = ['Just Launched', 'Closing Soon', 'Exclusive Series', 'Trending'];
 
 type HomeCampaign = CampaignInfo & { source?: 'static' | 'api' };
-type HomeCampaignWithFlags = HomeCampaign & { isAd?: boolean; maxQty?: number };
+type HomeCampaignWithFlags = HomeCampaign & {
+  isAd?: boolean;
+  maxQty?: number;
+  totalSlots?: number;
+  filledSlots?: number;
+  status?: 'active' | 'upcoming' | 'closed';
+  soldOutAnnouncement?: string;
+};
 
 export default function HomePage() {
   const router = useRouter();
@@ -27,15 +34,14 @@ export default function HomePage() {
   const { addToCart, items: cartItems } = useCartStore();
   const [limitMap, setLimitMap] = useState<Record<string, number>>({});
   const [openFaq, setOpenFaq] = useState<number | null>(0);
-  const [homeCampaigns, setHomeCampaigns] = useState<HomeCampaign[]>(
-    dreamCampaigns.map((c) => ({ ...c, source: 'static', isAd: false, maxQty: 3 } as any))
-  );
+  const [homeCampaigns, setHomeCampaigns] = useState<HomeCampaign[]>([]);
+  const [campaignsLoaded, setCampaignsLoaded] = useState(false);
   const [siteHero, setSiteHero] = useState<any | null>(null);
   const [activeCampaignCount, setActiveCampaignCount] = useState<number | null>(null);
   const activeCountLabel =
     activeCampaignCount != null
       ? activeCampaignCount
-      : homeCampaigns.some((c) => c.source === 'api')
+      : campaignsLoaded
         ? homeCampaigns.length
         : 0;
 
@@ -78,11 +84,20 @@ export default function HomePage() {
           description: string;
           location: string;
           credit_price: number;
+          total_slots?: number;
+          filled_slots?: number;
+          status?: 'active' | 'upcoming' | 'closed';
+          max_qty?: number;
+          sold_out_announcement?: string;
           image_url?: string;
           image_urls?: string[];
         }>;
         setActiveCampaignCount(rows.length);
-        if (!rows.length) return;
+        if (!rows.length) {
+          // No API campaigns available: fallback to static list (avoid flashing before API resolves).
+          setHomeCampaigns(dreamCampaigns.map((c) => ({ ...c, source: 'static', isAd: false, maxQty: 3 } as any)));
+          return;
+        }
 
         const visible = rows.slice(0, 3);
 
@@ -106,12 +121,19 @@ export default function HomePage() {
             creditPack: Number(r.credit_price || 0),
             source: 'api',
             isAd: meta.isAd ?? false,
-            maxQty: meta.maxQty ?? 3,
+            maxQty: (Number.isFinite(Number((r as any).max_qty)) ? Number((r as any).max_qty) : undefined) ?? (meta.maxQty ?? 3),
+            totalSlots: Number.isFinite(Number((r as any).total_slots)) ? Number((r as any).total_slots) : undefined,
+            filledSlots: Number.isFinite(Number((r as any).filled_slots)) ? Number((r as any).filled_slots) : undefined,
+            status: (r.status as any) || 'active',
+            soldOutAnnouncement: String((r as any).sold_out_announcement || '').trim() || undefined,
           };
         });
         setHomeCampaigns(mapped as any);
       } catch {
-        // ignore, keep static campaigns
+        // ignore, fallback to static campaigns
+        setHomeCampaigns(dreamCampaigns.map((c) => ({ ...c, source: 'static', isAd: false, maxQty: 3 } as any)));
+      } finally {
+        setCampaignsLoaded(true);
       }
     };
     load();
@@ -247,7 +269,26 @@ export default function HomePage() {
           </div>
 
           <div className="space-y-5">
-            {homeCampaigns.slice(0, 3).map((campaign, idx) => (
+            {!homeCampaigns.length && !campaignsLoaded ? (
+              <div className="rounded-3xl bg-white border border-slate-200 shadow-sm p-6 text-slate-500 text-sm">
+                Loading campaigns…
+              </div>
+            ) : (
+              homeCampaigns.slice(0, 3).map((campaign, idx) => {
+                const c = campaign as any as HomeCampaignWithFlags;
+                const isSoldOut =
+                  !c.isAd &&
+                  ((c.status && c.status !== 'active') ||
+                    (typeof c.totalSlots === 'number' &&
+                      typeof c.filledSlots === 'number' &&
+                      c.totalSlots > 0 &&
+                      c.filledSlots >= c.totalSlots));
+                const announcement =
+                  c.soldOutAnnouncement || 'Campaign closed — will announce live event soon.';
+                const limitReached = limitMap[campaign.id] === 0;
+                const disableActions = isSoldOut || limitReached;
+
+                return (
               <div
                 key={campaign.id}
                 role="button"
@@ -284,14 +325,16 @@ export default function HomePage() {
                       <div>
                         <p className="text-xs text-slate-400">Entry Pack</p>
                         <p className="text-lg font-black text-slate-900">{formatCurrency(campaign.creditPack, currency)} Credits</p>
-                        {typeof limitMap[campaign.id] === 'number' && limitMap[campaign.id] > 0 && (
+                        {!isSoldOut && typeof limitMap[campaign.id] === 'number' && limitMap[campaign.id] > 0 && (
                           <p className="text-xs text-emerald-600 mt-1">
                             You can access up to {limitMap[campaign.id]} more
                           </p>
                         )}
-                        {limitMap[campaign.id] === 0 && (
+                        {isSoldOut ? (
+                          <p className="text-xs text-rose-600 mt-1">{announcement}</p>
+                        ) : limitReached ? (
                           <p className="text-xs text-rose-600 mt-1">Limit reached for this campaign</p>
-                        )}
+                        ) : null}
                       </div>
                       <div className="flex gap-2">
                         <button
@@ -323,10 +366,12 @@ export default function HomePage() {
                         </button>
                         <button
                           onClick={(e) => { e.stopPropagation(); handleBuy(campaign.id); }}
-                          disabled={limitMap[campaign.id] === 0}
+                          disabled={disableActions}
                           className="rounded-xl bg-primary-700 text-white px-4 py-2 text-sm font-bold disabled:opacity-60"
                         >
-                          {limitMap[campaign.id] === 0
+                          {isSoldOut
+                            ? 'Campaign Closed'
+                            : limitReached
                             ? 'Limit Reached'
                             : `Buy ${formatCurrency(campaign.creditPack, currency)} Credits & Enter a free Land Gifting Campaign${limitMap[campaign.id] ? ` (${limitMap[campaign.id]} left)` : ''}`}
                         </button>
@@ -337,7 +382,7 @@ export default function HomePage() {
                               openSignupModal(() => goToCampaign(campaign.id));
                               return;
                             }
-                            if (limitMap[campaign.id] === 0) return;
+                            if (disableActions) return;
                             addToCart({
                               id: `${campaign.id}-camp`,
                               item_id: campaign.id,
@@ -351,7 +396,7 @@ export default function HomePage() {
                               subtotal: campaign.creditPack,
                             });
                           }}
-                          disabled={limitMap[campaign.id] === 0}
+                          disabled={disableActions}
                           className="rounded-xl border border-primary-700 text-primary-700 px-4 py-2 text-sm font-bold disabled:opacity-50"
                         >
                           Add to Cart
@@ -361,7 +406,9 @@ export default function HomePage() {
                   </div>
                 </div>
               </div>
-            ))}
+                );
+              })
+            )}
           </div>
         </div>
       </section>

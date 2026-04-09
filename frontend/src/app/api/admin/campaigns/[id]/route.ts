@@ -86,6 +86,18 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       next.status = status as any;
     }
 
+    if ((body as any).max_qty !== undefined) {
+      const raw = (body as any).max_qty;
+      const normalized =
+        raw === null || String(raw).trim() === '' ? undefined : Math.max(1, Math.min(50, Number(raw) || 1));
+      next.max_qty = normalized;
+    }
+
+    if ((body as any).sold_out_announcement !== undefined) {
+      const msg = normalizeString((body as any).sold_out_announcement);
+      next.sold_out_announcement = msg || undefined;
+    }
+
     if (Array.isArray((body as any).image_urls)) {
       next.image_urls = (body as any).image_urls.slice(0, 5);
     }
@@ -123,4 +135,3 @@ export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }
     return Response.json({ success: false, message: msg }, { status: 500 });
   }
 }
-

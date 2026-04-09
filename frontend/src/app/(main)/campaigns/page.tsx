@@ -16,7 +16,8 @@ export default function CampaignsPage() {
   const user = useAuthStore((state) => state.user);
   const { openSignupModal } = useUIStore();
   const currency = useUIStore((state) => state.currency);
-  const [list, setList] = useState<CampaignInfo[]>(dreamCampaigns);
+  const [list, setList] = useState<CampaignInfo[]>([]);
+  const [loaded, setLoaded] = useState(false);
 
   const handleBuy = (id: string) => {
     if (!user) {
@@ -46,7 +47,10 @@ export default function CampaignsPage() {
           image_url?: string;
           image_urls?: string[];
         }>;
-        if (!rows.length) return;
+        if (!rows.length) {
+          setList(dreamCampaigns);
+          return;
+        }
         const mapped: CampaignInfo[] = rows.map((r) => {
           const meta = parseCampaignMeta(r.description, r.image_urls || r.image_url);
           const imageUrl = meta.images[0] || 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200';
@@ -70,7 +74,9 @@ export default function CampaignsPage() {
         });
         setList(mapped);
       } catch {
-        // ignore
+        setList(dreamCampaigns);
+      } finally {
+        setLoaded(true);
       }
     };
     load();
@@ -83,7 +89,12 @@ export default function CampaignsPage() {
       <p className="text-slate-600 mb-8">Select a campaign and purchase Asset Credits to join automatically.</p>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        {list.map((campaign) => (
+        {!list.length && !loaded ? (
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 text-slate-500 text-sm">
+            Loading campaigns…
+          </div>
+        ) : (
+          list.map((campaign) => (
           <article
             key={campaign.id}
             role="button"
@@ -117,7 +128,8 @@ export default function CampaignsPage() {
               </button>
             </div>
           </article>
-        ))}
+          ))
+        )}
       </div>
     </div>
   );

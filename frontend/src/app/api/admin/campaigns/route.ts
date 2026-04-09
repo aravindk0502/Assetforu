@@ -63,6 +63,13 @@ export async function POST(req: Request) {
     const is_featured = Boolean((body as any).is_featured);
     const image_urls = Array.isArray((body as any).image_urls) ? (body as any).image_urls.slice(0, 5) : undefined;
     const status = normalizeStatus((body as any).status);
+    const max_qty_raw = (body as any).max_qty;
+    const max_qty =
+      max_qty_raw === undefined || max_qty_raw === null || String(max_qty_raw).trim() === ''
+        ? undefined
+        : Math.max(1, Math.min(50, Number(max_qty_raw) || 1));
+    const sold_out_announcement_raw = normalizeString((body as any).sold_out_announcement);
+    const sold_out_announcement = sold_out_announcement_raw ? sold_out_announcement_raw : undefined;
 
     const campaigns = await loadCampaigns();
     const id = crypto.randomUUID();
@@ -79,6 +86,8 @@ export async function POST(req: Request) {
       filled_slots: 0,
       status: status as any,
       end_time,
+      max_qty,
+      sold_out_announcement,
       badge,
       is_featured,
       created_at,

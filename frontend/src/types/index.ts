@@ -22,6 +22,8 @@ export interface Campaign {
   filled_slots: number;
   status: 'active' | 'closed' | 'upcoming';
   end_time: string | null;
+  max_qty?: number;
+  sold_out_announcement?: string;
   badge?: string;
   is_featured: boolean;
   created_at?: string;
