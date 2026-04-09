@@ -34,20 +34,24 @@ export default function LandPropertiesCarousel() {
                 const adsJson = (await adsRes.json().catch(() => ({}))) as { success?: boolean; data?: Array<any> };
                 const adsRows = adsRes.ok && adsJson?.success && Array.isArray(adsJson.data) ? adsJson.data : [];
                 if (adsRows.length) {
+                    // Treat each uploaded image as its own slide so multiple images are visible on live.
                     const adSlides = adsRows
                         .filter((a) => Array.isArray(a.images) && a.images.length)
-                        .map((a) => ({
-                            id: String(a.id),
-                            title: String(a.title || 'Sponsored'),
-                            location: 'Sponsored',
-                            description: String(a.description || ''),
-                            imageUrl: String(a.images?.[0] || ''),
-                            isAd: true,
-                            href: typeof a.href === 'string' ? a.href : undefined,
-                            ctaLabel: typeof a.cta_label === 'string' ? a.cta_label : undefined,
-                        }))
+                        .flatMap((a) => {
+                            const images = (a.images as any[]).filter((x) => typeof x === 'string' && x.trim());
+                            return images.map((img, idx) => ({
+                                id: `${String(a.id)}-${idx}`,
+                                title: String(a.title || 'Sponsored'),
+                                location: 'Sponsored',
+                                description: String(a.description || ''),
+                                imageUrl: String(img),
+                                isAd: true,
+                                href: typeof a.href === 'string' ? a.href : undefined,
+                                ctaLabel: typeof a.cta_label === 'string' ? a.cta_label : undefined,
+                            }));
+                        })
                         .filter((s) => Boolean(s.imageUrl))
-                        .slice(0, 6);
+                        .slice(0, 12);
                     if (adSlides.length) {
                         setSlides(adSlides);
                         setCurrentIndex(0);

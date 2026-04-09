@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store';
 import { useEffect } from 'react';
-import { Leaf, LayoutDashboard, Users, Megaphone, ShoppingBag, BarChart3, LogOut, ArrowLeft, Image as ImageIcon } from 'lucide-react';
+import { Leaf, LayoutDashboard, Users, Megaphone, ShoppingBag, BarChart3, LogOut, ArrowLeft, Image as ImageIcon, Settings } from 'lucide-react';
 import clsx from 'clsx';
 
 const ADMIN_NAV = [
@@ -12,6 +12,7 @@ const ADMIN_NAV = [
   { href: '/admin/campaigns', label: 'Campaigns', icon: Megaphone },
   { href: '/admin/store', label: 'Store Items', icon: ShoppingBag },
   { href: '/admin/ads', label: 'Ads/Placements', icon: ImageIcon },
+  { href: '/admin/site', label: 'Site Content', icon: Settings },
   { href: '/admin/transactions', label: 'Transactions', icon: BarChart3 },
 ];
 

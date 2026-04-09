@@ -94,3 +94,40 @@ export interface AdPlacementBanner {
   created_at?: string;
   updated_at?: string;
 }
+
+export type SiteNavLink = { label: string; href: string };
+
+export type SiteHeaderContent = {
+  brand_name?: string;
+  nav_links?: SiteNavLink[];
+  show_live?: boolean;
+  live_href?: string;
+  live_label?: string;
+};
+
+export type SiteHeroContent = {
+  heading?: string;
+  subheading?: string;
+  note?: string;
+  background_image_url?: string;
+  primary_cta_label?: string;
+  primary_cta_href?: string;
+  secondary_cta_label?: string;
+  secondary_cta_href?: string;
+};
+
+export type SiteFooterContent = {
+  brand_description?: string;
+  explore_links?: SiteNavLink[];
+  support_links?: SiteNavLink[];
+  legal_links?: SiteNavLink[];
+  disclaimer_lines?: string[];
+  social_links?: Array<{ label: string; href: string }>;
+};
+
+export type SiteContent = {
+  header?: SiteHeaderContent;
+  hero?: SiteHeroContent;
+  footer?: SiteFooterContent;
+  updated_at?: string;
+};

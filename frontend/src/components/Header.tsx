@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore, useCartStore, useUIStore } from '@/store';
 import { formatCurrency } from '@/lib/currency';
 import { Leaf, Wallet, LogOut, UserCircle, Activity, ShoppingCart, Bell, Heart } from 'lucide-react';
+import { fetchSiteContent } from '@/lib/siteContent';
 
 export function Header() {
     const router = useRouter();
@@ -21,11 +22,18 @@ export function Header() {
     const [notificationsOpen, setNotificationsOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
     const [hasStoredToken, setHasStoredToken] = useState(false);
+    const [siteHeader, setSiteHeader] = useState<any | null>(null);
 
     const isAuthed = !!user || !!token || hasStoredToken;
 
     useEffect(() => {
         setMounted(true);
+    }, []);
+
+    useEffect(() => {
+        fetchSiteContent()
+            .then((c) => setSiteHeader(c?.header || null))
+            .catch(() => setSiteHeader(null));
     }, []);
 
     useEffect(() => {
@@ -70,23 +78,41 @@ export function Header() {
                         <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary-700 flex items-center justify-center">
                             <Leaf className="w-4 sm:w-5 h-4 sm:h-5 text-white" />
                         </div>
-                        <span className="font-extrabold text-base sm:text-lg tracking-tight text-slate-900 hidden xs:block">AssetForU</span>
+                        <span className="font-extrabold text-base sm:text-lg tracking-tight text-slate-900 hidden xs:block">
+                            {siteHeader?.brand_name || 'AssetForU'}
+                        </span>
                     </Link>
 
                     {/* Desktop Navigation */}
                     <nav className="hidden lg:flex items-center space-x-6 text-sm font-semibold flex-1 mx-12">
-                        <Link href="/" className="text-slate-700 hover:text-primary-700 transition-colors">Home</Link>
-                        <Link href="/campaigns" className="text-slate-700 hover:text-primary-700 transition-colors">Campaigns</Link>
-                        <Link href="/store" className="text-slate-700 hover:text-primary-700 transition-colors">Asset Store</Link>
-                        <Link href="/activity" className="text-slate-700 hover:text-primary-700 transition-colors">Activity</Link>
-                        <Link href="/wallet" className="text-slate-700 hover:text-primary-700 transition-colors">Wallet</Link>
-                        <a href="https://youtube.com/live" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-red-500 hover:bg-red-600 text-white transition-all font-bold text-xs">
-                            <span className="relative flex h-2 w-2">
-                                <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-red-400"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                            </span>
-                            LIVE
-                        </a>
+                        {(Array.isArray(siteHeader?.nav_links) && siteHeader.nav_links.length
+                            ? siteHeader.nav_links
+                            : [
+                                { label: 'Home', href: '/' },
+                                { label: 'Campaigns', href: '/campaigns' },
+                                { label: 'Asset Store', href: '/store' },
+                                { label: 'Activity', href: '/activity' },
+                                { label: 'Wallet', href: '/wallet' },
+                              ]).map((l: any) => (
+                            <Link key={`${l.label}-${l.href}`} href={String(l.href)} className="text-slate-700 hover:text-primary-700 transition-colors">
+                                {String(l.label)}
+                            </Link>
+                        ))}
+
+                        {(siteHeader?.show_live ?? true) && (
+                            <a
+                                href={siteHeader?.live_href || 'https://youtube.com/live'}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-red-500 hover:bg-red-600 text-white transition-all font-bold text-xs"
+                            >
+                                <span className="relative flex h-2 w-2">
+                                    <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-red-400"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                                </span>
+                                {siteHeader?.live_label || 'LIVE'}
+                            </a>
+                        )}
                     </nav>
 
                     {/* Right Side - Responsive */}

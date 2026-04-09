@@ -12,6 +12,7 @@ import LandPropertiesCarousel from '@/components/LandPropertiesCarousel';
 import { CampaignImageCarousel } from '@/components/CampaignImageCarousel';
 import { AdsBadge } from '@/components/AdsBadge';
 import { parseCampaignMeta } from '@/lib/campaignMeta';
+import { fetchSiteContent } from '@/lib/siteContent';
 
 const campaignTags = ['Just Launched', 'Closing Soon', 'Exclusive Series', 'Trending'];
 
@@ -29,6 +30,7 @@ export default function HomePage() {
   const [homeCampaigns, setHomeCampaigns] = useState<HomeCampaign[]>(
     dreamCampaigns.map((c) => ({ ...c, source: 'static', isAd: false, maxQty: 3 } as any))
   );
+  const [siteHero, setSiteHero] = useState<any | null>(null);
   const [activeCampaignCount, setActiveCampaignCount] = useState<number | null>(null);
   const activeCountLabel =
     activeCampaignCount != null
@@ -116,6 +118,12 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
+    fetchSiteContent()
+      .then((c) => setSiteHero(c?.hero || null))
+      .catch(() => setSiteHero(null));
+  }, []);
+
+  useEffect(() => {
     const loadLimits = async () => {
       if (!token && !user) return;
       if (isDevUser) {
@@ -181,7 +189,7 @@ export default function HomePage() {
       <section className="relative overflow-hidden">
         <div className="absolute inset-0">
           <img
-            src="https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=1600&q=80&auto=format&fit=crop"
+            src={siteHero?.background_image_url || "https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=1600&q=80&auto=format&fit=crop"}
             alt="City skyline"
             className="h-full w-full object-cover brightness-[0.85]"
           />
@@ -191,12 +199,16 @@ export default function HomePage() {
         <div className="relative z-10 mx-auto max-w-7xl px-6 lg:px-10 py-24 md:py-28">
           <div className="max-w-3xl text-white">
             <p className="text-xs uppercase tracking-[0.35em] text-emerald-200/80 mb-4">Digital Platform Experience</p>
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight tracking-tight">Explore Premium Land Opportunities with Asset Credits</h1>
-            <p className="mt-6 max-w-2xl text-base sm:text-lg text-slate-100/85 leading-8">Access curated land campaigns, view property details, and enter complimentary benefits when you purchase Asset Credits.</p>
-            <p className="mt-6 text-sm text-slate-200/70 max-w-xl">Campaign-related benefits are complimentary platform features and not the primary purpose of credit purchase.</p>
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight tracking-tight">{siteHero?.heading || 'Explore Premium Land Opportunities with Asset Credits'}</h1>
+            <p className="mt-6 max-w-2xl text-base sm:text-lg text-slate-100/85 leading-8">{siteHero?.subheading || 'Access curated land campaigns, view property details, and enter complimentary benefits when you purchase Asset Credits.'}</p>
+            <p className="mt-6 text-sm text-slate-200/70 max-w-xl">{siteHero?.note || 'Campaign-related benefits are complimentary platform features and not the primary purpose of credit purchase.'}</p>
             <div className="mt-10 flex flex-wrap items-center gap-4">
-              <button onClick={() => router.push('/campaigns')} className="rounded-full bg-emerald-300 text-slate-950 px-6 py-3 text-sm font-semibold shadow-xl shadow-emerald-500/20 transition hover:bg-emerald-200">Get Started</button>
-              <button onClick={() => router.push('/store')} className="rounded-full border border-emerald-200/75 text-white px-6 py-3 text-sm font-semibold transition hover:bg-white/10">Explore Store</button>
+              <button onClick={() => router.push(siteHero?.primary_cta_href || '/campaigns')} className="rounded-full bg-emerald-300 text-slate-950 px-6 py-3 text-sm font-semibold shadow-xl shadow-emerald-500/20 transition hover:bg-emerald-200">
+                {siteHero?.primary_cta_label || 'Get Started'}
+              </button>
+              <button onClick={() => router.push(siteHero?.secondary_cta_href || '/store')} className="rounded-full border border-emerald-200/75 text-white px-6 py-3 text-sm font-semibold transition hover:bg-white/10">
+                {siteHero?.secondary_cta_label || 'Explore Store'}
+              </button>
             </div>
           </div>
           <div className="mt-14 grid gap-4 md:grid-cols-3">
