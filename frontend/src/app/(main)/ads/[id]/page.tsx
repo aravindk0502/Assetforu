@@ -47,118 +47,106 @@ export default async function AdDetailsPage({ params }: { params: Promise<{ id: 
   const whatsapp = property.whatsapp ? cleanPhone(property.whatsapp) : '';
   const mapUrl = property.map_url || '';
 
-  const ctaLabel = (ad.cta_label || '').trim() || 'See Properties';
-  const href = (ad.href || '').trim();
-
   return (
     <div className="page-enter mx-auto max-w-6xl px-6 py-10">
       <BackNavigation />
 
-      <div className="grid gap-8 lg:grid-cols-2">
-        <div>
-          <div className="relative">
-            {images.length > 1 ? (
-              <div className="w-full h-80 rounded-2xl overflow-hidden border border-slate-200">
-                <CampaignImageCarousel images={images} title={title} showAds />
+      <div className="mx-auto max-w-5xl">
+        <div className="relative">
+          {images.length > 1 ? (
+            <div className="w-full h-80 rounded-2xl overflow-hidden border border-slate-200">
+              <CampaignImageCarousel images={images} title={title} showAds />
+            </div>
+          ) : (
+            <>
+              <img
+                src={images[0] || 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200'}
+                alt={title}
+                className="w-full h-80 rounded-2xl object-cover border border-slate-200"
+              />
+              <AdsBadge show />
+            </>
+          )}
+        </div>
+
+        <p className="mt-6 text-xs uppercase tracking-[0.25em] text-slate-500 font-bold">Sponsored Property</p>
+        <h1 className="mt-2 text-3xl font-black text-slate-900">{title}</h1>
+        <p className="mt-2 text-sm text-slate-600 flex items-center gap-2">
+          <MapPin className="w-4 h-4 text-slate-500" />
+          {locationLabel}
+        </p>
+        {description && <p className="mt-4 text-slate-600">{description}</p>}
+
+        <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6">
+          <h2 className="text-lg font-black text-slate-900 mb-4">Land Details</h2>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl bg-slate-50 border border-slate-200 p-4">
+              <p className="text-xs uppercase tracking-widest text-slate-500 font-bold mb-1">Location</p>
+              <p className="text-sm font-semibold text-slate-900">{locationLabel}</p>
+            </div>
+            <div className="rounded-xl bg-slate-50 border border-slate-200 p-4">
+              <p className="text-xs uppercase tracking-widest text-slate-500 font-bold mb-1">Price</p>
+              <p className="text-sm font-semibold text-slate-900">{priceLabel}</p>
+            </div>
+
+            {(sqft || typeLabel) && (
+              <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 sm:col-span-2">
+                <div className="flex flex-wrap gap-3 items-center text-sm text-slate-800 font-semibold">
+                  {typeLabel && (
+                    <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-emerald-800">
+                      {typeLabel}
+                    </span>
+                  )}
+                  {sqft && (
+                    <span className="inline-flex items-center gap-2 text-slate-700">
+                      <Ruler className="w-4 h-4" /> {sqft}
+                    </span>
+                  )}
+                </div>
               </div>
-            ) : (
-              <>
-                <img
-                  src={images[0] || 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200'}
-                  alt={title}
-                  className="w-full h-80 rounded-2xl object-cover border border-slate-200"
-                />
-                <AdsBadge show />
-              </>
+            )}
+
+            {callPhone && (
+              <div className="rounded-xl bg-slate-50 border border-slate-200 p-4">
+                <p className="text-xs uppercase tracking-widest text-slate-500 font-bold mb-1">Phone</p>
+                <p className="text-sm font-semibold text-slate-900">{callPhone}</p>
+              </div>
+            )}
+            {whatsapp && (
+              <div className="rounded-xl bg-slate-50 border border-slate-200 p-4">
+                <p className="text-xs uppercase tracking-widest text-slate-500 font-bold mb-1">WhatsApp</p>
+                <p className="text-sm font-semibold text-slate-900">{whatsapp}</p>
+              </div>
             )}
           </div>
 
-          <h1 className="mt-6 text-3xl font-black text-slate-900">{title}</h1>
-          <p className="mt-2 text-sm text-slate-600 flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-slate-500" />
-            {locationLabel}
-          </p>
-          {description && <p className="mt-4 text-slate-600">{description}</p>}
-
-          <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6">
-            <h2 className="text-lg font-black text-slate-900 mb-4">Land Details</h2>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-xl bg-slate-50 border border-slate-200 p-4">
-                <p className="text-xs uppercase tracking-widest text-slate-500 font-bold mb-1">Location</p>
-                <p className="text-sm font-semibold text-slate-900">{locationLabel}</p>
-              </div>
-              <div className="rounded-xl bg-slate-50 border border-slate-200 p-4">
-                <p className="text-xs uppercase tracking-widest text-slate-500 font-bold mb-1">Price</p>
-                <p className="text-sm font-semibold text-slate-900">{priceLabel}</p>
-              </div>
-              {(sqft || typeLabel) && (
-                <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 sm:col-span-2">
-                  <div className="flex flex-wrap gap-3 items-center text-sm text-slate-800 font-semibold">
-                    {typeLabel && <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-emerald-800">{typeLabel}</span>}
-                    {sqft && (
-                      <span className="inline-flex items-center gap-2 text-slate-700">
-                        <Ruler className="w-4 h-4" /> {sqft}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="mt-5 flex flex-wrap gap-3">
-              {callPhone && (
-                <a
-                  href={`tel:${encodeURIComponent(callPhone)}`}
-                  className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-900 hover:bg-slate-50 inline-flex items-center gap-2"
-                >
-                  <Phone className="w-4 h-4" /> Call
-                </a>
-              )}
-              {whatsapp && (
-                <a
-                  href={`https://wa.me/${encodeURIComponent(whatsapp)}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 inline-flex items-center gap-2"
-                >
-                  <MessageCircle className="w-4 h-4" /> WhatsApp
-                </a>
-              )}
-              {mapUrl && (
-                <a
-                  href={mapUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-900 hover:bg-slate-50 inline-flex items-center gap-2"
-                >
-                  <MapPin className="w-4 h-4" /> View Map
-                </a>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-3xl border border-slate-200 bg-white p-8 h-fit">
-          <p className="text-xs uppercase tracking-[0.25em] text-slate-500 font-bold">Sponsored Placement</p>
-          <h2 className="mt-3 text-3xl font-black text-primary-800">{ctaLabel}</h2>
-          <p className="mt-3 text-slate-600">This listing is an advertisement placement and may not be part of campaign entry.</p>
-
-          <div className="mt-6">
-            {href ? (
+          <div className="mt-5 flex flex-wrap gap-3">
+            {callPhone && (
               <a
-                href={href}
-                target={href.startsWith('/') ? undefined : '_blank'}
-                rel={href.startsWith('/') ? undefined : 'noreferrer'}
-                className="w-full inline-flex justify-center rounded-xl bg-primary-700 text-white px-6 py-3 text-sm font-bold hover:bg-primary-800"
+                href={`tel:${encodeURIComponent(callPhone)}`}
+                className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-900 hover:bg-slate-50 inline-flex items-center gap-2"
               >
-                {ctaLabel}
+                <Phone className="w-4 h-4" /> Call
               </a>
-            ) : (
+            )}
+            {whatsapp && (
               <a
-                href="/campaigns"
-                className="w-full inline-flex justify-center rounded-xl bg-primary-700 text-white px-6 py-3 text-sm font-bold hover:bg-primary-800"
+                href={`https://wa.me/${encodeURIComponent(whatsapp)}`}
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 inline-flex items-center gap-2"
               >
-                Browse Campaigns
+                <MessageCircle className="w-4 h-4" /> WhatsApp
+              </a>
+            )}
+            {mapUrl && (
+              <a
+                href={mapUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-900 hover:bg-slate-50 inline-flex items-center gap-2"
+              >
+                <MapPin className="w-4 h-4" /> View Map
               </a>
             )}
           </div>
@@ -167,4 +155,3 @@ export default async function AdDetailsPage({ params }: { params: Promise<{ id: 
     </div>
   );
 }
-
