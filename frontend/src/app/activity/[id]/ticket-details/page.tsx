@@ -4,8 +4,11 @@ import { Suspense } from 'react';
 import { useAuthStore, useUIStore } from '@/store';
 import Link from 'next/link';
 import BackNavigation from '@/components/BackNavigation';
-import { useMemo } from 'react';
-import { campaigns } from '@/data/dreamCampaigns';
+import { useEffect, useMemo, useState } from 'react';
+import { campaigns, type CampaignInfo } from '@/data/dreamCampaigns';
+import { parseCampaignMeta } from '@/lib/campaignMeta';
+import { parseCampaignImages } from '@/lib/campaignImages';
+import { campaignAPI } from '@/lib/api';
 
 function TicketDetailsContent({ params }: { params: { id: string } }) {
     const { id } = params;
@@ -16,10 +19,104 @@ function TicketDetailsContent({ params }: { params: { id: string } }) {
         return activity.find((item) => item.id === id && typeof item.ticketNumber === 'number');
     }, [id, activity]);
 
-    const campaignDetails = useMemo(() => {
-        if (!ticketActivity) return null;
-        return campaigns.find((c) => c.id === ticketActivity.campaignId);
-    }, [ticketActivity]);
+    const [ticketActivityFallback, setTicketActivityFallback] = useState<any | null>(null);
+
+    useEffect(() => {
+        if (ticketActivity) {
+            setTicketActivityFallback(null);
+            return;
+        }
+        if (typeof window === 'undefined') return;
+        try {
+            const raw = localStorage.getItem('af_activity');
+            const parsed = raw ? (JSON.parse(raw) as any[]) : [];
+            const found = Array.isArray(parsed)
+                ? parsed.find((item) => item && item.id === id && typeof item.ticketNumber === 'number')
+                : null;
+            setTicketActivityFallback(found || null);
+        } catch {
+            setTicketActivityFallback(null);
+        }
+    }, [id, ticketActivity]);
+
+    const effectiveTicketActivity = (ticketActivity as any) || ticketActivityFallback;
+
+    const [campaignDetails, setCampaignDetails] = useState<CampaignInfo | null>(() => {
+        if (!effectiveTicketActivity) return null;
+        return campaigns.find((c) => c.id === effectiveTicketActivity.campaignId) || null;
+    });
+
+    useEffect(() => {
+        if (!effectiveTicketActivity?.campaignId) return;
+        const local = campaigns.find((c) => c.id === effectiveTicketActivity.campaignId) || null;
+        if (local) {
+            setCampaignDetails(local);
+            return;
+        }
+        let cancelled = false;
+        const load = async () => {
+            try {
+                const blobRes = await fetch(`/api/public/campaigns/${effectiveTicketActivity.campaignId}`, { cache: 'no-store' });
+                const blobJson = (await blobRes.json().catch(() => ({}))) as any;
+                const row = (blobRes.ok && blobJson?.success && blobJson?.data) ? blobJson.data : null;
+                if (!row) throw new Error('not-found');
+                const meta = parseCampaignMeta(row.description, row.image_urls || row.image_url);
+                const images = meta.images.length ? meta.images : parseCampaignImages(row.image_urls || row.image_url);
+                const imageUrl = images[0] || 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200';
+                const mapped: CampaignInfo = {
+                    id: row.id,
+                    title: row.title,
+                    location: row.location || 'India',
+                    city: meta.land?.city || row.location || 'India',
+                    state: meta.land?.state || 'India',
+                    country: meta.land?.country || 'India',
+                    priceLabel: meta.land?.priceLabel || '—',
+                    contactPhone: meta.land?.contactPhone || '+91 90000 00000',
+                    whatsappNumber: meta.land?.whatsappNumber || '919000000000',
+                    mapUrl: meta.land?.mapUrl,
+                    imageUrl,
+                    images,
+                    description: meta.text || row.description,
+                    creditPack: Number(row.credit_price || 0),
+                };
+                if (cancelled) return;
+                setCampaignDetails(mapped);
+                return;
+            } catch {
+                // ignore
+            }
+            try {
+                const res = await campaignAPI.get(effectiveTicketActivity.campaignId);
+                const row = res?.data?.data;
+                if (!row) return;
+                const meta = parseCampaignMeta(row.description, row.image_urls || row.image_url);
+                const images = meta.images.length ? meta.images : parseCampaignImages(row.image_urls || row.image_url);
+                const imageUrl = images[0] || 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200';
+                const mapped: CampaignInfo = {
+                    id: row.id,
+                    title: row.title,
+                    location: row.location || 'India',
+                    city: meta.land?.city || row.location || 'India',
+                    state: meta.land?.state || 'India',
+                    country: meta.land?.country || 'India',
+                    priceLabel: meta.land?.priceLabel || '—',
+                    contactPhone: meta.land?.contactPhone || '+91 90000 00000',
+                    whatsappNumber: meta.land?.whatsappNumber || '919000000000',
+                    mapUrl: meta.land?.mapUrl,
+                    imageUrl,
+                    images,
+                    description: meta.text || row.description,
+                    creditPack: Number(row.credit_price || 0),
+                };
+                if (cancelled) return;
+                setCampaignDetails(mapped);
+            } catch {
+                // ignore
+            }
+        };
+        void load();
+        return () => { cancelled = true; };
+    }, [effectiveTicketActivity?.campaignId]);
 
     if (!user) {
         return (
@@ -32,7 +129,7 @@ function TicketDetailsContent({ params }: { params: { id: string } }) {
         );
     }
 
-    if (!ticketActivity || !campaignDetails) {
+    if (!effectiveTicketActivity) {
         return (
             <div className="mx-auto max-w-4xl px-6 py-20 text-center">
                 <p className="text-xl font-semibold text-slate-700">Ticket not found</p>
@@ -43,7 +140,23 @@ function TicketDetailsContent({ params }: { params: { id: string } }) {
         );
     }
 
-    const purchaseDate = new Date(ticketActivity.createdAt);
+    const purchaseDate = new Date(effectiveTicketActivity.createdAt);
+    const fallbackCampaign: CampaignInfo = {
+        id: effectiveTicketActivity.campaignId,
+        title: effectiveTicketActivity.campaignName || 'Campaign',
+        location: 'India',
+        city: '',
+        state: '',
+        country: 'India',
+        priceLabel: '',
+        contactPhone: '',
+        whatsappNumber: '',
+        imageUrl: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200',
+        images: [],
+        description: '',
+        creditPack: 0,
+    };
+    const effectiveCampaign = campaignDetails || fallbackCampaign;
 
     return (
         <div className="page-enter mx-auto max-w-4xl px-6 py-10">
@@ -58,14 +171,14 @@ function TicketDetailsContent({ params }: { params: { id: string } }) {
                     <div className="grid md:grid-cols-2 gap-6">
                         <div>
                             <p className="text-xs uppercase tracking-widest text-primary-600 font-bold mb-2">Participation ID</p>
-                            <p className="text-4xl font-black text-slate-900">Ticket #{ticketActivity.ticketNumber}</p>
+                            <p className="text-4xl font-black text-slate-900">Ticket #{effectiveTicketActivity.ticketNumber}</p>
                             <p className="text-sm text-slate-600 mt-3">Unique identification for your participation</p>
                         </div>
                         <div>
                             <p className="text-xs uppercase tracking-widest text-slate-500 font-bold mb-2">Status</p>
                             <div className="flex items-center gap-2 mt-1">
                                 <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
-                                <p className="text-lg font-bold text-emerald-700">{ticketActivity.status}</p>
+                                <p className="text-lg font-bold text-emerald-700">{effectiveTicketActivity.status}</p>
                             </div>
                             <p className="text-sm text-slate-600 mt-3">Your participation is active and valid</p>
                         </div>
@@ -79,8 +192,8 @@ function TicketDetailsContent({ params }: { params: { id: string } }) {
                     <div className="grid md:grid-cols-2 gap-8">
                         <div>
                             <img
-                                src={campaignDetails.imageUrl}
-                                alt={campaignDetails.title}
+                                src={effectiveCampaign.imageUrl}
+                                alt={effectiveCampaign.title}
                                 className="rounded-2xl w-full h-64 object-cover"
                             />
                         </div>
@@ -88,22 +201,22 @@ function TicketDetailsContent({ params }: { params: { id: string } }) {
                         <div className="space-y-5">
                             <div>
                                 <p className="text-xs uppercase tracking-widest text-slate-500 font-bold mb-1">Campaign Name</p>
-                                <p className="text-2xl font-bold text-slate-900">{campaignDetails.title}</p>
+                                <p className="text-2xl font-bold text-slate-900">{effectiveCampaign.title}</p>
                             </div>
 
                             <div>
                                 <p className="text-xs uppercase tracking-widest text-slate-500 font-bold mb-1">Location</p>
-                                <p className="text-lg text-slate-700">{campaignDetails.location}</p>
+                                <p className="text-lg text-slate-700">{effectiveCampaign.location}</p>
                             </div>
 
                             <div>
                                 <p className="text-xs uppercase tracking-widest text-slate-500 font-bold mb-1">Description</p>
-                                <p className="text-slate-700">{campaignDetails.description}</p>
+                                <p className="text-slate-700">{effectiveCampaign.description || '—'}</p>
                             </div>
 
                             <div>
                                 <p className="text-xs uppercase tracking-widest text-slate-500 font-bold mb-1">Entry Investment</p>
-                                <p className="text-2xl font-black text-primary-700">₹{campaignDetails.creditPack} Credits</p>
+                                <p className="text-2xl font-black text-primary-700">₹{effectiveCampaign.creditPack} Credits</p>
                             </div>
                         </div>
                     </div>
@@ -122,7 +235,7 @@ function TicketDetailsContent({ params }: { params: { id: string } }) {
 
                         <div>
                             <p className="text-xs uppercase tracking-widest text-slate-500 font-bold mb-2">Credits Used</p>
-                            <p className="text-lg font-semibold text-slate-900">₹{campaignDetails.creditPack}</p>
+                            <p className="text-lg font-semibold text-slate-900">₹{effectiveCampaign.creditPack}</p>
                             <p className="text-sm text-slate-600">Deducted from wallet</p>
                         </div>
 
@@ -137,7 +250,7 @@ function TicketDetailsContent({ params }: { params: { id: string } }) {
                 {/* Summary */}
                 <div className="rounded-2xl bg-blue-50 border border-blue-200 p-6 mb-8">
                     <p className="text-sm text-blue-950">
-                        <span className="font-bold">Ticket #{ticketActivity.ticketNumber}</span> represents your confirmed participation in the <span className="font-bold">{campaignDetails.title}</span> campaign.
+                        <span className="font-bold">Ticket #{effectiveTicketActivity.ticketNumber}</span> represents your confirmed participation in the <span className="font-bold">{effectiveCampaign.title}</span> campaign.
                         Keep this ticket safe as it&apos;s your proof of participation. You can view this ticket anytime from your Activity page.
                     </p>
                 </div>

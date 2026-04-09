@@ -15,12 +15,14 @@ import { CampaignImageCarousel } from '@/components/CampaignImageCarousel';
 export default function CampaignDetailPage() {
   const router = useRouter();
   const params = useParams();
+  const routeId = String(params?.id || '');
   const user = useAuthStore((state) => state.user);
   const token = useAuthStore((state) => state.token);
   const { openSignupModal, currency } = useUIStore();
   const [quantity, setQuantity] = useState(1);
   const [remainingLimit, setRemainingLimit] = useState<number | null>(null);
   const [limitMessage, setLimitMessage] = useState('');
+  const [isBlobCampaign, setIsBlobCampaign] = useState(false);
   const [apiCampaign, setApiCampaign] = useState<null | {
     id: string;
     title: string;
@@ -33,89 +35,124 @@ export default function CampaignDetailPage() {
   const [apiLoading, setApiLoading] = useState(false);
   const isDevUser = !!user?.id?.startsWith('dev_');
 
-  const campaign = useMemo(() => campaigns.find((item) => item.id === params?.id), [params?.id]);
+  const campaign = useMemo(() => campaigns.find((item) => item.id === routeId), [routeId]);
+  const hasStaleApiCampaign = Boolean(apiCampaign && String(apiCampaign.id) !== routeId);
+  const apiCampaignForRoute = !hasStaleApiCampaign ? apiCampaign : null;
+
+  useEffect(() => {
+    // Avoid UI glitches when navigating between campaigns.
+    setQuantity(1);
+    setRemainingLimit(null);
+    setLimitMessage('');
+  }, [routeId]);
   const adminMaxQty = useMemo(() => {
     if (campaign) return undefined as number | undefined;
-    if (!apiCampaign) return undefined;
-    const meta = parseCampaignMeta(apiCampaign?.description, apiCampaign?.image_urls || apiCampaign?.image_url);
+    if (!apiCampaignForRoute) return undefined;
+    const meta = parseCampaignMeta(apiCampaignForRoute?.description, apiCampaignForRoute?.image_urls || apiCampaignForRoute?.image_url);
     return meta.maxQty;
-  }, [campaign, apiCampaign]);
+  }, [campaign, apiCampaignForRoute]);
 
   useEffect(() => {
     if (campaign) return;
-    const id = String(params?.id || '');
-    if (!id) return;
+    if (!routeId) return;
     setApiLoading(true);
+    setApiCampaign(null);
+    setIsBlobCampaign(false);
     (async () => {
       try {
-        const blobRes = await fetch(`/api/public/campaigns/${id}`, { cache: 'no-store' });
+        const blobRes = await fetch(`/api/public/campaigns/${routeId}`, { cache: 'no-store' });
         const blobJson = (await blobRes.json().catch(() => ({}))) as { success?: boolean; data?: unknown };
         if (blobRes.ok && blobJson?.success && blobJson.data) {
           setApiCampaign(blobJson.data as any);
+          setIsBlobCampaign(true);
           return;
         }
       } catch {
         // ignore
       }
       try {
-        const res = await campaignAPI.get(id);
+        const res = await campaignAPI.get(routeId);
         setApiCampaign(res.data?.data || null);
+        setIsBlobCampaign(false);
       } catch {
         setApiCampaign(null);
+        setIsBlobCampaign(false);
       }
     })()
       .catch(() => setApiCampaign(null))
       .finally(() => setApiLoading(false));
-  }, [campaign, params?.id]);
+  }, [campaign, routeId]);
 
   useEffect(() => {
-    const campaignId = campaign?.id || apiCampaign?.id;
+    const campaignId = campaign?.id || apiCampaignForRoute?.id;
     if (!campaignId) return;
     const loadLimit = async () => {
+      const cap = adminMaxQty ?? 3;
       if (isDevUser) {
         try {
           const raw = localStorage.getItem('af_dev_campaign_purchases');
           const map = raw ? JSON.parse(raw) as Record<string, number> : {};
           const purchased = map[campaignId] || 0;
-          const remaining = Math.max(0, 3 - purchased);
+          const remaining = Math.max(0, cap - purchased);
           setRemainingLimit(remaining);
           if (remaining <= 0) {
             setLimitMessage('Maximum participation limit reached for this campaign');
-          } else if (remaining < 3) {
+          } else if (remaining < cap) {
             setLimitMessage(`You can access up to ${remaining} more for this campaign`);
           } else {
             setLimitMessage('');
           }
         } catch {
-          setRemainingLimit(3);
+          setRemainingLimit(cap);
+          setLimitMessage('');
+        }
+        return;
+      }
+      if (isBlobCampaign) {
+        try {
+          const key = `af_campaign_purchases_${user?.id || user?.phone || 'user'}`;
+          const raw = localStorage.getItem(key);
+          const map = raw ? JSON.parse(raw) as Record<string, number> : {};
+          const purchased = map[campaignId] || 0;
+          const remaining = Math.max(0, cap - purchased);
+          setRemainingLimit(remaining);
+          if (remaining <= 0) {
+            setLimitMessage('Maximum participation limit reached for this campaign');
+          } else if (remaining < cap) {
+            setLimitMessage(`You can access up to ${remaining} more for this campaign`);
+          } else {
+            setLimitMessage('');
+          }
+        } catch {
+          setRemainingLimit(cap);
           setLimitMessage('');
         }
         return;
       }
       try {
         const res = await campaignAPI.limit(campaignId);
-        const remaining = Number(res.data?.data?.remaining_limit ?? 3);
+        const remaining = Number(res.data?.data?.remaining_limit ?? (adminMaxQty ?? 3));
         setRemainingLimit(remaining);
         if (remaining <= 0) {
           setLimitMessage('Maximum participation limit reached for this campaign');
-        } else if (remaining < 3) {
+        } else if (remaining < (adminMaxQty ?? 3)) {
           setLimitMessage(`You can access up to ${remaining} more for this campaign`);
         } else {
           setLimitMessage('');
         }
       } catch {
-        setRemainingLimit(3);
+        setRemainingLimit(cap);
         setLimitMessage('');
       }
     };
     if (token || user) loadLimit();
-    else setRemainingLimit(3);
+    else setRemainingLimit(adminMaxQty ?? 3);
     const onPurchase = () => loadLimit();
     window.addEventListener('campaign:purchase', onPurchase);
     return () => {
       window.removeEventListener('campaign:purchase', onPurchase);
     };
-  }, [campaign?.id, apiCampaign?.id, token, user, isDevUser]);
+  }, [campaign?.id, apiCampaignForRoute?.id, token, user, isDevUser, isBlobCampaign, adminMaxQty]);
 
   useEffect(() => {
     if (remainingLimit === null) return;
@@ -125,7 +162,7 @@ export default function CampaignDetailPage() {
     if (quantity > cap) setQuantity(cap);
   }, [remainingLimit, quantity]);
 
-  if (!campaign && apiLoading) {
+  if (!campaign && (apiLoading || hasStaleApiCampaign)) {
     return (
       <div className="mx-auto max-w-4xl px-6 py-16 text-center">
         <p className="text-slate-500">Loading campaign…</p>
@@ -133,7 +170,7 @@ export default function CampaignDetailPage() {
     );
   }
 
-  if (!campaign && !apiCampaign) {
+  if (!campaign && !apiCampaignForRoute) {
     return (
       <div className="mx-auto max-w-4xl px-6 py-16 text-center">
         <p className="text-slate-500">Campaign not found.</p>
@@ -157,28 +194,28 @@ export default function CampaignDetailPage() {
       state: campaign.state,
       country: campaign.country,
       priceLabel: campaign.priceLabel,
-      isAd: true,
+      isAd: false,
       rich: true as const,
     }
     : (() => {
-      const meta = parseCampaignMeta(apiCampaign?.description, apiCampaign?.image_urls || apiCampaign?.image_url);
+      const meta = parseCampaignMeta(apiCampaignForRoute?.description, apiCampaignForRoute?.image_urls || apiCampaignForRoute?.image_url);
       const imageUrl = meta.images[0] || 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200';
       return {
-        id: apiCampaign!.id,
-        title: apiCampaign!.title,
-        description: meta.text || apiCampaign!.description,
-        location: apiCampaign!.location || 'India',
+        id: apiCampaignForRoute!.id,
+        title: apiCampaignForRoute!.title,
+        description: meta.text || apiCampaignForRoute!.description,
+        location: apiCampaignForRoute!.location || 'India',
         images: meta.images,
         imageUrl,
-        creditPack: Number(apiCampaign!.credit_price || 0),
+        creditPack: Number(apiCampaignForRoute!.credit_price || 0),
         contactPhone: meta.land?.contactPhone || '',
         whatsappNumber: meta.land?.whatsappNumber || '',
         mapUrl: meta.land?.mapUrl,
-        city: meta.land?.city || apiCampaign!.location || 'India',
+        city: meta.land?.city || apiCampaignForRoute!.location || 'India',
         state: meta.land?.state || 'India',
         country: meta.land?.country || 'India',
         priceLabel: meta.land?.priceLabel || '—',
-        isAd: meta.isAd ?? true,
+        isAd: meta.isAd ?? false,
         rich: false as const,
       };
     })();

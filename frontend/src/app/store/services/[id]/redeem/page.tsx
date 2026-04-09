@@ -17,6 +17,7 @@ export default function ServiceRedeemPage() {
     const [message, setMessage] = useState('');
     const [showTopUp, setShowTopUp] = useState(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
+    const [redeemOrderId, setRedeemOrderId] = useState<string | null>(null);
     const [apiLoading, setApiLoading] = useState(false);
     const [apiService, setApiService] = useState<null | { id: string; name: string; credits: number; description: string; image: string; category: string }>(null);
 
@@ -79,10 +80,12 @@ export default function ServiceRedeemPage() {
 
     const handleConfirmRedeem = () => {
         setConfirmOpen(false);
+        const nextOrderId = redeemOrderId || `ORD-${Date.now().toString(36).toUpperCase()}${Math.random().toString(16).slice(2, 6).toUpperCase()}`;
+        setRedeemOrderId(nextOrderId);
         setWalletBalance(walletBalance - service.credits);
-        addTransaction({ type: 'debit', description: `Redeemed ${service.name} (service)`, credits: service.credits });
-        addActivity({ campaignId: service.id, campaignName: service.name, creditsUsed: service.credits, status: 'Active Campaign' });
-        router.push(`/store/services/${service.id}/redeem/success`);
+        addTransaction({ type: 'debit', description: `Redeemed ${service.name} (service)`, credits: service.credits, reference_id: nextOrderId });
+        addActivity({ id: nextOrderId, campaignId: service.id, campaignName: service.name, creditsUsed: service.credits, status: 'Completed' });
+        router.push(`/store/services/${service.id}/redeem/success?orderId=${encodeURIComponent(nextOrderId)}`);
     };
 
     return (

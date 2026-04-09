@@ -44,7 +44,7 @@ export default function AdminCampaignsPage() {
     status: 'active' as 'active' | 'upcoming' | 'closed',
   });
   const [maxQty, setMaxQty] = useState('3');
-  const [isAd, setIsAd] = useState(true);
+  const [isAd, setIsAd] = useState(false);
   const [descriptionText, setDescriptionText] = useState('');
   const [land, setLand] = useState<CampaignLandMeta>({
     city: '',
@@ -96,7 +96,7 @@ export default function AdminCampaignsPage() {
     setImageUrls([]);
     setImageUrlInput('');
     setMaxQty('3');
-    setIsAd(true);
+    setIsAd(false);
     setEditCampaign(null);
     setError('');
   };
@@ -132,7 +132,7 @@ export default function AdminCampaignsPage() {
     const imgs = meta.images.length ? meta.images : parseCampaignImages(c.image_urls || c.image_url);
     setImageUrls(imgs.slice(0, 5));
     setMaxQty(String(meta.maxQty ?? 3));
-    setIsAd(meta.isAd ?? true);
+    setIsAd(meta.isAd ?? false);
     setError('');
     setShowForm(true);
   };
@@ -169,7 +169,11 @@ export default function AdminCampaignsPage() {
         description,
         credit_price: parseFloat(form.credit_price),
         total_slots: parseInt(form.total_slots),
-        end_time: form.end_time ? new Date(form.end_time).toISOString() : null,
+        end_time: (() => {
+          if (!form.end_time) return null;
+          const d = new Date(form.end_time);
+          return Number.isNaN(d.getTime()) ? null : d.toISOString();
+        })(),
         image_url: imageUrls[0],
         image_urls: imageUrls,
       };

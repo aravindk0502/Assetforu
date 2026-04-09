@@ -41,6 +41,7 @@ export default function ProductRedeemPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [apiLoading, setApiLoading] = useState(false);
   const [apiProduct, setApiProduct] = useState<null | { id: string; name: string; credits: number; description: string; image: string }>(null);
+  const [redeemOrderId, setRedeemOrderId] = useState<string | null>(null);
 
   const id = Array.isArray(params?.id) ? params.id[0] : params?.id;
   const staticProduct = useMemo(() => productCatalog.find((item) => item.id === id), [id]);
@@ -101,15 +102,17 @@ export default function ProductRedeemPage() {
 
   const handleConfirmRedeem = () => {
     setConfirmOpen(false);
+    const nextOrderId = redeemOrderId || `ORD-${Date.now().toString(36).toUpperCase()}${Math.random().toString(16).slice(2, 6).toUpperCase()}`;
+    setRedeemOrderId(nextOrderId);
     localStorage.setItem('af_delivery_address', JSON.stringify(address));
     setWalletBalance(walletBalance - product.credits);
-    addTransaction({ type: 'debit', description: `Redeemed ${product.name} (product)`, credits: product.credits });
-    addActivity({ campaignId: product.id, campaignName: product.name, creditsUsed: product.credits, status: 'Active Campaign' });
+    addTransaction({ type: 'debit', description: `Redeemed ${product.name} (product)`, credits: product.credits, reference_id: nextOrderId });
+    addActivity({ id: nextOrderId, campaignId: product.id, campaignName: product.name, creditsUsed: product.credits, status: 'Completed' });
     const eta = new Date();
     const pin = address.pincode.trim();
     const days = pin.startsWith('6') ? 4 : pin ? 6 : 5;
     eta.setDate(eta.getDate() + days);
-    router.push(`/store/products/${product.id}/redeem/success?eta=${encodeURIComponent(eta.toISOString())}`);
+    router.push(`/store/products/${product.id}/redeem/success?eta=${encodeURIComponent(eta.toISOString())}&orderId=${encodeURIComponent(nextOrderId)}`);
   };
 
   return (

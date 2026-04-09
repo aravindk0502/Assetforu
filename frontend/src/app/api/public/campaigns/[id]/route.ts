@@ -12,8 +12,24 @@ function deriveStatus(c: any) {
         : 'active';
   const endRaw = c?.end_time;
   if (endRaw) {
-    const end = new Date(String(endRaw));
-    if (!Number.isNaN(end.getTime()) && Date.now() > end.getTime()) return 'closed';
+    const value = String(endRaw ?? '').trim();
+    const direct = new Date(value);
+    if (!Number.isNaN(direct.getTime()) && Date.now() > direct.getTime()) return 'closed';
+    const m = value.match(
+      /^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})(?:[,\s]+(\d{1,2}):(\d{2})(?:\s*(AM|PM))?)?$/i
+    );
+    if (m) {
+      const day = Number(m[1]);
+      const month = Number(m[2]);
+      const year = Number(m[3]);
+      let hour = Number(m[4] || '0');
+      const minute = Number(m[5] || '0');
+      const ampm = (m[6] || '').toUpperCase();
+      if (ampm === 'PM' && hour < 12) hour += 12;
+      if (ampm === 'AM' && hour === 12) hour = 0;
+      const parsed = new Date(year, month - 1, day, hour, minute, 0, 0);
+      if (!Number.isNaN(parsed.getTime()) && Date.now() > parsed.getTime()) return 'closed';
+    }
   }
   return normalized;
 }

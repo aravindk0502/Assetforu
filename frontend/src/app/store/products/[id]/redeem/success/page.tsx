@@ -16,6 +16,7 @@ function ProductRedeemSuccessContent() {
   const product = useMemo(() => productCatalog.find((item) => item.id === id), [id]);
 
   const etaRaw = searchParams.get('eta');
+  const orderId = searchParams.get('orderId') || '';
   const etaDate = etaRaw ? new Date(etaRaw) : null;
   const etaLabel = etaDate && !Number.isNaN(etaDate.getTime()) ? etaDate.toLocaleDateString() : 'within 5 business days';
 
@@ -37,6 +38,11 @@ function ProductRedeemSuccessContent() {
         <p className="mt-2 text-sm text-slate-600">
           Expected delivery: <strong>{etaLabel}</strong>
         </p>
+        {!!orderId && (
+          <p className="mt-2 text-sm text-slate-700">
+            Order ID: <strong>{orderId}</strong>
+          </p>
+        )}
 
         <div className="mt-6 flex items-center justify-center gap-4">
           <img src={product.image} alt={product.name} className="h-16 w-16 rounded-xl object-cover" />
@@ -47,6 +53,14 @@ function ProductRedeemSuccessContent() {
         </div>
 
         <div className="mt-6 flex flex-wrap justify-center gap-3">
+          {!!orderId && (
+            <button
+              onClick={() => router.push(`/activity/${encodeURIComponent(orderId)}/order-details?orderNo=${encodeURIComponent(orderId)}`)}
+              className="rounded-xl border border-slate-200 bg-white text-slate-900 px-5 py-2 text-sm font-bold hover:bg-slate-50"
+            >
+              View Order
+            </button>
+          )}
           <button
             onClick={() => router.push('/store')}
             className="rounded-xl bg-primary-700 text-white px-5 py-2 text-sm font-bold"

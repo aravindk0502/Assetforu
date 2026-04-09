@@ -3,7 +3,7 @@
 import { Suspense } from 'react';
 import { useAuthStore, useUIStore } from '@/store';
 import { useParams, useSearchParams } from 'next/navigation';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import BackNavigation from '@/components/BackNavigation';
@@ -22,10 +22,43 @@ function OrderDetailsContent() {
         return activity.find((item) => item.id === id && typeof item.ticketNumber !== 'number') || null;
     }, [id, activity]);
 
+    const [activityOrderFallback, setActivityOrderFallback] = useState<any | null>(null);
+    const [transactionFallback, setTransactionFallback] = useState<any | null>(null);
+
+    useEffect(() => {
+        if (!id) return;
+        if (activityOrder) {
+            setActivityOrderFallback(null);
+        } else if (typeof window !== 'undefined') {
+            try {
+                const raw = localStorage.getItem('af_activity');
+                const parsed = raw ? (JSON.parse(raw) as any[]) : [];
+                const found = Array.isArray(parsed) ? parsed.find((item) => item && item.id === id && typeof item.ticketNumber !== 'number') : null;
+                setActivityOrderFallback(found || null);
+            } catch {
+                setActivityOrderFallback(null);
+            }
+        }
+
+        if (typeof window !== 'undefined') {
+            try {
+                const rawTx = localStorage.getItem('af_transactions');
+                const parsedTx = rawTx ? (JSON.parse(rawTx) as any[]) : [];
+                const foundTx = Array.isArray(parsedTx) ? parsedTx.find((t) => t && (t.id === id || t.reference_id === id)) : null;
+                setTransactionFallback(foundTx || null);
+            } catch {
+                setTransactionFallback(null);
+            }
+        }
+    }, [id, activityOrder]);
+
     const transaction = useMemo(() => {
         if (!id) return null;
         return (transactions as any[]).find((t) => t.id === id || t.reference_id === id) || null;
     }, [id, transactions]);
+
+    const effectiveActivityOrder = activityOrder || activityOrderFallback;
+    const effectiveTransaction = transaction || transactionFallback;
 
     if (!user) {
         return (
@@ -36,7 +69,7 @@ function OrderDetailsContent() {
         );
     }
 
-    if (!activityOrder && !transaction) {
+    if (!effectiveActivityOrder && !effectiveTransaction) {
         return (
             <div className="mx-auto max-w-4xl px-6 py-20 text-center">
                 <p className="text-xl font-semibold text-slate-700">Order not found</p>
@@ -45,13 +78,13 @@ function OrderDetailsContent() {
         );
     }
 
-    const createdAtRaw = activityOrder?.createdAt || transaction?.createdAt;
+    const createdAtRaw = effectiveActivityOrder?.createdAt || effectiveTransaction?.createdAt;
     const createdAt = createdAtRaw ? new Date(createdAtRaw) : null;
-    const title = activityOrder?.campaignName || transaction?.description || 'Order';
-    const credits = typeof activityOrder?.creditsUsed === 'number'
-        ? activityOrder.creditsUsed
-        : Number(transaction?.credits ?? 0);
-    const status = activityOrder?.status || 'Completed';
+    const title = effectiveActivityOrder?.campaignName || effectiveTransaction?.description || 'Order';
+    const credits = typeof effectiveActivityOrder?.creditsUsed === 'number'
+        ? effectiveActivityOrder.creditsUsed
+        : Number(effectiveTransaction?.credits ?? 0);
+    const status = effectiveActivityOrder?.status || 'Completed';
 
     return (
         <div className="page-enter mx-auto max-w-4xl px-6 py-10">
@@ -92,7 +125,7 @@ function OrderDetailsContent() {
                             </div>
                         </div>
                         <div className="flex items-center justify-between pt-2">
-                            <p className="text-slate-600">{transaction?.type === 'debit' ? 'Credits Debited' : 'Credits'}</p>
+                            <p className="text-slate-600">{effectiveTransaction?.type === 'debit' ? 'Credits Debited' : 'Credits'}</p>
                             <p className="text-xl font-black text-slate-900">₹{credits}</p>
                         </div>
                         <div className="flex items-center justify-between">

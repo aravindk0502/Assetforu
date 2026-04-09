@@ -12,7 +12,7 @@ export default function LandPropertiesCarousel() {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [autoScroll, setAutoScroll] = useState(true);
     const [slides, setSlides] = useState<Array<{ id: string; title: string; location: string; description: string; imageUrl: string; isAd: boolean; href?: string; ctaLabel?: string }>>(
-        dreamCampaigns.map((c) => ({ id: c.id, title: c.title, location: c.location, description: c.description, imageUrl: c.imageUrl, isAd: true }))
+        dreamCampaigns.map((c) => ({ id: c.id, title: c.title, location: c.location, description: c.description, imageUrl: c.imageUrl, isAd: false }))
     );
 
     useEffect(() => {
@@ -68,7 +68,7 @@ export default function LandPropertiesCarousel() {
                         location: String(r.location || meta.land?.city || 'India'),
                         description: String(meta.text || r.description || ''),
                         imageUrl: String(meta.images?.[0] || r.image_url || dreamCampaigns[0]?.imageUrl),
-                        isAd: meta.isAd ?? true,
+                        isAd: meta.isAd ?? false,
                     };
                 });
                 if (base.length) {
@@ -134,7 +134,7 @@ export default function LandPropertiesCarousel() {
                             onClick={() => goToCampaign(current)}
                             className="rounded-full bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-3 font-bold transition transform hover:scale-105"
                         >
-                            {current.isAd ? (current.ctaLabel || 'Learn More →') : 'See More Properties →'}
+                            {current.isAd ? 'See Properties →' : 'See More Properties →'}
                         </button>
                     </div>
 
@@ -180,7 +180,7 @@ export default function LandPropertiesCarousel() {
                     {currentIndex + 1} / {slides.length}
                 </div>
 
-                <AdsBadge show={current?.isAd ?? true} />
+                <AdsBadge show={current?.isAd ?? false} />
             </div>
         </section>
     );

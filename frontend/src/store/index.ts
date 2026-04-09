@@ -83,6 +83,7 @@ interface Transaction {
   type: 'credit' | 'debit';
   description: string;
   credits: number;
+  reference_id?: string;
   createdAt: string;
 }
 
@@ -107,6 +108,7 @@ interface FavoriteItem {
 }
 
 type ActivityInput = Omit<ActivityEntry, 'id' | 'createdAt' | 'ticketNumber'> & {
+  id?: string;
   ticketCount?: number;
   ticketNumbers?: number[];
 };
@@ -234,10 +236,10 @@ export const useUIStore = create<UIState>((set, get) => ({
   activity: loadActivity(),
   addActivity: (a) => {
     const now = new Date().toISOString();
-    const { ticketCount, ticketNumbers, ...activityBase } = a;
+    const { id: forcedId, ticketCount, ticketNumbers, ...activityBase } = a;
     if (ticketNumbers && ticketNumbers.length > 0) {
       const newEntries: ActivityEntry[] = ticketNumbers.map((num) => ({
-        id: `${Date.now()}-${Math.random().toString(16).slice(2)}-${num}`,
+        id: forcedId ? `${forcedId}-${num}` : `${Date.now()}-${Math.random().toString(16).slice(2)}-${num}`,
         createdAt: now,
         ticketNumber: num,
         ...activityBase,
@@ -252,7 +254,7 @@ export const useUIStore = create<UIState>((set, get) => ({
       const start = loadTicketSequence(campaignId);
       const count = Math.max(1, Math.floor(ticketCount));
       const newEntries: ActivityEntry[] = Array.from({ length: count }, (_, idx) => ({
-        id: `${Date.now()}-${Math.random().toString(16).slice(2)}-${start + idx}`,
+        id: forcedId ? `${forcedId}-${start + idx}` : `${Date.now()}-${Math.random().toString(16).slice(2)}-${start + idx}`,
         createdAt: now,
         ticketNumber: start + idx,
         ...activityBase,
@@ -265,7 +267,7 @@ export const useUIStore = create<UIState>((set, get) => ({
     }
 
     const newActivity: ActivityEntry = {
-      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      id: forcedId || `${Date.now()}-${Math.random().toString(16).slice(2)}`,
       createdAt: now,
       ...activityBase,
     };

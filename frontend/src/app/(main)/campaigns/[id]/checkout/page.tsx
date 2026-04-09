@@ -128,11 +128,12 @@ function CampaignCheckoutContent() {
                     const raw = localStorage.getItem('af_dev_campaign_purchases');
                     const map = raw ? JSON.parse(raw) as Record<string, number> : {};
                     const purchased = map[campaign.id] || 0;
-                    const remaining = Math.max(0, 3 - purchased);
+                    const cap = Number.isFinite(Number(maxQty)) ? Number(maxQty) : 3;
+                    const remaining = Math.max(0, cap - purchased);
                     setRemainingLimit(remaining);
                     if (remaining <= 0) {
                         setLimitMessage('Maximum participation limit reached for this campaign');
-                    } else if (remaining < 3) {
+                    } else if (remaining < cap) {
                         setLimitMessage(`You can access up to ${remaining} more for this campaign`);
                     } else {
                         setLimitMessage('');
@@ -215,11 +216,12 @@ function CampaignCheckoutContent() {
                 localStorage.setItem(purchaseKey, JSON.stringify(map));
                 soldMap[campaign.id] = alreadySold + currentQty;
                 localStorage.setItem(soldKey, JSON.stringify(soldMap));
-                const remaining = Math.max(0, (user.id?.startsWith('dev_') ? 3 : maxQty) - nextPurchased);
+                const cap = Number.isFinite(Number(maxQty)) ? Number(maxQty) : 3;
+                const remaining = Math.max(0, cap - nextPurchased);
                 setRemainingLimit(remaining);
                 if (remaining <= 0) {
                     setLimitMessage('Maximum participation limit reached for this campaign');
-                } else if (remaining < (user.id?.startsWith('dev_') ? 3 : maxQty)) {
+                } else if (remaining < cap) {
                     setLimitMessage(`You can access up to ${remaining} more for this campaign`);
                 } else {
                     setLimitMessage('');

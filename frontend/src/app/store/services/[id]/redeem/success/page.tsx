@@ -1,13 +1,15 @@
 'use client';
 import { useMemo } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { servicesCatalog } from '@/data/storeCatalog';
 import { formatCurrency } from '@/lib/currency';
 
 export default function ServiceRedeemSuccessPage() {
     const params = useParams();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const id = Array.isArray(params?.id) ? params.id[0] : params?.id;
+    const orderId = searchParams.get('orderId') || '';
     const service = useMemo(
         () => servicesCatalog.find((item) => item.id === id),
         [id]
@@ -29,6 +31,11 @@ export default function ServiceRedeemSuccessPage() {
                 </div>
                 <h1 className="text-3xl font-black text-slate-900">Service Redeemed Successfully</h1>
                 <p className="mt-4 text-slate-600 max-w-2xl mx-auto">{service.name} has been redeemed using your Asset Credits.</p>
+                {!!orderId && (
+                    <p className="mt-2 text-sm text-slate-700">
+                        Order ID: <strong>{orderId}</strong>
+                    </p>
+                )}
                 <div className="mt-6 rounded-3xl bg-white border border-slate-200 p-6 text-left">
                     <p className="text-sm text-slate-500 uppercase tracking-[0.25em]">Redeemed Service</p>
                     <h2 className="mt-2 text-xl font-black text-slate-900">{service.name}</h2>
@@ -36,6 +43,15 @@ export default function ServiceRedeemSuccessPage() {
                     <p className="mt-4 text-sm text-slate-500">Credits redeemed: {formatCurrency(service.credits, 'INR')} ({service.credits} credits)</p>
                 </div>
                 <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+                    {!!orderId && (
+                        <button
+                            type="button"
+                            onClick={() => router.push(`/activity/${encodeURIComponent(orderId)}/order-details?orderNo=${encodeURIComponent(orderId)}`)}
+                            className="rounded-full border border-slate-200 bg-white text-slate-900 px-7 py-3 text-sm font-semibold hover:bg-slate-50"
+                        >
+                            View Order
+                        </button>
+                    )}
                     <button
                         type="button"
                         onClick={() => router.push('/store?tab=services')}

@@ -69,7 +69,9 @@ export default function ActivityPage() {
                     ) : (
                         visible.map((item) => {
                             const isTicket = typeof item.ticketNumber === 'number';
-                            const orderNumber = `ORD-${new Date(item.createdAt).getTime().toString().slice(-8)}`;
+                            const orderNumber = String(item.id || '').startsWith('ORD-')
+                                ? String(item.id)
+                                : `ORD-${new Date(item.createdAt).getTime().toString().slice(-8)}`;
                             return (
                                 <div key={item.id} className="rounded-xl border border-slate-200 bg-white p-4 grid grid-cols-1 md:grid-cols-3 gap-2 items-center">
                                     <div>
@@ -92,7 +94,7 @@ export default function ActivityPage() {
                                         {isTicket ? (
                                             <Link href={`/activity/${item.id}/ticket-details?ticketNo=Ticket #${item.ticketNumber}`} className="text-primary-700 font-semibold hover:underline">View Campaign</Link>
                                         ) : (
-                                            <Link href={`/activity/${item.id}/order-details?orderNo=${orderNumber}`} className="text-primary-700 font-semibold hover:underline">Order Details</Link>
+                                            <Link href={`/activity/${item.id}/order-details?orderNo=${encodeURIComponent(orderNumber)}`} className="text-primary-700 font-semibold hover:underline">Order Details</Link>
                                         )}
                                     </div>
                                 </div>
