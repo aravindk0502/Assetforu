@@ -16,6 +16,7 @@ import { parseCampaignMeta } from '@/lib/campaignMeta';
 const campaignTags = ['Just Launched', 'Closing Soon', 'Exclusive Series', 'Trending'];
 
 type HomeCampaign = CampaignInfo & { source?: 'static' | 'api' };
+type HomeCampaignWithFlags = HomeCampaign & { isAd?: boolean };
 
 export default function HomePage() {
   const router = useRouter();
@@ -26,7 +27,7 @@ export default function HomePage() {
   const [limitMap, setLimitMap] = useState<Record<string, number>>({});
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [homeCampaigns, setHomeCampaigns] = useState<HomeCampaign[]>(
-    dreamCampaigns.map((c) => ({ ...c, source: 'static' }))
+    dreamCampaigns.map((c) => ({ ...c, source: 'static', isAd: true } as any))
   );
   const [activeCampaignCount, setActiveCampaignCount] = useState<number | null>(null);
   const activeCountLabel =
@@ -80,7 +81,7 @@ export default function HomePage() {
 
         const visible = rows.slice(0, 3);
 
-        const mapped: HomeCampaign[] = visible.map((r) => {
+        const mapped: HomeCampaignWithFlags[] = visible.map((r) => {
           const meta = parseCampaignMeta(r.description, r.image_urls || r.image_url);
           const imageUrl = meta.images[0] || 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200';
           return {
@@ -99,9 +100,10 @@ export default function HomePage() {
             description: meta.text || r.description,
             creditPack: Number(r.credit_price || 0),
             source: 'api',
+            isAd: meta.isAd ?? true,
           };
         });
-        setHomeCampaigns(mapped);
+        setHomeCampaigns(mapped as any);
       } catch {
         // ignore, keep static campaigns
       }
@@ -230,11 +232,11 @@ export default function HomePage() {
                   {/* Carousel/Image Section */}
                   <div className="relative h-48 md:h-64 bg-slate-200 overflow-hidden">
                     {campaign.images && campaign.images.length > 0 ? (
-                      <CampaignImageCarousel images={campaign.images} title={campaign.title} />
+                      <CampaignImageCarousel images={campaign.images} title={campaign.title} showAds={(campaign as any).isAd ?? true} />
                     ) : (
                       <>
                         <img src={campaign.imageUrl} alt={campaign.title} className="w-full h-full object-cover" />
-                        <AdsBadge />
+                        <AdsBadge show={(campaign as any).isAd ?? true} />
                       </>
                     )}
                     {/* Campaign Tag */}

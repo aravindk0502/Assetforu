@@ -11,8 +11,8 @@ export default function LandPropertiesCarousel() {
     const router = useRouter();
     const [currentIndex, setCurrentIndex] = useState(0);
     const [autoScroll, setAutoScroll] = useState(true);
-    const [slides, setSlides] = useState<Array<{ id: string; title: string; location: string; description: string; imageUrl: string }>>(
-        dreamCampaigns.map((c) => ({ id: c.id, title: c.title, location: c.location, description: c.description, imageUrl: c.imageUrl }))
+    const [slides, setSlides] = useState<Array<{ id: string; title: string; location: string; description: string; imageUrl: string; isAd: boolean; href?: string; ctaLabel?: string }>>(
+        dreamCampaigns.map((c) => ({ id: c.id, title: c.title, location: c.location, description: c.description, imageUrl: c.imageUrl, isAd: true }))
     );
 
     useEffect(() => {
@@ -29,6 +29,32 @@ export default function LandPropertiesCarousel() {
     useEffect(() => {
         const load = async () => {
             try {
+                // 0) Prefer explicit ads/placements for the home carousel when configured.
+                const adsRes = await fetch('/api/public/ads?placement=home_carousel&limit=20', { cache: 'no-store' });
+                const adsJson = (await adsRes.json().catch(() => ({}))) as { success?: boolean; data?: Array<any> };
+                const adsRows = adsRes.ok && adsJson?.success && Array.isArray(adsJson.data) ? adsJson.data : [];
+                if (adsRows.length) {
+                    const adSlides = adsRows
+                        .filter((a) => Array.isArray(a.images) && a.images.length)
+                        .map((a) => ({
+                            id: String(a.id),
+                            title: String(a.title || 'Sponsored'),
+                            location: 'Sponsored',
+                            description: String(a.description || ''),
+                            imageUrl: String(a.images?.[0] || ''),
+                            isAd: true,
+                            href: typeof a.href === 'string' ? a.href : undefined,
+                            ctaLabel: typeof a.cta_label === 'string' ? a.cta_label : undefined,
+                        }))
+                        .filter((s) => Boolean(s.imageUrl))
+                        .slice(0, 6);
+                    if (adSlides.length) {
+                        setSlides(adSlides);
+                        setCurrentIndex(0);
+                        return;
+                    }
+                }
+
                 const res = await fetch('/api/public/campaigns?status=active&limit=200', { cache: 'no-store' });
                 const json = (await res.json().catch(() => ({}))) as { success?: boolean; data?: Array<any> };
                 const rows = res.ok && json?.success && Array.isArray(json.data) ? json.data : [];
@@ -42,6 +68,7 @@ export default function LandPropertiesCarousel() {
                         location: String(r.location || meta.land?.city || 'India'),
                         description: String(meta.text || r.description || ''),
                         imageUrl: String(meta.images?.[0] || r.image_url || dreamCampaigns[0]?.imageUrl),
+                        isAd: meta.isAd ?? true,
                     };
                 });
                 if (base.length) {
@@ -55,8 +82,13 @@ export default function LandPropertiesCarousel() {
         load();
     }, []);
 
-    const goToCampaign = (campaignId: string) => {
-        router.push(`/land-listings/${campaignId}`);
+    const goToCampaign = (s: (typeof slides)[number]) => {
+        if (s.isAd && s.href) {
+            if (s.href.startsWith('/')) router.push(s.href);
+            else window.open(s.href, '_blank', 'noopener,noreferrer');
+            return;
+        }
+        router.push(`/land-listings/${s.id}`);
     };
 
     const goToPrevious = () => {
@@ -99,10 +131,10 @@ export default function LandPropertiesCarousel() {
                         <p className="text-base text-slate-100 max-w-2xl mb-6">{current.description}</p>
 
                         <button
-                            onClick={() => goToCampaign(current.id)}
+                            onClick={() => goToCampaign(current)}
                             className="rounded-full bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-3 font-bold transition transform hover:scale-105"
                         >
-                            See More Properties →
+                            {current.isAd ? (current.ctaLabel || 'Learn More →') : 'See More Properties →'}
                         </button>
                     </div>
 
@@ -148,7 +180,7 @@ export default function LandPropertiesCarousel() {
                     {currentIndex + 1} / {slides.length}
                 </div>
 
-                <AdsBadge />
+                <AdsBadge show={current?.isAd ?? true} />
             </div>
         </section>
     );

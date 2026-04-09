@@ -65,7 +65,8 @@ export default function CampaignsPage() {
             images: meta.images,
             description: meta.text || r.description,
             creditPack: Number(r.credit_price || 0),
-          };
+            isAd: meta.isAd ?? true,
+          } as any;
         });
         setList(mapped);
       } catch {
@@ -94,12 +95,12 @@ export default function CampaignsPage() {
             <div className="relative">
               {campaign.images && campaign.images.length > 1 ? (
                 <div className="h-44">
-                  <CampaignImageCarousel images={campaign.images} title={campaign.title} />
+                  <CampaignImageCarousel images={campaign.images} title={campaign.title} showAds={(campaign as any).isAd ?? true} />
                 </div>
               ) : (
                 <>
                   <img src={campaign.imageUrl} alt={campaign.title} className="h-44 w-full object-cover" />
-                  <AdsBadge />
+                  <AdsBadge show={(campaign as any).isAd ?? true} />
                 </>
               )}
             </div>

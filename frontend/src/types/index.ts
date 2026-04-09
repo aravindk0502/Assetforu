@@ -76,3 +76,21 @@ export interface WalletData {
   balance: number;
   transactions: Transaction[];
 }
+
+export type AdPlacement = 'home_hero' | 'home_carousel' | 'campaign_cards';
+
+export interface AdPlacementBanner {
+  id: string;
+  title: string;
+  description?: string;
+  images: string[];
+  href?: string;
+  cta_label?: string;
+  placement: AdPlacement;
+  is_active: boolean;
+  start_time?: string | null;
+  end_time?: string | null;
+  priority?: number;
+  created_at?: string;
+  updated_at?: string;
+}

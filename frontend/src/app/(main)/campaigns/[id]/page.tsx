@@ -157,6 +157,7 @@ export default function CampaignDetailPage() {
       state: campaign.state,
       country: campaign.country,
       priceLabel: campaign.priceLabel,
+      isAd: true,
       rich: true as const,
     }
     : (() => {
@@ -177,6 +178,7 @@ export default function CampaignDetailPage() {
         state: meta.land?.state || 'India',
         country: meta.land?.country || 'India',
         priceLabel: meta.land?.priceLabel || '—',
+        isAd: meta.isAd ?? true,
         rich: false as const,
       };
     })();
@@ -204,12 +206,12 @@ export default function CampaignDetailPage() {
           <div className="relative">
             {effective.images.length > 1 ? (
               <div className="w-full h-80 rounded-2xl overflow-hidden border border-slate-200">
-                <CampaignImageCarousel images={effective.images} title={effective.title} />
+                <CampaignImageCarousel images={effective.images} title={effective.title} showAds={effective.isAd} />
               </div>
             ) : (
               <>
                 <img src={effective.imageUrl} alt={effective.title} className="w-full h-80 rounded-2xl object-cover border border-slate-200" />
-                <AdsBadge />
+                <AdsBadge show={effective.isAd} />
               </>
             )}
           </div>

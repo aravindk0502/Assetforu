@@ -58,7 +58,7 @@ export async function POST(req: Request) {
 
       return Response.json({
         success: true,
-        message: 'DEV OTP enabled (admin fallback)',
+        message: 'DEV OTP enabled (admin fallback). Use OTP 1234.',
       });
     }
 

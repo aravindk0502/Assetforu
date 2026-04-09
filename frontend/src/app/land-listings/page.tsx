@@ -21,6 +21,7 @@ type Listing = {
   contactPhone?: string;
   whatsappNumber?: string;
   mapUrl?: string;
+  isAd?: boolean;
 };
 
 export default function LandListingsPage() {
@@ -37,6 +38,7 @@ export default function LandListingsPage() {
       contactPhone: c.contactPhone,
       whatsappNumber: c.whatsappNumber,
       mapUrl: c.mapUrl,
+      isAd: true,
     }))
   );
 
@@ -59,6 +61,7 @@ export default function LandListingsPage() {
             contactPhone: meta.land?.contactPhone,
             whatsappNumber: meta.land?.whatsappNumber,
             mapUrl: meta.land?.mapUrl,
+            isAd: meta.isAd ?? true,
           };
         });
         setList(mapped);
@@ -87,7 +90,7 @@ export default function LandListingsPage() {
                 {/* Left: Image */}
                 <div className="relative rounded-2xl overflow-hidden bg-slate-100 h-80">
                   {campaign.images.length > 1 ? (
-                    <CampaignImageCarousel images={campaign.images} title={campaign.title} />
+                    <CampaignImageCarousel images={campaign.images} title={campaign.title} showAds={campaign.isAd ?? true} />
                   ) : (
                     <>
                       <img
@@ -95,7 +98,7 @@ export default function LandListingsPage() {
                         alt={campaign.title}
                         className="h-full w-full object-cover"
                       />
-                      <AdsBadge />
+                      <AdsBadge show={campaign.isAd ?? true} />
                     </>
                   )}
                   <div className="absolute top-4 left-4 rounded-full bg-emerald-600 text-white px-4 py-2 text-xs font-bold">

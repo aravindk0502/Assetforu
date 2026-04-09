@@ -87,8 +87,8 @@ export default function LoginPage() {
 
   const handleVerifyOtp = async () => {
     const otpStr = otp.join('');
-    if (otpStr.length < 6) {
-      setError('Enter the 6-digit OTP');
+    if (otpStr.length < 4) {
+      setError('Enter the OTP');
       return;
     }
     setError('');

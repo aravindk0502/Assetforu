@@ -7,9 +7,10 @@ import { AdsBadge } from '@/components/AdsBadge';
 interface CampaignImageCarouselProps {
     images: string[];
     title: string;
+    showAds?: boolean;
 }
 
-export function CampaignImageCarousel({ images, title }: CampaignImageCarouselProps) {
+export function CampaignImageCarousel({ images, title, showAds = true }: CampaignImageCarouselProps) {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isAutoPlay, setIsAutoPlay] = useState(true);
 
@@ -69,7 +70,7 @@ export function CampaignImageCarousel({ images, title }: CampaignImageCarouselPr
                     className="absolute inset-0 w-full h-full object-cover transition-opacity duration-500"
                 />
 
-                <AdsBadge />
+                <AdsBadge show={showAds} />
 
                 {/* Previous Button */}
                 <button

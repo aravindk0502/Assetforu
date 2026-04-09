@@ -15,6 +15,7 @@ export type CampaignMeta = {
   images: string[];
   land?: CampaignLandMeta;
   maxQty?: number;
+  isAd?: boolean;
 };
 
 export function parseCampaignMeta(descriptionRaw: unknown, imageUrlRaw?: unknown): CampaignMeta {
@@ -34,7 +35,9 @@ export function parseCampaignMeta(descriptionRaw: unknown, imageUrlRaw?: unknown
       const land = parsed.land && typeof parsed.land === 'object' ? (parsed.land as CampaignLandMeta) : undefined;
       const rawMax = (parsed as any).maxQty;
       const maxQty = Number.isFinite(Number(rawMax)) ? Math.max(1, Math.min(20, Number(rawMax))) : undefined;
-      return { text, images: images.length ? images : fallbackImages, land, maxQty };
+      const isAdRaw = (parsed as any).isAd;
+      const isAd = typeof isAdRaw === 'boolean' ? isAdRaw : undefined;
+      return { text, images: images.length ? images : fallbackImages, land, maxQty, isAd };
     } catch {
       // fall through
     }
@@ -43,11 +46,12 @@ export function parseCampaignMeta(descriptionRaw: unknown, imageUrlRaw?: unknown
   return { text: textRaw, images: fallbackImages };
 }
 
-export function buildCampaignDescription(meta: { text: string; images: string[]; land?: CampaignLandMeta; maxQty?: number }) {
+export function buildCampaignDescription(meta: { text: string; images: string[]; land?: CampaignLandMeta; maxQty?: number; isAd?: boolean }) {
   return JSON.stringify({
     text: meta.text,
     images: (meta.images || []).filter(Boolean).slice(0, 5),
     land: meta.land || undefined,
     maxQty: meta.maxQty || undefined,
+    isAd: meta.isAd ?? undefined,
   });
 }

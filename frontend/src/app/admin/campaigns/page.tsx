@@ -44,6 +44,7 @@ export default function AdminCampaignsPage() {
     status: 'active' as 'active' | 'upcoming' | 'closed',
   });
   const [maxQty, setMaxQty] = useState('3');
+  const [isAd, setIsAd] = useState(true);
   const [descriptionText, setDescriptionText] = useState('');
   const [land, setLand] = useState<CampaignLandMeta>({
     city: '',
@@ -95,6 +96,7 @@ export default function AdminCampaignsPage() {
     setImageUrls([]);
     setImageUrlInput('');
     setMaxQty('3');
+    setIsAd(true);
     setEditCampaign(null);
     setError('');
   };
@@ -130,6 +132,7 @@ export default function AdminCampaignsPage() {
     const imgs = meta.images.length ? meta.images : parseCampaignImages(c.image_urls || c.image_url);
     setImageUrls(imgs.slice(0, 5));
     setMaxQty(String(meta.maxQty ?? 3));
+    setIsAd(meta.isAd ?? true);
     setError('');
     setShowForm(true);
   };
@@ -150,6 +153,7 @@ export default function AdminCampaignsPage() {
         text: descriptionText,
         images: imageUrls,
         maxQty: maxQty ? Math.max(1, Math.min(20, parseInt(maxQty) || 3)) : undefined,
+        isAd,
         land: {
           city: land.city?.trim() || undefined,
           state: land.state?.trim() || undefined,
@@ -226,6 +230,7 @@ export default function AdminCampaignsPage() {
       setDescriptionText('');
       setLand({ city: '', state: '', country: 'India', priceLabel: '', contactPhone: '', whatsappNumber: '', mapUrl: '' });
       setMaxQty('3');
+      setIsAd(true);
       setEditCampaign(null);
     }
   }, [showForm]);
@@ -380,14 +385,17 @@ export default function AdminCampaignsPage() {
 
               <div>
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Max selectable packs</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={20}
+                <select
                   value={maxQty}
                   onChange={(e) => setMaxQty(e.target.value)}
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:ring-2 focus:ring-primary-700 focus:border-primary-700 focus:outline-none"
-                />
+                >
+                  {Array.from({ length: 10 }, (_, i) => String(i + 1)).map((v) => (
+                    <option key={v} value={v}>
+                      {v}
+                    </option>
+                  ))}
+                </select>
                 <p className="text-[11px] text-slate-500 mt-1">Controls how many packs (1..N) a user can select on the campaign page.</p>
               </div>
 
@@ -496,6 +504,10 @@ export default function AdminCampaignsPage() {
               <label className="flex items-center gap-3 cursor-pointer">
                 <input type="checkbox" checked={form.is_featured} onChange={e => setForm(f => ({ ...f, is_featured: e.target.checked }))} className="accent-primary-700 w-4 h-4" />
                 <span className="text-sm text-slate-300 font-medium">Featured on homepage</span>
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" checked={isAd} onChange={e => setIsAd(e.target.checked)} className="accent-primary-700 w-4 h-4" />
+                <span className="text-sm text-slate-300 font-medium">Show ADS badge</span>
               </label>
             </div>
             <div className="flex gap-3 mt-6">
