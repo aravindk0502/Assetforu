@@ -67,7 +67,7 @@ export const walletAPI = {
 export const campaignAPI = {
   list: (params?: { status?: string; page?: number; limit?: number }) =>
     api.get('/campaigns', { params }),
-  get: (id: string) => api.get(`/campaign/${id}`),
+  get: (id: string) => api.get(`/campaigns/${id}`),
   participate: (campaign_id: string, quantity = 1) =>
     api.post('/campaigns/participate', { campaign_id, quantity }),
   limit: (campaign_id: string) => api.get(`/campaigns/${campaign_id}/limit`),
