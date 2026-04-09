@@ -21,7 +21,7 @@ export interface Campaign {
   total_slots: number;
   filled_slots: number;
   status: 'active' | 'closed' | 'upcoming';
-  end_time: string;
+  end_time: string | null;
   badge?: string;
   is_featured: boolean;
   created_at?: string;
