@@ -6,7 +6,7 @@ import clsx from 'clsx';
 import BackNavigation from '@/components/BackNavigation';
 import AdminJsonModal from '@/components/admin/AdminJsonModal';
 import { useAuthStore } from '@/store';
-import type { AdPlacement, AdPlacementBanner } from '@/types';
+import type { AdPlacement, AdPlacementBanner, AdPropertyType } from '@/types';
 
 function safeDate(value: unknown) {
   if (!value) return '—';
@@ -77,6 +77,18 @@ export default function AdminAdsPage() {
   const [uploading, setUploading] = useState(false);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [imageUrlInput, setImageUrlInput] = useState('');
+  const [property, setProperty] = useState({
+    type: 'sale' as AdPropertyType,
+    city: '',
+    state: '',
+    country: 'India',
+    square_feet: '',
+    price_label: '',
+    call_phone: '',
+    whatsapp: '',
+    map_url: '',
+    description: '',
+  });
   const [form, setForm] = useState({
     title: '',
     description: '',
@@ -127,6 +139,18 @@ export default function AdminAdsPage() {
     });
     setImageUrls([]);
     setImageUrlInput('');
+    setProperty({
+      type: 'sale',
+      city: '',
+      state: '',
+      country: 'India',
+      square_feet: '',
+      price_label: '',
+      call_phone: '',
+      whatsapp: '',
+      map_url: '',
+      description: '',
+    });
     setEditAd(null);
     setError('');
   };
@@ -150,6 +174,18 @@ export default function AdminAdsPage() {
       end_time: toDateTimeLocal(ad.end_time ?? null),
     });
     setImageUrls((ad.images || []).slice(0, 5));
+    setProperty({
+      type: (ad.property?.type as AdPropertyType) || 'sale',
+      city: ad.property?.city || '',
+      state: ad.property?.state || '',
+      country: ad.property?.country || 'India',
+      square_feet: ad.property?.square_feet ? String(ad.property.square_feet) : '',
+      price_label: ad.property?.price_label || '',
+      call_phone: ad.property?.call_phone || '',
+      whatsapp: ad.property?.whatsapp || '',
+      map_url: ad.property?.map_url || '',
+      description: ad.property?.description || '',
+    });
     setError('');
     setShowForm(true);
   };
@@ -205,6 +241,18 @@ export default function AdminAdsPage() {
         start_time: form.start_time ? new Date(form.start_time).toISOString() : null,
         end_time: form.end_time ? new Date(form.end_time).toISOString() : null,
         images: imageUrls,
+        property: {
+          type: property.type,
+          city: property.city.trim() || undefined,
+          state: property.state.trim() || undefined,
+          country: property.country.trim() || undefined,
+          square_feet: property.square_feet ? Number(property.square_feet) : undefined,
+          price_label: property.price_label.trim() || undefined,
+          call_phone: property.call_phone.trim() || undefined,
+          whatsapp: property.whatsapp.trim() || undefined,
+          map_url: property.map_url.trim() || undefined,
+          description: property.description.trim() || undefined,
+        },
       };
 
       const isEdit = Boolean(editAd?.id);
@@ -396,6 +444,114 @@ export default function AdminAdsPage() {
                     ))}
                   </div>
                 )}
+              </div>
+
+              <div className="rounded-2xl border border-slate-800 bg-slate-950/30 p-4">
+                <p className="text-xs font-black text-slate-300 uppercase tracking-wider mb-3">Property Details (Optional)</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Type</label>
+                    <select
+                      value={property.type}
+                      onChange={(e) => setProperty((p) => ({ ...p, type: e.target.value as any }))}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none"
+                    >
+                      <option value="sale">For Sale</option>
+                      <option value="rent">For Rent</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Square feet</label>
+                    <input
+                      type="number"
+                      value={property.square_feet}
+                      onChange={(e) => setProperty((p) => ({ ...p, square_feet: e.target.value }))}
+                      placeholder="e.g. 2400"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">City</label>
+                    <input
+                      value={property.city}
+                      onChange={(e) => setProperty((p) => ({ ...p, city: e.target.value }))}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">State</label>
+                    <input
+                      value={property.state}
+                      onChange={(e) => setProperty((p) => ({ ...p, state: e.target.value }))}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Country</label>
+                    <input
+                      value={property.country}
+                      onChange={(e) => setProperty((p) => ({ ...p, country: e.target.value }))}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Price label</label>
+                    <input
+                      value={property.price_label}
+                      onChange={(e) => setProperty((p) => ({ ...p, price_label: e.target.value }))}
+                      placeholder="e.g. ₹48 Lakhs"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Call phone</label>
+                    <input
+                      value={property.call_phone}
+                      onChange={(e) => setProperty((p) => ({ ...p, call_phone: e.target.value }))}
+                      placeholder="+91…"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">WhatsApp</label>
+                    <input
+                      value={property.whatsapp}
+                      onChange={(e) => setProperty((p) => ({ ...p, whatsapp: e.target.value }))}
+                      placeholder="9190…"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-3">
+                  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Map URL</label>
+                  <input
+                    value={property.map_url}
+                    onChange={(e) => setProperty((p) => ({ ...p, map_url: e.target.value }))}
+                    placeholder="https://maps.google.com/…"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none"
+                  />
+                </div>
+
+                <div className="mt-3">
+                  <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Description override</label>
+                  <textarea
+                    rows={3}
+                    value={property.description}
+                    onChange={(e) => setProperty((p) => ({ ...p, description: e.target.value }))}
+                    placeholder="Optional: more details about this land listing"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none resize-none"
+                  />
+                </div>
               </div>
 
               {error && <p className="text-sm text-rose-400 font-semibold">{error}</p>}

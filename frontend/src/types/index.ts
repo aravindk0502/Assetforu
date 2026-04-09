@@ -79,6 +79,21 @@ export interface WalletData {
 
 export type AdPlacement = 'home_hero' | 'home_carousel' | 'campaign_cards';
 
+export type AdPropertyType = 'sale' | 'rent';
+
+export type AdPropertyDetails = {
+  type?: AdPropertyType;
+  city?: string;
+  state?: string;
+  country?: string;
+  square_feet?: number;
+  price_label?: string;
+  call_phone?: string;
+  whatsapp?: string;
+  map_url?: string;
+  description?: string;
+};
+
 export interface AdPlacementBanner {
   id: string;
   title: string;
@@ -87,6 +102,7 @@ export interface AdPlacementBanner {
   href?: string;
   cta_label?: string;
   placement: AdPlacement;
+  property?: AdPropertyDetails;
   is_active: boolean;
   start_time?: string | null;
   end_time?: string | null;
@@ -125,9 +141,20 @@ export type SiteFooterContent = {
   social_links?: Array<{ label: string; href: string }>;
 };
 
+export type SiteStoreContent = {
+  hero_kicker?: string;
+  hero_heading?: string;
+  hero_subheading?: string;
+  products_cta_label?: string;
+  services_cta_label?: string;
+  section_title?: string;
+  section_subtitle?: string;
+};
+
 export type SiteContent = {
   header?: SiteHeaderContent;
   hero?: SiteHeroContent;
   footer?: SiteFooterContent;
+  store?: SiteStoreContent;
   updated_at?: string;
 };

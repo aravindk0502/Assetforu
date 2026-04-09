@@ -10,13 +10,44 @@ import { parseCampaignMeta } from '@/lib/campaignMeta';
 import { parseCampaignImages } from '@/lib/campaignImages';
 import { campaignAPI } from '@/lib/api';
 
+function findTicketActivity(list: any[], id: string) {
+    if (!Array.isArray(list) || !id) return null;
+    const exact = list.find((item) => item && String(item.id) === String(id) && typeof item.ticketNumber === 'number');
+    if (exact) return exact;
+
+    // Some routes may pass the base id without the `-<ticketNumber>` suffix.
+    const byPrefix = list.find(
+        (item) => item && typeof item.ticketNumber === 'number' && typeof item.id === 'string' && item.id.startsWith(`${id}-`)
+    );
+    if (byPrefix) return byPrefix;
+
+    // Or the route param may include the ticket number but the stored id has a slightly different base.
+    const parts = String(id).split('-');
+    const last = parts[parts.length - 1];
+    const ticketNum = Number(last);
+    if (Number.isFinite(ticketNum) && parts.length > 1) {
+        const base = parts.slice(0, -1).join('-');
+        const byBaseAndNum = list.find(
+            (item) =>
+                item &&
+                typeof item.ticketNumber === 'number' &&
+                item.ticketNumber === ticketNum &&
+                typeof item.id === 'string' &&
+                item.id.startsWith(base)
+        );
+        if (byBaseAndNum) return byBaseAndNum;
+    }
+
+    return null;
+}
+
 function TicketDetailsContent({ params }: { params: { id: string } }) {
     const { id } = params;
     const user = useAuthStore((state) => state.user);
     const { activity } = useUIStore();
 
     const ticketActivity = useMemo(() => {
-        return activity.find((item) => item.id === id && typeof item.ticketNumber === 'number');
+        return findTicketActivity(activity as any[], id);
     }, [id, activity]);
 
     const [ticketActivityFallback, setTicketActivityFallback] = useState<any | null>(null);
@@ -30,9 +61,7 @@ function TicketDetailsContent({ params }: { params: { id: string } }) {
         try {
             const raw = localStorage.getItem('af_activity');
             const parsed = raw ? (JSON.parse(raw) as any[]) : [];
-            const found = Array.isArray(parsed)
-                ? parsed.find((item) => item && item.id === id && typeof item.ticketNumber === 'number')
-                : null;
+            const found = findTicketActivity(Array.isArray(parsed) ? parsed : [], id);
             setTicketActivityFallback(found || null);
         } catch {
             setTicketActivityFallback(null);

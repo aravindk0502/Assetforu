@@ -1,6 +1,6 @@
 export const runtime = 'nodejs';
 
-import type { AdPlacement, AdPlacementBanner } from '@/types';
+import type { AdPlacement, AdPlacementBanner, AdPropertyDetails } from '@/types';
 import { verifyJwtHS256 } from '@/app/api/_utils/jwt';
 import { loadAds, saveAds } from '@/app/api/_utils/blobAds';
 
@@ -38,6 +38,28 @@ function normalizeIsoOrNull(raw: unknown) {
   return d.toISOString();
 }
 
+function normalizeProperty(raw: unknown): AdPropertyDetails | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const obj = raw as Record<string, unknown>;
+  const typeRaw = normalizeString(obj.type).toLowerCase();
+  const type = typeRaw === 'sale' || typeRaw === 'rent' ? (typeRaw as any) : undefined;
+  const squareFeet = Number.isFinite(Number(obj.square_feet)) ? Math.max(0, Number(obj.square_feet)) : undefined;
+  const property: AdPropertyDetails = {
+    type,
+    city: normalizeString(obj.city) || undefined,
+    state: normalizeString(obj.state) || undefined,
+    country: normalizeString(obj.country) || undefined,
+    square_feet: squareFeet,
+    price_label: normalizeString(obj.price_label) || undefined,
+    call_phone: normalizeString(obj.call_phone) || undefined,
+    whatsapp: normalizeString(obj.whatsapp) || undefined,
+    map_url: normalizeString(obj.map_url) || undefined,
+    description: normalizeString(obj.description) || undefined,
+  };
+  const hasAny = Object.values(property).some((v) => v !== undefined && v !== null && String(v).trim() !== '');
+  return hasAny ? property : undefined;
+}
+
 export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const auth = requireAdmin(req);
   if (!auth.ok) return Response.json({ success: false, message: auth.message }, { status: auth.status });
@@ -68,6 +90,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     if (Array.isArray((body as any).images)) {
       next.images = (body as any).images.filter((x: any) => typeof x === 'string' && x.trim()).slice(0, 5);
     }
+    if ((body as any).property !== undefined) next.property = normalizeProperty((body as any).property);
     next.updated_at = new Date().toISOString();
 
     if (!next.title) return Response.json({ success: false, message: 'title is required' }, { status: 400 });
@@ -99,4 +122,3 @@ export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }
     return Response.json({ success: false, message: msg }, { status: 500 });
   }
 }
-

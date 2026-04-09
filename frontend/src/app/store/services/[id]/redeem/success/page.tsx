@@ -1,8 +1,10 @@
 'use client';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { servicesCatalog } from '@/data/storeCatalog';
 import { formatCurrency } from '@/lib/currency';
+import { fetchPublicStoreItem } from '@/lib/publicStore';
+import type { StoreItem } from '@/types';
 
 export default function ServiceRedeemSuccessPage() {
     const params = useParams();
@@ -14,14 +16,40 @@ export default function ServiceRedeemSuccessPage() {
         () => servicesCatalog.find((item) => item.id === id),
         [id]
     );
+    const [dynamicItem, setDynamicItem] = useState<StoreItem | null>(null);
+    const [dynamicLoading, setDynamicLoading] = useState(false);
 
-    if (!service) {
-        return (
-            <div className="mx-auto max-w-5xl px-6 py-16 text-center">
-                <p className="text-slate-500">Service not found.</p>
-            </div>
-        );
-    }
+    useEffect(() => {
+        if (!id) return;
+        if (service) {
+            setDynamicItem(null);
+            return;
+        }
+        let cancelled = false;
+        setDynamicLoading(true);
+        fetchPublicStoreItem(String(id))
+            .then((row) => {
+                if (cancelled) return;
+                setDynamicItem(row && row.type === 'service' ? row : null);
+            })
+            .catch(() => {
+                if (cancelled) return;
+                setDynamicItem(null);
+            })
+            .finally(() => {
+                if (cancelled) return;
+                setDynamicLoading(false);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [id, service]);
+
+    const display = service
+        ? { name: service.name, credits: service.credits }
+        : dynamicItem
+            ? { name: dynamicItem.title, credits: Number(dynamicItem.credit_cost || 0) }
+            : null;
 
     return (
         <div className="page-enter mx-auto max-w-4xl px-6 py-16">
@@ -30,7 +58,9 @@ export default function ServiceRedeemSuccessPage() {
                     <span className="text-3xl font-black">✓</span>
                 </div>
                 <h1 className="text-3xl font-black text-slate-900">Service Redeemed Successfully</h1>
-                <p className="mt-4 text-slate-600 max-w-2xl mx-auto">{service.name} has been redeemed using your Asset Credits.</p>
+                <p className="mt-4 text-slate-600 max-w-2xl mx-auto">
+                    {display ? `${display.name} has been redeemed using your Asset Credits.` : dynamicLoading ? 'Loading order details…' : 'Order placed successfully.'}
+                </p>
                 {!!orderId && (
                     <p className="mt-2 text-sm text-slate-700">
                         Order ID: <strong>{orderId}</strong>
@@ -38,9 +68,11 @@ export default function ServiceRedeemSuccessPage() {
                 )}
                 <div className="mt-6 rounded-3xl bg-white border border-slate-200 p-6 text-left">
                     <p className="text-sm text-slate-500 uppercase tracking-[0.25em]">Redeemed Service</p>
-                    <h2 className="mt-2 text-xl font-black text-slate-900">{service.name}</h2>
+                    <h2 className="mt-2 text-xl font-black text-slate-900">{display?.name || 'Service'}</h2>
                     <p className="mt-3 text-slate-600">Our team will contact you within 24 hours to follow up on the next steps.</p>
-                    <p className="mt-4 text-sm text-slate-500">Credits redeemed: {formatCurrency(service.credits, 'INR')} ({service.credits} credits)</p>
+                    <p className="mt-4 text-sm text-slate-500">
+                        Credits redeemed: {formatCurrency(display?.credits || 0, 'INR')} ({display?.credits || 0} credits)
+                    </p>
                 </div>
                 <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
                     {!!orderId && (

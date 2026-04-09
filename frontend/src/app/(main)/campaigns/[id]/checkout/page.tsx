@@ -39,6 +39,24 @@ function CampaignCheckoutContent() {
         if (!campaignId) return;
         let cancelled = false;
 
+        // Best-effort cache from the campaign detail page to prevent "Campaign not found"
+        // if APIs are temporarily unavailable.
+        try {
+            if (typeof window !== 'undefined') {
+                const raw = sessionStorage.getItem(`af_campaign_cache_${campaignId}`);
+                if (raw) {
+                    const cached = JSON.parse(raw) as Partial<CampaignInfo> & { maxQty?: number; isBlobCampaign?: boolean };
+                    if (cached && String((cached as any).id || '') === String(campaignId) && cached.title && typeof cached.creditPack === 'number') {
+                        setCampaign((prev) => prev || (cached as CampaignInfo));
+                        if (typeof cached.isBlobCampaign === 'boolean') setIsBlobCampaign(cached.isBlobCampaign);
+                        if (Number.isFinite(Number(cached.maxQty))) setMaxQty(Math.max(1, Math.min(20, Number(cached.maxQty))));
+                    }
+                }
+            }
+        } catch {
+            // ignore
+        }
+
         const local = campaigns.find((item) => item.id === campaignId) || null;
         if (local) {
             setCampaign(local);

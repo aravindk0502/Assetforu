@@ -2,6 +2,14 @@ export const runtime = 'nodejs';
 
 import { loadCampaigns } from '@/app/api/_utils/blobCampaigns';
 
+function normalizeApiBaseUrl(raw: string) {
+  const trimmed = String(raw || '').trim();
+  if (!trimmed) return '';
+  const noTrailingSlash = trimmed.replace(/\/+$/, '');
+  if (/\/api$/i.test(noTrailingSlash)) return noTrailingSlash;
+  return `${noTrailingSlash}/api`;
+}
+
 function deriveStatus(c: any) {
   const status = String(c?.status ?? '').trim().toLowerCase();
   const normalized =
@@ -38,6 +46,22 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) 
   const { id } = await ctx.params;
   const campaigns = await loadCampaigns();
   const found = campaigns.find((c) => String(c.id) === String(id));
-  if (!found) return Response.json({ success: false, message: 'Campaign not found' }, { status: 404 });
-  return Response.json({ success: true, data: { ...(found as any), status: deriveStatus(found as any) } });
+  if (found) {
+    return Response.json({ success: true, data: { ...(found as any), status: deriveStatus(found as any) } });
+  }
+
+  // Fallback to the legacy backend API when Blob-backed campaigns aren't available in this environment.
+  try {
+    const apiBase = normalizeApiBaseUrl(process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || '');
+    if (apiBase) {
+      const res = await fetch(`${apiBase}/campaigns/${encodeURIComponent(String(id))}`, { cache: 'no-store' });
+      const json = (await res.json().catch(() => ({}))) as any;
+      const row = res.ok && json?.success && json?.data ? json.data : null;
+      if (row) return Response.json({ success: true, data: row });
+    }
+  } catch {
+    // ignore
+  }
+
+  return Response.json({ success: false, message: 'Campaign not found' }, { status: 404 });
 }

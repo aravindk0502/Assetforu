@@ -1,10 +1,12 @@
 'use client';
 import { Suspense } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { productCatalog } from '@/data/storeCatalog';
 import { formatCurrency } from '@/lib/currency';
 import { useUIStore } from '@/store';
+import { fetchPublicStoreItem } from '@/lib/publicStore';
+import type { StoreItem } from '@/types';
 
 function ProductRedeemSuccessContent() {
   const params = useParams();
@@ -14,19 +16,45 @@ function ProductRedeemSuccessContent() {
 
   const id = Array.isArray(params?.id) ? params.id[0] : params?.id;
   const product = useMemo(() => productCatalog.find((item) => item.id === id), [id]);
+  const [dynamicItem, setDynamicItem] = useState<StoreItem | null>(null);
+  const [dynamicLoading, setDynamicLoading] = useState(false);
+
+  useEffect(() => {
+    if (!id) return;
+    if (product) {
+      setDynamicItem(null);
+      return;
+    }
+    let cancelled = false;
+    setDynamicLoading(true);
+    fetchPublicStoreItem(String(id))
+      .then((row) => {
+        if (cancelled) return;
+        setDynamicItem(row && row.type === 'product' ? row : null);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setDynamicItem(null);
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setDynamicLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id, product]);
 
   const etaRaw = searchParams.get('eta');
   const orderId = searchParams.get('orderId') || '';
   const etaDate = etaRaw ? new Date(etaRaw) : null;
   const etaLabel = etaDate && !Number.isNaN(etaDate.getTime()) ? etaDate.toLocaleDateString() : 'within 5 business days';
 
-  if (!product) {
-    return (
-      <div className="mx-auto max-w-5xl px-6 py-16 text-center">
-        <p className="text-slate-500">Order placed successfully.</p>
-      </div>
-    );
-  }
+  const display = product
+    ? { name: product.name, image: product.image, credits: product.credits }
+    : dynamicItem
+      ? { name: dynamicItem.title, image: dynamicItem.image_url, credits: Number(dynamicItem.credit_cost || 0) }
+      : null;
 
   return (
     <div className="page-enter mx-auto max-w-4xl px-6 py-12">
@@ -44,13 +72,19 @@ function ProductRedeemSuccessContent() {
           </p>
         )}
 
-        <div className="mt-6 flex items-center justify-center gap-4">
-          <img src={product.image} alt={product.name} className="h-16 w-16 rounded-xl object-cover" />
-          <div className="text-left">
-            <p className="text-sm font-bold text-slate-900">{product.name}</p>
-            <p className="text-xs text-slate-500">{formatCurrency(product.credits, currency)} · {product.credits} Credits</p>
+        {display ? (
+          <div className="mt-6 flex items-center justify-center gap-4">
+            <img src={display.image} alt={display.name} className="h-16 w-16 rounded-xl object-cover" />
+            <div className="text-left">
+              <p className="text-sm font-bold text-slate-900">{display.name}</p>
+              <p className="text-xs text-slate-500">{formatCurrency(display.credits, currency)} · {display.credits} Credits</p>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="mt-6 text-sm text-slate-600">
+            {dynamicLoading ? 'Loading order details…' : 'Order placed successfully.'}
+          </div>
+        )}
 
         <div className="mt-6 flex flex-wrap justify-center gap-3">
           {!!orderId && (

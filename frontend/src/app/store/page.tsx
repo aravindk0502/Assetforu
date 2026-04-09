@@ -10,6 +10,7 @@ import { formatCurrency } from '@/lib/currency';
 import { addToast } from '@/components/Toast';
 import { fetchPublicStoreItems } from '@/lib/publicStore';
 import type { StoreItem } from '@/types';
+import { fetchSiteContent } from '@/lib/siteContent';
 
 
 const serviceIconMap = {
@@ -45,6 +46,7 @@ function StoreContent() {
     const [category, setCategory] = useState('All');
     const [visibleCount, setVisibleCount] = useState(9);
     const [dynamicItems, setDynamicItems] = useState<StoreItem[]>([]);
+    const [siteStore, setSiteStore] = useState<any | null>(null);
 
     // Read tab from URL params on mount
     useEffect(() => {
@@ -57,6 +59,13 @@ function StoreContent() {
     // Load admin-created store items (Blob-backed)
     useEffect(() => {
         fetchPublicStoreItems().then((rows) => setDynamicItems(rows));
+    }, []);
+
+    // Load site-managed store content (optional)
+    useEffect(() => {
+        fetchSiteContent()
+            .then((c) => setSiteStore((c as any)?.store || null))
+            .catch(() => setSiteStore(null));
     }, []);
 
     const dynamicProducts = useMemo(() => {
@@ -173,12 +182,12 @@ function StoreContent() {
                     }}
                 />
                 <div className="mx-auto max-w-7xl px-6 lg:px-10 py-14 relative">
-                    <div className="max-w-2xl">
-                        <p className="text-xs uppercase tracking-[0.25em] text-emerald-200 mb-3">AssetForU Store</p>
-                        <h1 className="text-4xl md:text-5xl font-black leading-tight">Premium products & services for land investors</h1>
-                        <p className="mt-4 text-slate-200">Redeem Asset Credits for verified land solutions, advisory services, and premium access packs.</p>
-                        <div className="mt-6 flex flex-wrap gap-3">
-                            <button
+	                    <div className="max-w-2xl">
+	                        <p className="text-xs uppercase tracking-[0.25em] text-emerald-200 mb-3">{siteStore?.hero_kicker || 'AssetForU Store'}</p>
+	                        <h1 className="text-4xl md:text-5xl font-black leading-tight">{siteStore?.hero_heading || 'Premium products & services for land investors'}</h1>
+	                        <p className="mt-4 text-slate-200">{siteStore?.hero_subheading || 'Redeem Asset Credits for verified land solutions, advisory services, and premium access packs.'}</p>
+	                        <div className="mt-6 flex flex-wrap gap-3">
+	                            <button
                                 className={`rounded-full px-6 py-2 text-sm font-bold transition ${activeTab === 'products'
                                         ? 'bg-white text-slate-900'
                                         : 'border border-white/40 text-white hover:bg-white hover:text-slate-900'
@@ -191,9 +200,9 @@ function StoreContent() {
                                     setVisibleCount(9);
                                     window.scrollTo({ top: 520, behavior: 'smooth' });
                                 }}
-                            >
-                                Explore Products
-                            </button>
+	                            >
+	                                {siteStore?.products_cta_label || 'Explore Products'}
+	                            </button>
                             <button
                                 className={`rounded-full px-6 py-2 text-sm font-bold transition ${activeTab === 'services'
                                         ? 'bg-white text-slate-900'
@@ -207,11 +216,11 @@ function StoreContent() {
                                     setVisibleCount(9);
                                     window.scrollTo({ top: 520, behavior: 'smooth' });
                                 }}
-                            >
-                                View Services
-                            </button>
-                        </div>
-                    </div>
+	                            >
+	                                {siteStore?.services_cta_label || 'View Services'}
+	                            </button>
+	                        </div>
+	                    </div>
                 </div>
             </section>
 
@@ -222,11 +231,11 @@ function StoreContent() {
                     </div>
                 )}
 
-                <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-                    <div>
-                        <h2 className="text-2xl font-black text-slate-900">Asset Store</h2>
-                        <p className="text-slate-500">Choose from curated products and services aligned with land wealth strategy.</p>
-                    </div>
+	                <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+	                    <div>
+	                        <h2 className="text-2xl font-black text-slate-900">{siteStore?.section_title || 'Asset Store'}</h2>
+	                        <p className="text-slate-500">{siteStore?.section_subtitle || 'Choose from curated products and services aligned with land wealth strategy.'}</p>
+	                    </div>
                     <div className="flex gap-2">
                         {(['products', 'services'] as const).map((tab) => (
                             <button

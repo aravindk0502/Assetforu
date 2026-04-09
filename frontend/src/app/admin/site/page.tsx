@@ -5,9 +5,9 @@ import BackNavigation from '@/components/BackNavigation';
 import { useAuthStore } from '@/store';
 import { CheckCircle, Loader2, Save, X } from 'lucide-react';
 import clsx from 'clsx';
-import type { SiteContent, SiteFooterContent, SiteHeaderContent, SiteHeroContent, SiteNavLink } from '@/types';
+import type { SiteContent, SiteFooterContent, SiteHeaderContent, SiteHeroContent, SiteNavLink, SiteStoreContent } from '@/types';
 
-type Section = 'header' | 'hero' | 'footer';
+type Section = 'header' | 'hero' | 'footer' | 'store';
 
 function normalizeLinks(input: string): SiteNavLink[] {
   // One per line: Label|/path
@@ -52,13 +52,17 @@ export default function AdminSiteContentPage() {
   const [headerDraft, setHeaderDraft] = useState<SiteHeaderContent>({});
   const [heroDraft, setHeroDraft] = useState<SiteHeroContent>({});
   const [footerDraft, setFooterDraft] = useState<SiteFooterContent>({});
+  const [storeDraft, setStoreDraft] = useState<SiteStoreContent>({});
 
   const [headerLinksText, setHeaderLinksText] = useState('');
   const [footerExploreText, setFooterExploreText] = useState('');
   const [footerSupportText, setFooterSupportText] = useState('');
   const [footerLegalText, setFooterLegalText] = useState('');
   const [footerDisclaimerText, setFooterDisclaimerText] = useState('');
-  const [footerSocialText, setFooterSocialText] = useState('');
+  const [socialInstagram, setSocialInstagram] = useState('');
+  const [socialFacebook, setSocialFacebook] = useState('');
+  const [socialLinkedIn, setSocialLinkedIn] = useState('');
+  const [socialYouTube, setSocialYouTube] = useState('');
 
   const load = async () => {
     setLoading(true);
@@ -98,16 +102,21 @@ export default function AdminSiteContentPage() {
       setHeroDraft({ ...(c.hero || {}) });
     }
     if (section === 'footer') {
-      setFooterDraft({ ...(c.footer || {}) });
-      setFooterExploreText(linksToText(c.footer?.explore_links));
-      setFooterSupportText(linksToText(c.footer?.support_links));
-      setFooterLegalText(linksToText(c.footer?.legal_links));
-      setFooterDisclaimerText(linesToText(c.footer?.disclaimer_lines));
-      setFooterSocialText(
-        (c.footer?.social_links || [])
-          .map((l) => `${l.label}|${l.href}`)
-          .join('\n')
-      );
+	      setFooterDraft({ ...(c.footer || {}) });
+	      setFooterExploreText(linksToText(c.footer?.explore_links));
+	      setFooterSupportText(linksToText(c.footer?.support_links));
+	      setFooterLegalText(linksToText(c.footer?.legal_links));
+	      setFooterDisclaimerText(linesToText(c.footer?.disclaimer_lines));
+	      const socials = Array.isArray(c.footer?.social_links) ? c.footer?.social_links : [];
+	      const getHref = (label: string) =>
+	        String(socials.find((s: any) => String(s?.label || '').toLowerCase() === label.toLowerCase())?.href || '');
+	      setSocialInstagram(getHref('Instagram'));
+	      setSocialFacebook(getHref('Facebook'));
+	      setSocialLinkedIn(getHref('LinkedIn'));
+	      setSocialYouTube(getHref('YouTube'));
+    }
+    if (section === 'store') {
+      setStoreDraft({ ...(c.store || {}) });
     }
     setOpenSection(section);
   };
@@ -116,6 +125,7 @@ export default function AdminSiteContentPage() {
     if (openSection === 'header') return 'Edit Header';
     if (openSection === 'hero') return 'Edit Hero';
     if (openSection === 'footer') return 'Edit Footer';
+    if (openSection === 'store') return 'Edit Store Page';
     return '';
   }, [openSection]);
 
@@ -140,17 +150,25 @@ export default function AdminSiteContentPage() {
         patch = { hero: { ...heroDraft } };
       }
       if (openSection === 'footer') {
-        const socialLinks = normalizeLinks(footerSocialText).map((l) => ({ label: l.label, href: l.href }));
-        patch = {
-          footer: {
-            ...footerDraft,
-            explore_links: normalizeLinks(footerExploreText),
-            support_links: normalizeLinks(footerSupportText),
-            legal_links: normalizeLinks(footerLegalText),
-            disclaimer_lines: textToLines(footerDisclaimerText),
-            social_links: socialLinks,
-          },
-        };
+	        const socialLinks = [
+	          { label: 'Instagram', href: socialInstagram.trim() },
+	          { label: 'Facebook', href: socialFacebook.trim() },
+	          { label: 'LinkedIn', href: socialLinkedIn.trim() },
+	          { label: 'YouTube', href: socialYouTube.trim() },
+	        ].filter((l) => Boolean(l.href));
+	        patch = {
+	          footer: {
+	            ...footerDraft,
+	            explore_links: normalizeLinks(footerExploreText),
+	            support_links: normalizeLinks(footerSupportText),
+	            legal_links: normalizeLinks(footerLegalText),
+	            disclaimer_lines: textToLines(footerDisclaimerText),
+	            social_links: socialLinks,
+	          },
+	        };
+      }
+      if (openSection === 'store') {
+        patch = { store: { ...storeDraft } };
       }
 
       const res = await fetch('/api/admin/site-content', {
@@ -213,11 +231,12 @@ export default function AdminSiteContentPage() {
                 </td>
               </tr>
             ) : (
-              ([
-                { key: 'header', label: 'Header' },
-                { key: 'hero', label: 'Home Hero' },
-                { key: 'footer', label: 'Footer' },
-              ] as Array<{ key: Section; label: string }>).map((row) => (
+	              ([
+	                { key: 'header', label: 'Header' },
+	                { key: 'hero', label: 'Home Hero' },
+	                { key: 'store', label: 'Store Page' },
+	                { key: 'footer', label: 'Footer' },
+	              ] as Array<{ key: Section; label: string }>).map((row) => (
                 <tr key={row.key} className="hover:bg-slate-800/50 transition-colors">
                   <td className="px-5 py-4 text-white font-semibold">{row.label}</td>
                   <td className="px-5 py-4 text-slate-300 text-sm">{(content as any)?.[row.key] ? 'Configured' : 'Default'}</td>
@@ -384,6 +403,76 @@ export default function AdminSiteContentPage() {
               </div>
             )}
 
+            {openSection === 'store' && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Hero kicker</label>
+                  <input
+                    value={storeDraft.hero_kicker || ''}
+                    onChange={(e) => setStoreDraft((s) => ({ ...s, hero_kicker: e.target.value }))}
+                    placeholder="AssetForU Store"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Hero heading</label>
+                  <textarea
+                    rows={2}
+                    value={storeDraft.hero_heading || ''}
+                    onChange={(e) => setStoreDraft((s) => ({ ...s, hero_heading: e.target.value }))}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none resize-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Hero subheading</label>
+                  <textarea
+                    rows={2}
+                    value={storeDraft.hero_subheading || ''}
+                    onChange={(e) => setStoreDraft((s) => ({ ...s, hero_subheading: e.target.value }))}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none resize-none"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Products CTA label</label>
+                    <input
+                      value={storeDraft.products_cta_label || ''}
+                      onChange={(e) => setStoreDraft((s) => ({ ...s, products_cta_label: e.target.value }))}
+                      placeholder="Explore Products"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Services CTA label</label>
+                    <input
+                      value={storeDraft.services_cta_label || ''}
+                      onChange={(e) => setStoreDraft((s) => ({ ...s, services_cta_label: e.target.value }))}
+                      placeholder="View Services"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Section title</label>
+                  <input
+                    value={storeDraft.section_title || ''}
+                    onChange={(e) => setStoreDraft((s) => ({ ...s, section_title: e.target.value }))}
+                    placeholder="Asset Store"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Section subtitle</label>
+                  <textarea
+                    rows={2}
+                    value={storeDraft.section_subtitle || ''}
+                    onChange={(e) => setStoreDraft((s) => ({ ...s, section_subtitle: e.target.value }))}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none resize-none"
+                  />
+                </div>
+              </div>
+            )}
+
             {openSection === 'footer' && (
               <div className="space-y-4">
                 <div>
@@ -424,26 +513,58 @@ export default function AdminSiteContentPage() {
                     />
                   </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Disclaimer lines (one per line)</label>
-                  <textarea
-                    rows={4}
-                    value={footerDisclaimerText}
-                    onChange={(e) => setFooterDisclaimerText(e.target.value)}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none resize-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Social links (one per line: Label|https://…)</label>
-                  <textarea
-                    rows={4}
-                    value={footerSocialText}
-                    onChange={(e) => setFooterSocialText(e.target.value)}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none resize-none"
-                  />
-                </div>
-              </div>
-            )}
+	                <div>
+	                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Disclaimer lines (one per line)</label>
+	                  <textarea
+	                    rows={4}
+	                    value={footerDisclaimerText}
+	                    onChange={(e) => setFooterDisclaimerText(e.target.value)}
+	                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none resize-none"
+	                  />
+	                </div>
+	                <div className="rounded-2xl border border-slate-800 bg-slate-950/30 p-4">
+	                  <p className="text-xs font-black text-slate-300 uppercase tracking-wider mb-3">Social Links</p>
+	                  <div className="grid grid-cols-1 gap-3">
+	                    <div>
+	                      <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Instagram</label>
+	                      <input
+	                        value={socialInstagram}
+	                        onChange={(e) => setSocialInstagram(e.target.value)}
+	                        placeholder="https://instagram.com/…"
+	                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none"
+	                      />
+	                    </div>
+	                    <div>
+	                      <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Facebook</label>
+	                      <input
+	                        value={socialFacebook}
+	                        onChange={(e) => setSocialFacebook(e.target.value)}
+	                        placeholder="https://facebook.com/…"
+	                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none"
+	                      />
+	                    </div>
+	                    <div>
+	                      <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">LinkedIn</label>
+	                      <input
+	                        value={socialLinkedIn}
+	                        onChange={(e) => setSocialLinkedIn(e.target.value)}
+	                        placeholder="https://linkedin.com/…"
+	                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none"
+	                      />
+	                    </div>
+	                    <div>
+	                      <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">YouTube</label>
+	                      <input
+	                        value={socialYouTube}
+	                        onChange={(e) => setSocialYouTube(e.target.value)}
+	                        placeholder="https://youtube.com/…"
+	                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none"
+	                      />
+	                    </div>
+	                  </div>
+	                </div>
+	              </div>
+	            )}
 
             <div className="flex gap-3 mt-6">
               <button
@@ -470,4 +591,3 @@ export default function AdminSiteContentPage() {
     </div>
   );
 }
-

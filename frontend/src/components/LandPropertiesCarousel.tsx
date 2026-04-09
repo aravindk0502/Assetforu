@@ -40,10 +40,10 @@ export default function LandPropertiesCarousel() {
                         .flatMap((a) => {
                             const images = (a.images as any[]).filter((x) => typeof x === 'string' && x.trim());
                             return images.map((img, idx) => ({
-                                id: `${String(a.id)}-${idx}`,
+                                id: String(a.id),
                                 title: String(a.title || 'Sponsored'),
-                                location: 'Sponsored',
-                                description: String(a.description || ''),
+                                location: String(a.property?.city || a.property?.state || a.property?.country || 'Sponsored'),
+                                description: String(a.property?.description || a.description || ''),
                                 imageUrl: String(img),
                                 isAd: true,
                                 href: typeof a.href === 'string' ? a.href : undefined,
@@ -95,7 +95,7 @@ export default function LandPropertiesCarousel() {
                 if (href.startsWith('/')) router.push(href);
                 else window.open(href, '_blank', 'noopener,noreferrer');
             } else {
-                router.push('/campaigns');
+                router.push(`/ads/${encodeURIComponent(s.id)}`);
             }
             return;
         }
@@ -145,7 +145,7 @@ export default function LandPropertiesCarousel() {
                             onClick={() => goToCampaign(current)}
                             className="rounded-full bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-3 font-bold transition transform hover:scale-105"
                         >
-                            {current.isAd ? 'See Properties →' : 'See More Properties →'}
+                            {current.isAd ? (current.ctaLabel ? `${current.ctaLabel} →` : 'See Properties →') : 'See More Properties →'}
                         </button>
                     </div>
 

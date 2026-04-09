@@ -227,6 +227,35 @@ export default function CampaignDetailPage() {
 
   const onProceed = () => {
     if (remainingLimit !== null && remainingLimit <= 0) return;
+    // Cache the campaign payload so `/campaigns/:id/checkout` can recover even if APIs fail.
+    // This avoids "Campaign not found" in environments where Blob/legacy API is temporarily unavailable.
+    try {
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem(
+          `af_campaign_cache_${effective.id}`,
+          JSON.stringify({
+            id: effective.id,
+            title: effective.title,
+            location: effective.location,
+            city: effective.city,
+            state: effective.state,
+            country: effective.country,
+            priceLabel: effective.priceLabel,
+            contactPhone: effective.contactPhone,
+            whatsappNumber: effective.whatsappNumber,
+            mapUrl: effective.mapUrl,
+            imageUrl: effective.imageUrl,
+            images: effective.images,
+            description: effective.description,
+            creditPack: effective.creditPack,
+            maxQty: adminMaxQty ?? 3,
+            isBlobCampaign,
+          })
+        );
+      }
+    } catch {
+      // ignore
+    }
     if (!user) {
       openSignupModal(() => router.push(`/campaigns/${effective.id}/checkout?qty=${quantity}`));
       return;
