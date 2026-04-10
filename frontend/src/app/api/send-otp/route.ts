@@ -1,3 +1,5 @@
+import { loadDynamicAdminPhones, parsePhonesToLast10 } from '@/app/api/_utils/blobAdminPhones';
+
 export const runtime = 'nodejs';
 
 function normalizeMobile(phoneRaw: string): { mobile: string; local10?: string } {
@@ -19,6 +21,13 @@ function parsePhones(raw: string | undefined): Set<string> {
   return set;
 }
 
+async function isAdminPhone(last10: string) {
+  const envAdmins = parsePhonesToLast10(process.env.ADMIN_PHONES);
+  if (envAdmins.has(last10)) return true;
+  const dynamic = await loadDynamicAdminPhones();
+  return dynamic.includes(last10);
+}
+
 function envTrue(raw: string | undefined) {
   if (!raw) return false;
   return ['true', '1', 'yes', 'y', 'on'].includes(raw.trim().toLowerCase());
@@ -38,7 +47,8 @@ export async function POST(req: Request) {
       // Dev fallback (only allowlisted phones). For admin numbers, allow even if DEV_OTP_ENABLED is not set.
       const allow = parsePhones(process.env.DEV_AUTH_PHONES || process.env.ADMIN_PHONES);
       const last10 = (local10 || mobile).replace(/\D/g, '').slice(-10);
-      if (!allow.size || !allow.has(last10)) {
+      const isAdminAllowed = await isAdminPhone(last10);
+      if ((!allow.size || !allow.has(last10)) && !isAdminAllowed) {
         return Response.json(
           { success: false, message: 'MSG91 is not configured' },
           { status: 500 }
@@ -47,8 +57,7 @@ export async function POST(req: Request) {
 
       if (!devOtpEnabled) {
         // If DEV_OTP_ENABLED is off, only allow when the phone is explicitly in ADMIN_PHONES.
-        const adminAllow = parsePhones(process.env.ADMIN_PHONES);
-        if (!adminAllow.has(last10)) {
+        if (!isAdminAllowed) {
           return Response.json(
             { success: false, message: 'MSG91 is not configured' },
             { status: 500 }

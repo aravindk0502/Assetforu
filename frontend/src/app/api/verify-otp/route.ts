@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { loadDynamicAdminPhones, parsePhonesToLast10 } from '@/app/api/_utils/blobAdminPhones';
 
 export const runtime = 'nodejs';
 
@@ -19,6 +20,13 @@ function parseAdminPhones(raw: string | undefined): Set<string> {
     else if (digits.length > 10) set.add(digits.slice(-10));
   }
   return set;
+}
+
+async function isAdminAllowedPhone(last10: string): Promise<boolean> {
+  const envAdmins = parsePhonesToLast10(process.env.ADMIN_PHONES);
+  if (envAdmins.has(last10)) return true;
+  const dynamic = await loadDynamicAdminPhones();
+  return dynamic.includes(last10);
 }
 
 function parsePhones(raw: string | undefined): Set<string> {
@@ -68,36 +76,33 @@ export async function POST(req: Request) {
     const devOtpEnabled = envTrue(process.env.DEV_OTP_ENABLED);
     const jwtSecret = process.env.JWT_SECRET || apiKey || 'dev-secret';
     const last10 = (local10 || mobile).replace(/\D/g, '').slice(-10);
+    const adminAllowed = await isAdminAllowedPhone(last10);
 
     // Dev OTP fallback
     if (!apiKey) {
       const allow = parsePhones(process.env.DEV_AUTH_PHONES || process.env.ADMIN_PHONES);
-      const adminAllow = parsePhones(process.env.ADMIN_PHONES);
       const isAllowed = allow.size > 0 && allow.has(last10);
-      const isAdminAllowed = adminAllow.size > 0 && adminAllow.has(last10);
       // Require explicit opt-in (DEV_OTP_ENABLED) unless it's an admin allowlisted number.
-      if (!devOtpEnabled && !isAdminAllowed) {
+      if (!devOtpEnabled && !adminAllowed) {
         return Response.json({ success: false, message: 'MSG91 is not configured' }, { status: 500 });
       }
-      if (!isAllowed && !isAdminAllowed) {
+      if (!isAllowed && !adminAllowed) {
         return Response.json({ success: false, message: 'MSG91 is not configured' }, { status: 500 });
       }
-
-      const isAdminPhone = isAdminAllowed;
 
       // In admin fallback mode, allow a short dev PIN to unblock access when SMS isn't configured.
-      const expected = process.env.DEV_OTP_CODE || (isAdminPhone ? '1234' : '123456');
+      const expected = process.env.DEV_OTP_CODE || (adminAllowed ? '1234' : '123456');
       const provided = String(otp || '').trim();
       const ok =
         provided === expected ||
         // Backwards-compatible defaults for admin allowlisted numbers.
-        (isAdminPhone && (provided === '1234' || provided === '123456'));
+        (adminAllowed && (provided === '1234' || provided === '123456'));
       if (!ok) {
         return Response.json({ success: false, message: 'Invalid OTP' }, { status: 400 });
       }
 
       const id = `phone:${local10 || mobile}`;
-      const role = isAdminPhone ? ('admin' as const) : ('user' as const);
+      const role = adminAllowed ? ('admin' as const) : ('user' as const);
       const user = {
         id,
         phone: local10 || mobile,
@@ -140,8 +145,7 @@ export async function POST(req: Request) {
     }
 
     const id = `phone:${local10 || mobile}`;
-    const adminPhones = parseAdminPhones(process.env.ADMIN_PHONES);
-    const role = adminPhones.has(last10) ? ('admin' as const) : ('user' as const);
+    const role = adminAllowed ? ('admin' as const) : ('user' as const);
     const user = {
       id,
       phone: local10 || mobile,
