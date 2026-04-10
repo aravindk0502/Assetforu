@@ -27,7 +27,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       router.replace('/login?next=/admin');
       return;
     }
-    if (user.role !== 'admin') router.replace('/');
   }, [user, isLoaded, router]);
 
   if (!isLoaded) {
@@ -37,10 +36,40 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </div>
     );
   }
-  if (!user || user.role !== 'admin') {
+  if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-200">
         Redirecting…
+      </div>
+    );
+  }
+  if (user.role !== 'admin') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-200 px-6">
+        <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6 text-center">
+          <p className="text-xs uppercase tracking-[0.25em] text-slate-400 font-bold">Admin Panel</p>
+          <h1 className="mt-3 text-xl font-black text-white">Admin access required</h1>
+          <p className="mt-2 text-sm text-slate-300">
+            You’re signed in as a regular user. To open the admin panel on this device, sign out and sign in with an admin phone number.
+          </p>
+          <div className="mt-5 flex flex-col gap-2">
+            <button
+              onClick={() => {
+                logout();
+                router.replace('/login?next=/admin');
+              }}
+              className="w-full rounded-xl bg-primary-700 text-white px-5 py-2.5 text-sm font-bold hover:bg-primary-600 transition-colors"
+            >
+              Sign out & sign in as admin
+            </button>
+            <Link
+              href="/"
+              className="w-full rounded-xl border border-slate-700 text-slate-200 px-5 py-2.5 text-sm font-bold hover:bg-slate-800 transition-colors"
+            >
+              Back to site
+            </Link>
+          </div>
+        </div>
       </div>
     );
   }
