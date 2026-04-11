@@ -19,6 +19,7 @@ export default function LoginPage() {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [adminMode, setAdminMode] = useState<'team' | 'company'>('team');
   const [countdown, setCountdown] = useState(0);
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -47,6 +48,8 @@ export default function LoginPage() {
     if (step !== 'otp') return;
     setTimeout(() => otpRefs.current[0]?.focus(), 100);
   }, [step]);
+
+  const isAdminNext = useMemo(() => nextPath.startsWith('/admin'), [nextPath]);
 
   const handleSendOtp = async () => {
     if (!/^\d{10}$/.test(phone)) {
@@ -94,7 +97,7 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      const res = await authAPI.verifyOtp(phone, otpStr, termsAccepted);
+      const res = await authAPI.verifyOtp(phone, otpStr, termsAccepted, isAdminNext ? adminMode : undefined);
       const { token: t, user } = res.data as { token: string; user: unknown };
       localStorage.setItem('af_last_phone', phone);
       setAuth(user as never, t);
@@ -158,6 +161,40 @@ export default function LoginPage() {
 
           {step === 'phone' && (
             <div className="space-y-5">
+              {isAdminNext && (
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Admin Sign-in</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAdminMode('company')}
+                      className={clsx(
+                        'py-2.5 rounded-xl border text-sm font-extrabold transition-colors',
+                        adminMode === 'company'
+                          ? 'bg-primary-700 text-white border-primary-700'
+                          : 'bg-white text-slate-700 border-slate-200 hover:border-primary-300'
+                      )}
+                    >
+                      Company Admin
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAdminMode('team')}
+                      className={clsx(
+                        'py-2.5 rounded-xl border text-sm font-extrabold transition-colors',
+                        adminMode === 'team'
+                          ? 'bg-primary-700 text-white border-primary-700'
+                          : 'bg-white text-slate-700 border-slate-200 hover:border-primary-300'
+                      )}
+                    >
+                      Team Admin
+                    </button>
+                  </div>
+                  <p className="mt-2 text-xs text-slate-500">
+                    Company Admin is for owner accounts only. Team Admin is for your invited admin phones.
+                  </p>
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-2">Phone Number</label>
                 <div className="relative">

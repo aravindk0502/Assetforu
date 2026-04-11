@@ -20,6 +20,7 @@ function last10(raw: string) {
 }
 
 export default function AdminUsersPage() {
+  const currentUser = useAuthStore((s) => s.user);
   const token = useAuthStore((s) => s.token);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [total, setTotal] = useState(0);
@@ -31,6 +32,7 @@ export default function AdminUsersPage() {
   const [adminBusy, setAdminBusy] = useState<string | null>(null);
   const [adminError, setAdminError] = useState('');
   const [addPhone, setAddPhone] = useState('');
+  const [canManageAdmins, setCanManageAdmins] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -43,9 +45,14 @@ export default function AdminUsersPage() {
       if (!bearer) return;
       const res = await fetch('/api/admin/admin-phones', { headers: { authorization: `Bearer ${bearer}` }, cache: 'no-store' });
       const json = (await res.json().catch(() => ({}))) as any;
-      if (res.ok && json?.success && json?.data) setAdminPhones(json.data);
+      if (res.ok && json?.success && json?.data) {
+        setAdminPhones(json.data);
+        setCanManageAdmins(true);
+      } else {
+        setCanManageAdmins(false);
+      }
     } catch {
-      // ignore
+      setCanManageAdmins(false);
     }
   };
 
@@ -59,6 +66,7 @@ export default function AdminUsersPage() {
     try {
       const bearer = token || (typeof window !== 'undefined' ? localStorage.getItem('af_token') : null);
       if (!bearer) throw new Error('Not authenticated');
+      if (!canManageAdmins) throw new Error('Owner admin required');
       setAdminBusy(phone10);
       const res = await fetch('/api/admin/admin-phones', {
         method: 'PATCH',
@@ -105,40 +113,42 @@ export default function AdminUsersPage() {
         </div>
       </div>
 
-      <div className="mb-5 rounded-2xl border border-slate-800 bg-slate-900 p-4">
-        <p className="text-xs uppercase tracking-[0.25em] text-slate-400 font-bold">Team Admin Access</p>
-        <p className="mt-2 text-sm text-slate-300">
-          Add/remove admin access by phone number. Team members can open `https://www.assetforu.com/admin` and sign in with an admin phone.
-        </p>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <input
-            value={addPhone}
-            onChange={(e) => setAddPhone(e.target.value)}
-            placeholder="Add admin phone (10 digits)"
-            className="flex-1 min-w-[220px] bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:ring-2 focus:ring-primary-700 focus:outline-none"
-          />
-          <button
-            type="button"
-            onClick={handleAddPhone}
-            className="px-4 py-2.5 rounded-xl bg-primary-700 text-white text-sm font-bold hover:bg-primary-600 transition-colors"
-          >
-            Add Admin
-          </button>
-          <button
-            type="button"
-            onClick={() => void loadAdminPhones()}
-            className="px-4 py-2.5 rounded-xl bg-slate-800 text-slate-200 text-sm font-bold hover:bg-slate-700 transition-colors"
-          >
-            Refresh
-          </button>
-        </div>
-        {adminPhones && (
-          <p className="mt-3 text-xs text-slate-400">
-            Admin phones: {adminPhones.all.length} total ({adminPhones.env.length} env, {adminPhones.dynamic.length} added here)
+      {((currentUser as any)?.admin_level === 'owner' || canManageAdmins) && (
+        <div className="mb-5 rounded-2xl border border-slate-800 bg-slate-900 p-4">
+          <p className="text-xs uppercase tracking-[0.25em] text-slate-400 font-bold">Team Admin Access</p>
+          <p className="mt-2 text-sm text-slate-300">
+            Add/remove admin access by phone number. Team members can open `https://www.assetforu.com/admin` and sign in with a Team Admin phone.
           </p>
-        )}
-        {adminError && <p className="mt-3 text-sm text-rose-400 font-semibold">{adminError}</p>}
-      </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <input
+              value={addPhone}
+              onChange={(e) => setAddPhone(e.target.value)}
+              placeholder="Add team admin phone (10 digits)"
+              className="flex-1 min-w-[220px] bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:ring-2 focus:ring-primary-700 focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={handleAddPhone}
+              className="px-4 py-2.5 rounded-xl bg-primary-700 text-white text-sm font-bold hover:bg-primary-600 transition-colors"
+            >
+              Add Team Admin
+            </button>
+            <button
+              type="button"
+              onClick={() => void loadAdminPhones()}
+              className="px-4 py-2.5 rounded-xl bg-slate-800 text-slate-200 text-sm font-bold hover:bg-slate-700 transition-colors"
+            >
+              Refresh
+            </button>
+          </div>
+          {adminPhones && (
+            <p className="mt-3 text-xs text-slate-400">
+              Admin phones: {adminPhones.all.length} total ({adminPhones.env.length} owner, {adminPhones.dynamic.length} team)
+            </p>
+          )}
+          {adminError && <p className="mt-3 text-sm text-rose-400 font-semibold">{adminError}</p>}
+        </div>
+      )}
 
       <div className="mb-5">
         <input
@@ -206,35 +216,37 @@ export default function AdminUsersPage() {
                     >
                       View
                     </button>
-                    {isEnvAdmin ? (
-                      <span className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-400 text-xs font-bold">Env Admin</span>
-                    ) : isAdmin ? (
-                      <button
-                        type="button"
-                        disabled={!isDynamicAdmin || busy}
-                        onClick={() => void toggleAdmin(phone10, false)}
-                        className={clsx(
-                          'px-3 py-1.5 rounded-lg text-xs font-bold transition-colors',
-                          !isDynamicAdmin || busy
-                            ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                            : 'bg-rose-900/60 text-rose-300 hover:bg-rose-900'
-                        )}
-                      >
-                        {busy ? 'Saving…' : 'Remove Admin'}
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        disabled={busy || !phone10}
-                        onClick={() => void toggleAdmin(phone10, true)}
-                        className={clsx(
-                          'px-3 py-1.5 rounded-lg text-xs font-bold transition-colors',
-                          busy ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-primary-700 text-white hover:bg-primary-600'
-                        )}
-                      >
-                        {busy ? 'Saving…' : 'Make Admin'}
-                      </button>
-                    )}
+                    {canManageAdmins && adminPhones ? (
+                      isEnvAdmin ? (
+                        <span className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-400 text-xs font-bold">Owner Admin</span>
+                      ) : isAdmin ? (
+                        <button
+                          type="button"
+                          disabled={!isDynamicAdmin || busy}
+                          onClick={() => void toggleAdmin(phone10, false)}
+                          className={clsx(
+                            'px-3 py-1.5 rounded-lg text-xs font-bold transition-colors',
+                            !isDynamicAdmin || busy
+                              ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                              : 'bg-rose-900/60 text-rose-300 hover:bg-rose-900'
+                          )}
+                        >
+                          {busy ? 'Saving…' : 'Remove Team Admin'}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={busy || !phone10}
+                          onClick={() => void toggleAdmin(phone10, true)}
+                          className={clsx(
+                            'px-3 py-1.5 rounded-lg text-xs font-bold transition-colors',
+                            busy ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-primary-700 text-white hover:bg-primary-600'
+                          )}
+                        >
+                          {busy ? 'Saving…' : 'Make Team Admin'}
+                        </button>
+                      )
+                    ) : null}
                   </div>
                 </td>
               </tr>

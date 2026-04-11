@@ -4,6 +4,9 @@ export interface User {
   name?: string;
   email?: string;
   role: 'user' | 'admin';
+  // When `role === 'admin'`, the admin can be an owner/company admin (env allowlist)
+  // or a team admin (managed via Admin -> Users).
+  admin_level?: 'owner' | 'team';
   kyc_status: 'pending' | 'verified' | 'rejected';
   balance?: number;
 }

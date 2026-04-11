@@ -1,24 +1,8 @@
 export const runtime = 'nodejs';
 
 import type { AdPlacement, AdPlacementBanner, AdPropertyDetails } from '@/types';
-import { verifyJwtHS256 } from '@/app/api/_utils/jwt';
 import { loadAds, saveAds } from '@/app/api/_utils/blobAds';
-
-function getBearer(req: Request) {
-  const auth = req.headers.get('authorization') || '';
-  if (!auth.toLowerCase().startsWith('bearer ')) return null;
-  return auth.slice(7).trim();
-}
-
-function requireAdmin(req: Request) {
-  const token = getBearer(req);
-  const secret = process.env.JWT_SECRET || process.env.MSG91_API_KEY || 'dev-secret';
-  if (!token) return { ok: false as const, status: 401, message: 'No token provided' };
-  const payload = verifyJwtHS256(token, secret);
-  if (!payload) return { ok: false as const, status: 401, message: 'Invalid or expired token' };
-  if (payload.role !== 'admin') return { ok: false as const, status: 403, message: 'Admin access required' };
-  return { ok: true as const };
-}
+import { requireAdmin } from '@/app/api/_utils/adminAuth';
 
 function normalizeString(input: unknown) {
   return String(input ?? '').trim();
@@ -61,7 +45,7 @@ function normalizeProperty(raw: unknown): AdPropertyDetails | undefined {
 }
 
 export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const auth = requireAdmin(req);
+  const auth = await requireAdmin(req);
   if (!auth.ok) return Response.json({ success: false, message: auth.message }, { status: auth.status });
   const { id } = await ctx.params;
 
@@ -107,7 +91,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
 }
 
 export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const auth = requireAdmin(req);
+  const auth = await requireAdmin(req);
   if (!auth.ok) return Response.json({ success: false, message: auth.message }, { status: auth.status });
   const { id } = await ctx.params;
 

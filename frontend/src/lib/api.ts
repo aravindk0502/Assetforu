@@ -46,8 +46,8 @@ api.interceptors.response.use(
 export const authAPI = {
   // Use Next.js API routes for OTP so auth works on Vercel without a separate backend.
   sendOtp: (phone: string) => axios.post('/api/send-otp', { phone }),
-  verifyOtp: (phone: string, otp: string, terms_accepted: boolean) =>
-    axios.post('/api/verify-otp', { phone, otp, terms_accepted }),
+  verifyOtp: (phone: string, otp: string, terms_accepted: boolean, admin_mode?: 'company' | 'team') =>
+    axios.post('/api/verify-otp', { phone, otp, terms_accepted, admin_mode }),
 };
 
 // ── User ─────────────────────────────────────────────────────

@@ -22,11 +22,12 @@ function parseAdminPhones(raw: string | undefined): Set<string> {
   return set;
 }
 
-async function isAdminAllowedPhone(last10: string): Promise<boolean> {
+async function getAdminLevel(last10: string): Promise<'owner' | 'team' | null> {
   const envAdmins = parsePhonesToLast10(process.env.ADMIN_PHONES);
-  if (envAdmins.has(last10)) return true;
+  if (envAdmins.has(last10)) return 'owner';
   const dynamic = await loadDynamicAdminPhones();
-  return dynamic.includes(last10);
+  if (dynamic.includes(last10)) return 'team';
+  return null;
 }
 
 function parsePhones(raw: string | undefined): Set<string> {
@@ -61,7 +62,12 @@ function signJwtHS256(payload: Record<string, unknown>, secret: string, expiresI
 
 export async function POST(req: Request) {
   try {
-    const body = (await req.json()) as { phone?: string; otp?: string; terms_accepted?: boolean };
+    const body = (await req.json()) as {
+      phone?: string;
+      otp?: string;
+      terms_accepted?: boolean;
+      admin_mode?: 'company' | 'team';
+    };
     const phone = body.phone;
     const otp = body.otp;
     const termsAccepted = Boolean(body.terms_accepted);
@@ -76,43 +82,50 @@ export async function POST(req: Request) {
     const devOtpEnabled = envTrue(process.env.DEV_OTP_ENABLED);
     const jwtSecret = process.env.JWT_SECRET || apiKey || 'dev-secret';
     const last10 = (local10 || mobile).replace(/\D/g, '').slice(-10);
-    const adminAllowed = await isAdminAllowedPhone(last10);
+    const adminLevel = await getAdminLevel(last10);
+    const isAdmin = Boolean(adminLevel);
+
+    // If user explicitly selects "Company Admin", require owner-level admin.
+    if (body.admin_mode === 'company' && adminLevel !== 'owner') {
+      return Response.json({ success: false, message: 'Company admin access is restricted to owner accounts' }, { status: 403 });
+    }
 
     // Dev OTP fallback
     if (!apiKey) {
       const allow = parsePhones(process.env.DEV_AUTH_PHONES || process.env.ADMIN_PHONES);
       const isAllowed = allow.size > 0 && allow.has(last10);
       // Require explicit opt-in (DEV_OTP_ENABLED) unless it's an admin allowlisted number.
-      if (!devOtpEnabled && !adminAllowed) {
+      if (!devOtpEnabled && !isAdmin) {
         return Response.json({ success: false, message: 'MSG91 is not configured' }, { status: 500 });
       }
-      if (!isAllowed && !adminAllowed) {
+      if (!isAllowed && !isAdmin) {
         return Response.json({ success: false, message: 'MSG91 is not configured' }, { status: 500 });
       }
 
       // In admin fallback mode, allow a short dev PIN to unblock access when SMS isn't configured.
-      const expected = process.env.DEV_OTP_CODE || (adminAllowed ? '1234' : '123456');
+      const expected = process.env.DEV_OTP_CODE || (isAdmin ? '1234' : '123456');
       const provided = String(otp || '').trim();
       const ok =
         provided === expected ||
         // Backwards-compatible defaults for admin allowlisted numbers.
-        (adminAllowed && (provided === '1234' || provided === '123456'));
+        (isAdmin && (provided === '1234' || provided === '123456'));
       if (!ok) {
         return Response.json({ success: false, message: 'Invalid OTP' }, { status: 400 });
       }
 
       const id = `phone:${local10 || mobile}`;
-      const role = adminAllowed ? ('admin' as const) : ('user' as const);
+      const role = isAdmin ? ('admin' as const) : ('user' as const);
       const user = {
         id,
         phone: local10 || mobile,
         role,
+        admin_level: role === 'admin' ? adminLevel : undefined,
         kyc_status: 'pending' as const,
         isNew: true,
       };
 
       const token = signJwtHS256(
-        { sub: id, phone: user.phone, role: user.role, kyc_status: user.kyc_status, termsAccepted },
+        { sub: id, phone: user.phone, role: user.role, admin_level: user.admin_level, kyc_status: user.kyc_status, termsAccepted },
         jwtSecret
       );
 
@@ -145,17 +158,18 @@ export async function POST(req: Request) {
     }
 
     const id = `phone:${local10 || mobile}`;
-    const role = adminAllowed ? ('admin' as const) : ('user' as const);
+    const role = isAdmin ? ('admin' as const) : ('user' as const);
     const user = {
       id,
       phone: local10 || mobile,
       role,
+      admin_level: role === 'admin' ? adminLevel : undefined,
       kyc_status: 'pending' as const,
       isNew: true,
     };
 
     const token = signJwtHS256(
-      { sub: id, phone: user.phone, role: user.role, kyc_status: user.kyc_status, termsAccepted },
+      { sub: id, phone: user.phone, role: user.role, admin_level: user.admin_level, kyc_status: user.kyc_status, termsAccepted },
       jwtSecret
     );
 
