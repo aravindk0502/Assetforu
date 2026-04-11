@@ -69,14 +69,14 @@ export default function HomePage() {
     const load = async () => {
       try {
         // 1) Prefer Blob-backed campaigns (same-origin, no CORS)
-        const blobRes = await fetch('/api/public/campaigns?status=active&limit=200', { cache: 'no-store' });
+        const blobRes = await fetch('/api/public/campaigns?limit=200', { cache: 'no-store' });
         const blobJson = (await blobRes.json().catch(() => ({}))) as { success?: boolean; data?: unknown[] };
         const blobRows = (blobRes.ok && blobJson?.success && Array.isArray(blobJson.data)) ? blobJson.data : [];
 
         // 2) Fallback to backend API
         const apiRows = blobRows.length
           ? []
-          : (((await campaignAPI.list({ status: 'active', limit: 200 })).data?.data || []) as unknown[]);
+          : (((await campaignAPI.list({ limit: 200 })).data?.data || []) as unknown[]);
 
         const rows = (blobRows.length ? blobRows : apiRows) as Array<{
           id: string;
@@ -89,17 +89,35 @@ export default function HomePage() {
           status?: 'active' | 'upcoming' | 'closed';
           max_qty?: number;
           sold_out_announcement?: string;
+          is_featured?: boolean;
+          created_at?: string;
           image_url?: string;
           image_urls?: string[];
         }>;
-        setActiveCampaignCount(rows.length);
+        setActiveCampaignCount(rows.filter((r) => (r.status || 'active') === 'active').length);
         if (!rows.length) {
           // No API campaigns available: fallback to static list (avoid flashing before API resolves).
           setHomeCampaigns(dreamCampaigns.map((c) => ({ ...c, source: 'static', isAd: false, maxQty: 3 } as any)));
           return;
         }
 
-        const visible = rows.slice(0, 3);
+        const statusRank: Record<string, number> = { active: 0, upcoming: 1, closed: 2 };
+        const sorted = rows
+          .slice()
+          .sort((a, b) => {
+            const ar = statusRank[a.status || 'active'] ?? 9;
+            const br = statusRank[b.status || 'active'] ?? 9;
+            if (ar !== br) return ar - br;
+            // Featured first
+            const af = a.is_featured ? 0 : 1;
+            const bf = b.is_featured ? 0 : 1;
+            if (af !== bf) return af - bf;
+            // Newest first
+            const at = a.created_at ? new Date(a.created_at).getTime() : 0;
+            const bt = b.created_at ? new Date(b.created_at).getTime() : 0;
+            return bt - at;
+          });
+        const visible = sorted.slice(0, 3);
 
         const mapped: HomeCampaignWithFlags[] = visible.map((r) => {
           const meta = parseCampaignMeta(r.description, r.image_urls || r.image_url);
@@ -251,7 +269,7 @@ export default function HomePage() {
       <section className="mx-auto max-w-7xl px-6 lg:px-10 py-12">
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div>
-            <p className="text-xs uppercase tracking-[0.25em] text-emerald-600">Active Platform Campaigns</p>
+            <p className="text-xs uppercase tracking-[0.25em] text-emerald-600">Platform Campaigns</p>
             <h2 className="text-3xl font-black text-slate-900 mt-2">Featured Campaigns</h2>
             <p className="text-slate-500 mt-2">Explore available campaigns as part of your platform experience with Asset Credits.</p>
           </div>
@@ -276,17 +294,18 @@ export default function HomePage() {
             ) : (
               homeCampaigns.slice(0, 3).map((campaign, idx) => {
                 const c = campaign as any as HomeCampaignWithFlags;
-                const isSoldOut =
-                  !c.isAd &&
-                  ((c.status && c.status !== 'active') ||
-                    (typeof c.totalSlots === 'number' &&
-                      typeof c.filledSlots === 'number' &&
-                      c.totalSlots > 0 &&
-                      c.filledSlots >= c.totalSlots));
+                const status = (c.status || 'active') as 'active' | 'upcoming' | 'closed';
+                const isSlotSoldOut =
+                  typeof c.totalSlots === 'number' &&
+                  typeof c.filledSlots === 'number' &&
+                  c.totalSlots > 0 &&
+                  c.filledSlots >= c.totalSlots;
+                const isClosed = !c.isAd && (status === 'closed' || isSlotSoldOut);
+                const isUpcoming = !c.isAd && status === 'upcoming' && !isClosed;
                 const announcement =
                   c.soldOutAnnouncement || 'Campaign closed — will announce live event soon.';
                 const limitReached = limitMap[campaign.id] === 0;
-                const disableActions = isSoldOut || limitReached;
+                const disableActions = isClosed || isUpcoming || limitReached;
 
                 return (
               <div
@@ -325,13 +344,15 @@ export default function HomePage() {
                       <div>
                         <p className="text-xs text-slate-400">Entry Pack</p>
                         <p className="text-lg font-black text-slate-900">{formatCurrency(campaign.creditPack, currency)} Credits</p>
-                        {!isSoldOut && typeof limitMap[campaign.id] === 'number' && limitMap[campaign.id] > 0 && (
+                        {!isClosed && !isUpcoming && typeof limitMap[campaign.id] === 'number' && limitMap[campaign.id] > 0 && (
                           <p className="text-xs text-emerald-600 mt-1">
                             You can access up to {limitMap[campaign.id]} more
                           </p>
                         )}
-                        {isSoldOut ? (
+                        {isClosed ? (
                           <p className="text-xs text-rose-600 mt-1">{announcement}</p>
+                        ) : isUpcoming ? (
+                          <p className="text-xs text-amber-600 mt-1">Upcoming campaign — check back soon.</p>
                         ) : limitReached ? (
                           <p className="text-xs text-rose-600 mt-1">Limit reached for this campaign</p>
                         ) : null}
@@ -369,8 +390,10 @@ export default function HomePage() {
                           disabled={disableActions}
                           className="rounded-xl bg-primary-700 text-white px-4 py-2 text-sm font-bold disabled:opacity-60"
                         >
-                          {isSoldOut
+                          {isClosed
                             ? 'Campaign Closed'
+                            : isUpcoming
+                            ? 'Upcoming'
                             : limitReached
                             ? 'Limit Reached'
                             : `Buy ${formatCurrency(campaign.creditPack, currency)} Credits & Enter a free Land Gifting Campaign${limitMap[campaign.id] ? ` (${limitMap[campaign.id]} left)` : ''}`}

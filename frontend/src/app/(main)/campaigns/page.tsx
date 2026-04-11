@@ -10,6 +10,9 @@ import { AdsBadge } from '@/components/AdsBadge';
 import { campaignAPI } from '@/lib/api';
 import { parseCampaignMeta } from '@/lib/campaignMeta';
 import { CampaignImageCarousel } from '@/components/CampaignImageCarousel';
+import clsx from 'clsx';
+
+type StatusFilter = 'active' | 'upcoming' | 'closed';
 
 export default function CampaignsPage() {
   const router = useRouter();
@@ -18,6 +21,8 @@ export default function CampaignsPage() {
   const currency = useUIStore((state) => state.currency);
   const [list, setList] = useState<CampaignInfo[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [status, setStatus] = useState<StatusFilter>('active');
+  const [allRows, setAllRows] = useState<any[]>([]);
 
   const handleBuy = (id: string) => {
     if (!user) {
@@ -30,49 +35,20 @@ export default function CampaignsPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const blobRes = await fetch('/api/public/campaigns?status=active&limit=50', { cache: 'no-store' });
+        const blobRes = await fetch('/api/public/campaigns?limit=200', { cache: 'no-store' });
         const blobJson = (await blobRes.json().catch(() => ({}))) as { success?: boolean; data?: unknown[] };
         const blobRows = (blobRes.ok && blobJson?.success && Array.isArray(blobJson.data)) ? blobJson.data : [];
 
         const apiRows = blobRows.length
           ? []
-          : (((await campaignAPI.list({ status: 'active', limit: 50 })).data?.data || []) as unknown[]);
+          : (((await campaignAPI.list({ limit: 200 })).data?.data || []) as unknown[]);
 
-        const rows = (blobRows.length ? blobRows : apiRows) as Array<{
-          id: string;
-          title: string;
-          description: string;
-          location: string;
-          credit_price: number;
-          image_url?: string;
-          image_urls?: string[];
-        }>;
+        const rows = (blobRows.length ? blobRows : apiRows) as any[];
         if (!rows.length) {
           setList(dreamCampaigns);
           return;
         }
-        const mapped: CampaignInfo[] = rows.map((r) => {
-          const meta = parseCampaignMeta(r.description, r.image_urls || r.image_url);
-          const imageUrl = meta.images[0] || 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200';
-          return {
-            id: r.id,
-            title: r.title,
-            location: r.location || 'India',
-            city: meta.land?.city || r.location || 'India',
-            state: meta.land?.state || 'India',
-            country: meta.land?.country || 'India',
-            priceLabel: meta.land?.priceLabel || '—',
-            contactPhone: meta.land?.contactPhone || '+91 90000 00000',
-            whatsappNumber: meta.land?.whatsappNumber || '919000000000',
-            mapUrl: meta.land?.mapUrl,
-            imageUrl,
-            images: meta.images,
-            description: meta.text || r.description,
-            creditPack: Number(r.credit_price || 0),
-            isAd: meta.isAd ?? true,
-          } as any;
-        });
-        setList(mapped);
+        setAllRows(rows);
       } catch {
         setList(dreamCampaigns);
       } finally {
@@ -82,11 +58,57 @@ export default function CampaignsPage() {
     load();
   }, []);
 
+  useEffect(() => {
+    if (!allRows.length) return;
+    const filtered = allRows.filter((r: any) => (r.status || 'active') === status);
+    const mapped: CampaignInfo[] = filtered.map((r: any) => {
+      const meta = parseCampaignMeta(r.description, r.image_urls || r.image_url);
+      const imageUrl = meta.images[0] || 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200';
+      return {
+        id: r.id,
+        title: r.title,
+        location: r.location || 'India',
+        city: meta.land?.city || r.location || 'India',
+        state: meta.land?.state || 'India',
+        country: meta.land?.country || 'India',
+        priceLabel: meta.land?.priceLabel || '—',
+        contactPhone: meta.land?.contactPhone || '+91 90000 00000',
+        whatsappNumber: meta.land?.whatsappNumber || '919000000000',
+        mapUrl: meta.land?.mapUrl,
+        imageUrl,
+        images: meta.images,
+        description: meta.text || r.description,
+        creditPack: Number(r.credit_price || 0),
+        isAd: meta.isAd ?? true,
+        status: (r.status || 'active') as any,
+      } as any;
+    });
+    setList(mapped);
+  }, [allRows, status]);
+
   return (
     <div className="page-enter mx-auto max-w-7xl px-6 py-10">
       <BackNavigation />
       <h1 className="text-4xl font-black text-slate-900 mb-3">Premium Land Campaigns</h1>
       <p className="text-slate-600 mb-8">Select a campaign and purchase Asset Credits to join automatically.</p>
+
+      <div className="mb-6 flex flex-wrap gap-2">
+        {(['active', 'upcoming', 'closed'] as StatusFilter[]).map((s) => (
+          <button
+            key={s}
+            type="button"
+            onClick={() => setStatus(s)}
+            className={clsx(
+              'px-4 py-2 rounded-xl text-sm font-extrabold border transition-colors',
+              status === s
+                ? 'bg-primary-700 text-white border-primary-700'
+                : 'bg-white text-slate-700 border-slate-200 hover:border-primary-300'
+            )}
+          >
+            {s.toUpperCase()}
+          </button>
+        ))}
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         {!list.length && !loaded ? (
@@ -122,9 +144,14 @@ export default function CampaignsPage() {
               <p className="mt-4 text-sm text-slate-500">{formatCurrency(campaign.creditPack, currency)} Asset Credits pack</p>
               <button
                 onClick={(e) => { e.stopPropagation(); handleBuy(campaign.id); }}
-                className="mt-5 w-full rounded-xl bg-primary-700 text-white py-3 font-semibold hover:bg-primary-800 transition"
+                disabled={status !== 'active'}
+                className="mt-5 w-full rounded-xl bg-primary-700 text-white py-3 font-semibold hover:bg-primary-800 transition disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                Buy {formatCurrency(campaign.creditPack, currency)} Credits & Enter a free Land Gifting Campaign
+                {status === 'active'
+                  ? `Buy ${formatCurrency(campaign.creditPack, currency)} Credits & Enter a free Land Gifting Campaign`
+                  : status === 'upcoming'
+                  ? 'Upcoming'
+                  : 'Campaign Closed'}
               </button>
             </div>
           </article>
