@@ -45,7 +45,8 @@ export default function CampaignsPage() {
 
         const rows = (blobRows.length ? blobRows : apiRows) as any[];
         if (!rows.length) {
-          setList(dreamCampaigns);
+          setAllRows([]);
+          setList([]);
           return;
         }
         setAllRows(rows);
@@ -114,6 +115,10 @@ export default function CampaignsPage() {
         {!list.length && !loaded ? (
           <div className="rounded-2xl border border-slate-200 bg-white p-6 text-slate-500 text-sm">
             Loading campaigns…
+          </div>
+        ) : loaded && !list.length ? (
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 text-slate-600 text-sm lg:col-span-3">
+            No campaigns available right now. Please check back later for upcoming campaigns.
           </div>
         ) : (
           list.map((campaign) => (

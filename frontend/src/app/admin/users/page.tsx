@@ -90,6 +90,9 @@ export default function AdminUsersPage() {
     await toggleAdmin(p, true);
   };
 
+  const ownerAdmins = adminPhones?.env || [];
+  const teamAdmins = adminPhones?.dynamic || [];
+
   const visibleUsers = users.filter((u) => {
     const q = query.trim().toLowerCase();
     if (!q) return true;
@@ -145,6 +148,53 @@ export default function AdminUsersPage() {
             <p className="mt-3 text-xs text-slate-400">
               Admin phones: {adminPhones.all.length} total ({adminPhones.env.length} owner, {adminPhones.dynamic.length} team)
             </p>
+          )}
+          {adminPhones && (
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4">
+                <p className="text-xs uppercase tracking-[0.25em] text-slate-500 font-bold">Owner Admins</p>
+                {ownerAdmins.length ? (
+                  <div className="mt-3 space-y-2">
+                    {ownerAdmins.map((p) => (
+                      <div key={p} className="flex items-center justify-between gap-2">
+                        <span className="text-sm text-slate-200 font-mono">+91 {p}</span>
+                        <span className="text-xs font-bold text-slate-400">Env</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-2 text-sm text-slate-500">No owner admins configured.</p>
+                )}
+              </div>
+
+              <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4">
+                <p className="text-xs uppercase tracking-[0.25em] text-slate-500 font-bold">Team Admins</p>
+                {teamAdmins.length ? (
+                  <div className="mt-3 space-y-2">
+                    {teamAdmins.map((p) => (
+                      <div key={p} className="flex items-center justify-between gap-2">
+                        <span className="text-sm text-slate-200 font-mono">+91 {p}</span>
+                        <button
+                          type="button"
+                          disabled={adminBusy === p}
+                          onClick={() => void toggleAdmin(p, false)}
+                          className={clsx(
+                            'px-3 py-1.5 rounded-lg text-xs font-bold transition-colors',
+                            adminBusy === p
+                              ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                              : 'bg-rose-900/60 text-rose-300 hover:bg-rose-900'
+                          )}
+                        >
+                          {adminBusy === p ? 'Saving…' : 'Remove'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-2 text-sm text-slate-500">No team admins added yet.</p>
+                )}
+              </div>
+            </div>
           )}
           {adminError && <p className="mt-3 text-sm text-rose-400 font-semibold">{adminError}</p>}
         </div>

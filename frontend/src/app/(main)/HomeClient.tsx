@@ -96,8 +96,9 @@ export default function HomePage() {
         }>;
         setActiveCampaignCount(rows.filter((r) => (r.status || 'active') === 'active').length);
         if (!rows.length) {
-          // No API campaigns available: fallback to static list (avoid flashing before API resolves).
-          setHomeCampaigns(dreamCampaigns.map((c) => ({ ...c, source: 'static', isAd: false, maxQty: 3 } as any)));
+          // No campaigns available (admin deleted everything): show an empty state (no dummy fallback).
+          setActiveCampaignCount(0);
+          setHomeCampaigns([]);
           return;
         }
 
@@ -290,6 +291,13 @@ export default function HomePage() {
             {!homeCampaigns.length && !campaignsLoaded ? (
               <div className="rounded-3xl bg-white border border-slate-200 shadow-sm p-6 text-slate-500 text-sm">
                 Loading campaigns…
+              </div>
+            ) : campaignsLoaded && !homeCampaigns.length ? (
+              <div className="rounded-3xl bg-white border border-slate-200 shadow-sm p-6">
+                <p className="text-sm font-extrabold text-slate-900">No campaigns available right now</p>
+                <p className="mt-2 text-sm text-slate-600">
+                  Asset Credits purchases are not available at the moment. Please check back later for upcoming campaigns.
+                </p>
               </div>
             ) : (
               homeCampaigns.slice(0, 3).map((campaign, idx) => {
