@@ -1,27 +1,58 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { adminAPI } from '@/lib/api';
 import { Loader2, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 import { format } from 'date-fns';
 import clsx from 'clsx';
 import BackNavigation from '@/components/BackNavigation';
 import AdminJsonModal from '@/components/admin/AdminJsonModal';
+import { useAuthStore } from '@/store';
 
 interface AdminTxn {
-  id: string; phone: string; type: string; amount: number;
-  credits: number; direction: string; description: string; status: string; created_at: string; reference_id?: string | null;
+  id: string;
+  phone?: string;
+  phone_last10?: string;
+  type: string;
+  amount: number;
+  credits: number;
+  direction: string;
+  description: string;
+  status: string;
+  created_at: string;
+  reference_id?: string | null;
 }
 
 export default function AdminTransactionsPage() {
+  const token = useAuthStore((s) => s.token);
   const [txns, setTxns] = useState<AdminTxn[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewTxn, setViewTxn] = useState<AdminTxn | null>(null);
 
   useEffect(() => {
-    adminAPI.getTransactions().then(r => setTxns(r.data.data)).catch(() => { }).finally(() => setLoading(false));
-  }, []);
+    const load = async () => {
+      try {
+        const bearer = token || (typeof window !== 'undefined' ? localStorage.getItem('af_token') : null);
+        const res = await fetch('/api/admin/transactions', {
+          headers: bearer ? { authorization: `Bearer ${bearer}` } : undefined,
+          cache: 'no-store',
+        });
+        const json = (await res.json().catch(() => ({}))) as any;
+        if (res.ok && json?.success && Array.isArray(json?.data)) {
+          setTxns(json.data as AdminTxn[]);
+        } else {
+          setTxns([]);
+        }
+      } catch {
+        setTxns([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    void load();
+  }, [token]);
 
-  const totalRevenue = txns.filter(t => t.direction === 'credit' && t.type === 'credit_purchase').reduce((s, t) => s + Number(t.amount), 0);
+  const totalRevenue = txns
+    .filter((t) => t.direction === 'credit')
+    .reduce((s, t) => s + Number(t.amount || 0), 0);
 
   return (
     <div>
@@ -50,7 +81,9 @@ export default function AdminTransactionsPage() {
             ) : txns.map(t => (
               <tr key={t.id} className="hover:bg-slate-800/50 transition-colors">
                 <td className="px-5 py-3.5 text-slate-500 text-xs font-mono">{t.id}</td>
-                <td className="px-5 py-3.5 text-slate-300 text-sm font-mono">+91 {t.phone}</td>
+                <td className="px-5 py-3.5 text-slate-300 text-sm font-mono">
+                  +91 {t.phone_last10 || t.phone || '—'}
+                </td>
                 <td className="px-5 py-3.5">
                   <span className="badge bg-slate-800 text-slate-400 text-[10px]">{t.type.replace(/_/g, ' ')}</span>
                 </td>

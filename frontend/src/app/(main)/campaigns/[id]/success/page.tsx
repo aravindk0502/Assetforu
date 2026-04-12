@@ -4,7 +4,7 @@ import { Suspense } from 'react';
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
 import { useUIStore } from '@/store';
-import { campaigns, type CampaignInfo } from '@/data/dreamCampaigns';
+import { type CampaignInfo } from '@/data/dreamCampaigns';
 import { formatCurrency } from '@/lib/currency';
 import BackNavigation from '@/components/BackNavigation';
 import { campaignAPI } from '@/lib/api';
@@ -18,7 +18,7 @@ function CampaignSuccessContent() {
     const { walletBalance, currency } = useUIStore();
 
     const campaignId = (params?.id as string) || '';
-    const [campaign, setCampaign] = useState<CampaignInfo | null>(() => campaigns.find((item) => item.id === campaignId) || null);
+    const [campaign, setCampaign] = useState<CampaignInfo | null>(null);
     const qty = Number(searchParams.get('qty') || '1');
     const currentQty = Number.isNaN(qty) || qty < 1 ? 1 : Math.min(10, qty);
     const ticketsRaw = searchParams.get('tickets') || '';
@@ -29,11 +29,7 @@ function CampaignSuccessContent() {
 
     useEffect(() => {
         if (!campaignId) return;
-        const local = campaigns.find((item) => item.id === campaignId) || null;
-        if (local) {
-            setCampaign(local);
-            return;
-        }
+        // Avoid static/dummy campaign flashes.
         let cancelled = false;
         const load = async () => {
             try {

@@ -12,6 +12,7 @@ function OrderDetailsContent() {
     const params = useParams();
     const searchParams = useSearchParams();
     const user = useAuthStore((state) => state.user);
+    const token = useAuthStore((state) => state.token);
     const { activity, transactions } = useUIStore();
 
     const id = Array.isArray(params?.id) ? params.id[0] : params?.id;
@@ -50,6 +51,40 @@ function OrderDetailsContent() {
                 setTransactionFallback(null);
             }
         }
+
+        // Server-side persisted orders (works across devices)
+        (async () => {
+            if (activityOrder) return;
+            const bearer = token || (typeof window !== 'undefined' ? localStorage.getItem('af_token') : null);
+            if (!bearer) return;
+            try {
+                const res = await fetch(`/api/public/activity/orders/${encodeURIComponent(String(id))}`, {
+                    headers: { authorization: `Bearer ${bearer}` },
+                    cache: 'no-store',
+                });
+                const json = (await res.json().catch(() => ({}))) as any;
+                const o = res.ok && json?.success && json?.data ? json.data : null;
+                if (!o) return;
+                setActivityOrderFallback({
+                    id: o.id,
+                    campaignId: o.items?.[0]?.item_id || o.id,
+                    campaignName: o.items?.[0]?.title || 'Order',
+                    creditsUsed: Number(o.total_credits || 0),
+                    status: 'Completed',
+                    createdAt: o.created_at,
+                });
+                setTransactionFallback((prev) => prev || {
+                    id: o.id,
+                    type: 'debit',
+                    description: `Store checkout (${(o.items || []).length} item${(o.items || []).length > 1 ? 's' : ''})`,
+                    credits: Number(o.total_credits || 0),
+                    reference_id: o.id,
+                    createdAt: o.created_at,
+                });
+            } catch {
+                // ignore
+            }
+        })();
     }, [id, activityOrder]);
 
     const transaction = useMemo(() => {

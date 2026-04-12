@@ -3,7 +3,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuthStore, useUIStore } from '@/store';
-import { campaigns } from '@/data/dreamCampaigns';
 import { campaignAPI } from '@/lib/api';
 import { formatCurrency } from '@/lib/currency';
 import BackNavigation from '@/components/BackNavigation';
@@ -40,7 +39,8 @@ export default function CampaignDetailPage() {
   const [apiLoading, setApiLoading] = useState(false);
   const isDevUser = !!user?.id?.startsWith('dev_');
 
-  const campaign = useMemo(() => campaigns.find((item) => item.id === routeId), [routeId]);
+  // Do not use static/dummy campaigns to avoid "flash of old campaign" glitches.
+  const campaign = null;
   const hasStaleApiCampaign = Boolean(apiCampaign && String(apiCampaign.id) !== routeId);
   const apiCampaignForRoute = !hasStaleApiCampaign ? apiCampaign : null;
 
@@ -116,19 +116,17 @@ export default function CampaignDetailPage() {
       }
       if (isBlobCampaign) {
         try {
-          const key = `af_campaign_purchases_${user?.id || user?.phone || 'user'}`;
-          const raw = localStorage.getItem(key);
-          const map = raw ? JSON.parse(raw) as Record<string, number> : {};
-          const purchased = map[campaignId] || 0;
-          const remaining = Math.max(0, cap - purchased);
+          const bearer = token || (typeof window !== 'undefined' ? localStorage.getItem('af_token') : null);
+          const res = await fetch(`/api/public/campaigns/${encodeURIComponent(String(campaignId))}/limit`, {
+            headers: bearer ? { authorization: `Bearer ${bearer}` } : undefined,
+            cache: 'no-store',
+          });
+          const json = (await res.json().catch(() => ({}))) as any;
+          const remaining = Number(json?.data?.remaining_limit ?? cap);
           setRemainingLimit(remaining);
-          if (remaining <= 0) {
-            setLimitMessage('Maximum participation limit reached for this campaign');
-          } else if (remaining < cap) {
-            setLimitMessage(`You can access up to ${remaining} more for this campaign`);
-          } else {
-            setLimitMessage('');
-          }
+          if (remaining <= 0) setLimitMessage('Maximum participation limit reached for this campaign');
+          else if (remaining < cap) setLimitMessage(`You can access up to ${remaining} more for this campaign`);
+          else setLimitMessage('');
         } catch {
           setRemainingLimit(cap);
           setLimitMessage('');

@@ -1,22 +1,50 @@
 'use client';
 
 import { useAuthStore, useUIStore } from '@/store';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import BackNavigation from '@/components/BackNavigation';
 
 export default function ActivityPage() {
     const user = useAuthStore((state) => state.user);
+    const token = useAuthStore((state) => state.token);
     const { activity } = useUIStore();
     const [activeTab, setActiveTab] = useState<'tickets' | 'purchases' | 'all'>('tickets');
+    const [serverActivity, setServerActivity] = useState<any[] | null>(null);
+    const [serverLoaded, setServerLoaded] = useState(false);
+
+    useEffect(() => {
+        if (!token) return;
+        let cancelled = false;
+        const load = async () => {
+            try {
+                const res = await fetch('/api/public/activity', {
+                    headers: { authorization: `Bearer ${token}` },
+                    cache: 'no-store',
+                });
+                const json = (await res.json().catch(() => ({}))) as any;
+                if (!cancelled && res.ok && json?.success && Array.isArray(json?.data?.activity)) {
+                    setServerActivity(json.data.activity);
+                }
+            } catch {
+                // ignore
+            } finally {
+                if (!cancelled) setServerLoaded(true);
+            }
+        };
+        void load();
+        return () => { cancelled = true; };
+    }, [token]);
 
     const { tickets, purchases } = useMemo(() => {
-        const tickets = activity.filter((item) => typeof item.ticketNumber === 'number');
-        const purchases = activity.filter((item) => typeof item.ticketNumber !== 'number');
+        const source = (serverActivity && serverActivity.length) ? (serverActivity as any[]) : activity;
+        const tickets = source.filter((item) => typeof item.ticketNumber === 'number');
+        const purchases = source.filter((item) => typeof item.ticketNumber !== 'number');
         return { tickets, purchases };
-    }, [activity]);
+    }, [activity, serverActivity]);
 
-    const visible = activeTab === 'tickets' ? tickets : activeTab === 'purchases' ? purchases : activity;
+    const base = (serverActivity && serverActivity.length) ? (serverActivity as any[]) : activity;
+    const visible = activeTab === 'tickets' ? tickets : activeTab === 'purchases' ? purchases : base;
 
     if (!user) {
         return (
@@ -32,7 +60,11 @@ export default function ActivityPage() {
         <div className="page-enter mx-auto max-w-6xl px-6 py-10">            <BackNavigation />            <h1 className="text-3xl font-black text-slate-900 mb-3">My Activity</h1>
             <p className="text-sm text-slate-600 mb-6">Campaigns you participated in and credits allocated</p>
 
-            {activity.length === 0 ? (
+            {(base.length === 0 && !serverLoaded) ? (
+                <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-slate-500">
+                    Loading activity…
+                </div>
+            ) : base.length === 0 ? (
                 <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">
                     <p className="text-slate-500">No activity yet. Purchase Asset Credits to participate in campaigns.</p>
                     <Link href="/" className="mt-4 inline-block text-primary-700 font-bold hover:underline">Explore Campaigns</Link>
@@ -43,7 +75,7 @@ export default function ActivityPage() {
                         {([
                             { id: 'tickets', label: `Tickets (${tickets.length})` },
                             { id: 'purchases', label: `Asset Purchases (${purchases.length})` },
-                            { id: 'all', label: `All (${activity.length})` },
+                            { id: 'all', label: `All (${base.length})` },
                         ] as const).map((tab) => (
                             <button
                                 key={tab.id}

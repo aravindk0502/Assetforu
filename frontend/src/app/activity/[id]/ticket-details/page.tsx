@@ -44,6 +44,7 @@ function findTicketActivity(list: any[], id: string) {
 function TicketDetailsContent({ params }: { params: { id: string } }) {
     const { id } = params;
     const user = useAuthStore((state) => state.user);
+    const token = useAuthStore((state) => state.token);
     const { activity } = useUIStore();
 
     const ticketActivity = useMemo(() => {
@@ -57,15 +58,49 @@ function TicketDetailsContent({ params }: { params: { id: string } }) {
             setTicketActivityFallback(null);
             return;
         }
-        if (typeof window === 'undefined') return;
-        try {
-            const raw = localStorage.getItem('af_activity');
-            const parsed = raw ? (JSON.parse(raw) as any[]) : [];
-            const found = findTicketActivity(Array.isArray(parsed) ? parsed : [], id);
-            setTicketActivityFallback(found || null);
-        } catch {
-            setTicketActivityFallback(null);
-        }
+        let cancelled = false;
+        const load = async () => {
+            // 1) Try server-side persisted tickets (works after refresh, across devices)
+            try {
+                const bearer = token || (typeof window !== 'undefined' ? localStorage.getItem('af_token') : null);
+                if (bearer) {
+                    const res = await fetch(`/api/public/activity/tickets/${encodeURIComponent(String(id))}`, {
+                        headers: { authorization: `Bearer ${bearer}` },
+                        cache: 'no-store',
+                    });
+                    const json = (await res.json().catch(() => ({}))) as any;
+                    const t = res.ok && json?.success && json?.data ? json.data : null;
+                    if (t && !cancelled) {
+                        setTicketActivityFallback({
+                            id: t.id,
+                            campaignId: t.campaign_id,
+                            campaignName: t.campaign_title || 'Campaign',
+                            creditsUsed: 0,
+                            status: 'Active Campaign',
+                            createdAt: t.created_at,
+                            ticketNumber: t.ticket_number,
+                        });
+                        return;
+                    }
+                }
+            } catch {
+                // ignore
+            }
+            // 2) Fallback to local storage cache (older demo-mode)
+            if (typeof window === 'undefined') return;
+            try {
+                const raw = localStorage.getItem('af_activity');
+                const parsed = raw ? (JSON.parse(raw) as any[]) : [];
+                const found = findTicketActivity(Array.isArray(parsed) ? parsed : [], id);
+                if (!cancelled) setTicketActivityFallback(found || null);
+            } catch {
+                if (!cancelled) setTicketActivityFallback(null);
+            }
+        };
+        void load();
+        return () => {
+            cancelled = true;
+        };
     }, [id, ticketActivity]);
 
     const effectiveTicketActivity = (ticketActivity as any) || ticketActivityFallback;

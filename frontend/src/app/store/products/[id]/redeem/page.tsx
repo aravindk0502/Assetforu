@@ -102,17 +102,41 @@ export default function ProductRedeemPage() {
 
   const handleConfirmRedeem = () => {
     setConfirmOpen(false);
-    const nextOrderId = redeemOrderId || `ORD-${Date.now().toString(36).toUpperCase()}${Math.random().toString(16).slice(2, 6).toUpperCase()}`;
-    setRedeemOrderId(nextOrderId);
-    localStorage.setItem('af_delivery_address', JSON.stringify(address));
-    setWalletBalance(walletBalance - product.credits);
-    addTransaction({ type: 'debit', description: `Redeemed ${product.name} (product)`, credits: product.credits, reference_id: nextOrderId });
-    addActivity({ id: nextOrderId, campaignId: product.id, campaignName: product.name, creditsUsed: product.credits, status: 'Completed' });
-    const eta = new Date();
-    const pin = address.pincode.trim();
-    const days = pin.startsWith('6') ? 4 : pin ? 6 : 5;
-    eta.setDate(eta.getDate() + days);
-    router.push(`/store/products/${product.id}/redeem/success?eta=${encodeURIComponent(eta.toISOString())}&orderId=${encodeURIComponent(nextOrderId)}`);
+    const fallbackOrderId = redeemOrderId || `ORD-${Date.now().toString(36).toUpperCase()}${Math.random().toString(16).slice(2, 6).toUpperCase()}`;
+    const doRedeem = async () => {
+      let nextOrderId = fallbackOrderId;
+      try {
+        const bearer = token || (typeof window !== 'undefined' ? localStorage.getItem('af_token') : null);
+        if (bearer) {
+          const res = await fetch('/api/public/store/checkout', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json', authorization: `Bearer ${bearer}` },
+            body: JSON.stringify({
+              items: [{ item_id: product.id, title: product.name, type: 'product', credits: product.credits, quantity: 1 }],
+              delivery_address: address,
+            }),
+          });
+          const json = (await res.json().catch(() => ({}))) as any;
+          if (res.ok && json?.success && json?.data?.order_id) {
+            nextOrderId = String(json.data.order_id);
+          }
+        }
+      } catch {
+        // ignore server persistence failures; proceed with local flow.
+      }
+
+      setRedeemOrderId(nextOrderId);
+      localStorage.setItem('af_delivery_address', JSON.stringify(address));
+      setWalletBalance(walletBalance - product.credits);
+      addTransaction({ type: 'debit', description: `Redeemed ${product.name} (product)`, credits: product.credits, reference_id: nextOrderId });
+      addActivity({ id: nextOrderId, campaignId: product.id, campaignName: product.name, creditsUsed: product.credits, status: 'Completed' });
+      const eta = new Date();
+      const pin = address.pincode.trim();
+      const days = pin.startsWith('6') ? 4 : pin ? 6 : 5;
+      eta.setDate(eta.getDate() + days);
+      router.push(`/store/products/${product.id}/redeem/success?eta=${encodeURIComponent(eta.toISOString())}&orderId=${encodeURIComponent(nextOrderId)}`);
+    };
+    void doRedeem();
   };
 
   return (

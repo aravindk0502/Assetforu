@@ -80,12 +80,35 @@ export default function ServiceRedeemPage() {
 
     const handleConfirmRedeem = () => {
         setConfirmOpen(false);
-        const nextOrderId = redeemOrderId || `ORD-${Date.now().toString(36).toUpperCase()}${Math.random().toString(16).slice(2, 6).toUpperCase()}`;
-        setRedeemOrderId(nextOrderId);
-        setWalletBalance(walletBalance - service.credits);
-        addTransaction({ type: 'debit', description: `Redeemed ${service.name} (service)`, credits: service.credits, reference_id: nextOrderId });
-        addActivity({ id: nextOrderId, campaignId: service.id, campaignName: service.name, creditsUsed: service.credits, status: 'Completed' });
-        router.push(`/store/services/${service.id}/redeem/success?orderId=${encodeURIComponent(nextOrderId)}`);
+        const fallbackOrderId = redeemOrderId || `ORD-${Date.now().toString(36).toUpperCase()}${Math.random().toString(16).slice(2, 6).toUpperCase()}`;
+        const doRedeem = async () => {
+            let nextOrderId = fallbackOrderId;
+            try {
+                const bearer = token || (typeof window !== 'undefined' ? localStorage.getItem('af_token') : null);
+                if (bearer) {
+                    const res = await fetch('/api/public/store/checkout', {
+                        method: 'POST',
+                        headers: { 'content-type': 'application/json', authorization: `Bearer ${bearer}` },
+                        body: JSON.stringify({
+                            items: [{ item_id: service.id, title: service.name, type: 'service', credits: service.credits, quantity: 1 }],
+                        }),
+                    });
+                    const json = (await res.json().catch(() => ({}))) as any;
+                    if (res.ok && json?.success && json?.data?.order_id) {
+                        nextOrderId = String(json.data.order_id);
+                    }
+                }
+            } catch {
+                // ignore server persistence failures; proceed with local flow.
+            }
+
+            setRedeemOrderId(nextOrderId);
+            setWalletBalance(walletBalance - service.credits);
+            addTransaction({ type: 'debit', description: `Redeemed ${service.name} (service)`, credits: service.credits, reference_id: nextOrderId });
+            addActivity({ id: nextOrderId, campaignId: service.id, campaignName: service.name, creditsUsed: service.credits, status: 'Completed' });
+            router.push(`/store/services/${service.id}/redeem/success?orderId=${encodeURIComponent(nextOrderId)}`);
+        };
+        void doRedeem();
     };
 
     return (

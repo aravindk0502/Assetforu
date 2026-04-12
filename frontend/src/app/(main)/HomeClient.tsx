@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore, useCartStore, useUIStore } from '@/store';
 import { addToast } from '@/components/Toast';
-import { campaigns as dreamCampaigns, type CampaignInfo } from '@/data/dreamCampaigns';
+import type { CampaignInfo } from '@/data/dreamCampaigns';
 import { Sparkles, Ticket, ArrowUpRight, Heart, Wallet, BadgeCheck, ChevronDown } from 'lucide-react';
 import { campaignAPI } from '@/lib/api';
 import { formatCurrency } from '@/lib/currency';
@@ -36,6 +36,7 @@ export default function HomePage() {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [homeCampaigns, setHomeCampaigns] = useState<HomeCampaign[]>([]);
   const [campaignsLoaded, setCampaignsLoaded] = useState(false);
+  const [campaignsReloadNonce, setCampaignsReloadNonce] = useState(0);
   const [siteHero, setSiteHero] = useState<any | null>(null);
   const [activeCampaignCount, setActiveCampaignCount] = useState<number | null>(null);
   const activeCountLabel =
@@ -149,13 +150,26 @@ export default function HomePage() {
         });
         setHomeCampaigns(mapped as any);
       } catch {
-        // ignore, fallback to static campaigns
-        setHomeCampaigns(dreamCampaigns.map((c) => ({ ...c, source: 'static', isAd: false, maxQty: 3 } as any)));
+        // If we can't load campaigns, prefer showing an empty state over dummy data
+        setActiveCampaignCount(0);
+        setHomeCampaigns([]);
       } finally {
         setCampaignsLoaded(true);
       }
     };
     load();
+  }, [campaignsReloadNonce]);
+
+  // Refresh campaigns after purchases / tab focus so closed/upcoming states reflect immediately.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const refresh = () => setCampaignsReloadNonce((n) => n + 1);
+    window.addEventListener('focus', refresh);
+    window.addEventListener('campaign:purchase', refresh);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      window.removeEventListener('campaign:purchase', refresh);
+    };
   }, []);
 
   useEffect(() => {
@@ -176,14 +190,17 @@ export default function HomePage() {
         const entries = await Promise.all(
           topThreeCampaigns.map(async (c: any) => {
             const cap = Number.isFinite(Number(c.maxQty)) ? Number(c.maxQty) : 3;
-            // For blob/admin campaigns, enforce cap locally (backend limit API doesn't exist)
+            // For blob/admin campaigns, enforce cap via same-origin API (works across devices).
             if (c.source === 'api') {
               try {
-                const key = `af_campaign_purchases_${user?.id || user?.phone || 'user'}`;
-                const raw = localStorage.getItem(key);
-                const map = raw ? JSON.parse(raw) as Record<string, number> : {};
-                const purchased = map[c.id] || 0;
-                return [c.id, Math.max(0, cap - purchased)] as const;
+                const bearer = token || (typeof window !== 'undefined' ? localStorage.getItem('af_token') : null);
+                const res = await fetch(`/api/public/campaigns/${encodeURIComponent(String(c.id))}/limit`, {
+                  headers: bearer ? { authorization: `Bearer ${bearer}` } : undefined,
+                  cache: 'no-store',
+                });
+                const json = (await res.json().catch(() => ({}))) as any;
+                const remaining = Number(json?.data?.remaining_limit ?? cap);
+                return [c.id, remaining] as const;
               } catch {
                 return [c.id, cap] as const;
               }

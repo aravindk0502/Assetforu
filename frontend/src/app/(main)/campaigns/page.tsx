@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useAuthStore, useUIStore } from '@/store';
 import { useEffect, useState } from 'react';
-import { campaigns as dreamCampaigns, type CampaignInfo } from '@/data/dreamCampaigns';
+import type { CampaignInfo } from '@/data/dreamCampaigns';
 import { formatCurrency } from '@/lib/currency';
 import BackNavigation from '@/components/BackNavigation';
 import { AdsBadge } from '@/components/AdsBadge';
@@ -51,7 +51,8 @@ export default function CampaignsPage() {
         }
         setAllRows(rows);
       } catch {
-        setList(dreamCampaigns);
+        setAllRows([]);
+        setList([]);
       } finally {
         setLoaded(true);
       }

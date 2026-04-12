@@ -15,7 +15,7 @@ export default function CartPage() {
     const campaignItems = items.filter((item) => item.type === 'campaign');
     const nonCampaignItems = items.filter((item) => item.type !== 'campaign');
 
-    const handleCheckoutStore = () => {
+    const handleCheckoutStore = async () => {
         if (nonCampaignItems.length === 0) return;
         if (!isAuthed) {
             openSignupModal(() => router.push('/cart'));
@@ -28,16 +28,43 @@ export default function CartPage() {
 
         const storeTotal = nonCampaignItems.reduce((sum, i) => sum + i.subtotal, 0);
         const updatedBalance = walletBalance - storeTotal;
+
+        // Best-effort server persistence so Admin can see transactions across devices.
+        let orderId: string | null = null;
+        try {
+            const bearer = token || (typeof window !== 'undefined' ? localStorage.getItem('af_token') : null);
+            if (bearer) {
+                const res = await fetch('/api/public/store/checkout', {
+                    method: 'POST',
+                    headers: { 'content-type': 'application/json', authorization: `Bearer ${bearer}` },
+                    body: JSON.stringify({
+                        items: nonCampaignItems.map((i) => ({
+                            item_id: i.item_id,
+                            title: i.title,
+                            type: i.type === 'service' ? 'service' : 'product',
+                            credits: i.credit_cost,
+                            quantity: i.quantity || 1,
+                        })),
+                    }),
+                });
+                const json = (await res.json().catch(() => ({}))) as any;
+                if (res.ok && json?.success && json?.data?.order_id) {
+                    orderId = String(json.data.order_id);
+                }
+            }
+        } catch {
+            // ignore server persistence failures; proceed with local flow.
+        }
+
         setWalletBalance(updatedBalance);
-        addTransaction({ type: 'debit', description: 'Checkout store items', credits: storeTotal });
-        nonCampaignItems.forEach((item) => {
-            addActivity({
-                campaignId: item.item_id,
-                campaignName: item.title,
-                creditsUsed: item.subtotal,
-                status: 'Active Campaign',
-                ticketCount: undefined,
-            });
+        addTransaction({ type: 'debit', description: 'Checkout store items', credits: storeTotal, reference_id: orderId || undefined });
+        addActivity({
+            id: orderId || undefined,
+            campaignId: nonCampaignItems[0]?.item_id || 'store',
+            campaignName: `Store checkout (${nonCampaignItems.length} item${nonCampaignItems.length > 1 ? 's' : ''})`,
+            creditsUsed: storeTotal,
+            status: 'Completed',
+            ticketCount: undefined,
         });
         clearCart();
         router.push('/store');

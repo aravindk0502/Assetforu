@@ -4,7 +4,7 @@ import { Suspense } from 'react';
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
 import { useAuthStore, useUIStore } from '@/store';
-import { campaigns, type CampaignInfo } from '@/data/dreamCampaigns';
+import type { CampaignInfo } from '@/data/dreamCampaigns';
 import { campaignAPI } from '@/lib/api';
 import { formatCurrency } from '@/lib/currency';
 import BackNavigation from '@/components/BackNavigation';
@@ -28,7 +28,7 @@ function CampaignCheckoutContent() {
     const [cardCvv, setCardCvv] = useState('');
 
     const campaignId = (params?.id as string) || '';
-    const [campaign, setCampaign] = useState<CampaignInfo | null>(() => campaigns.find((item) => item.id === campaignId) || null);
+    const [campaign, setCampaign] = useState<CampaignInfo | null>(null);
     const [isBlobCampaign, setIsBlobCampaign] = useState(false);
     const [maxQty, setMaxQty] = useState(3);
     const qty = Number(searchParams.get('qty') || '1');
@@ -57,12 +57,7 @@ function CampaignCheckoutContent() {
             // ignore
         }
 
-        const local = campaigns.find((item) => item.id === campaignId) || null;
-        if (local) {
-            setCampaign(local);
-            setIsBlobCampaign(false);
-            setMaxQty(3);
-        }
+        // Do not show static/dummy campaign data to avoid "flash of old campaign" glitches.
 
         const load = async () => {
             try {
@@ -134,7 +129,7 @@ function CampaignCheckoutContent() {
         };
 
         // Only load remote if not found in static list.
-        if (!local) void load();
+        void load();
         return () => { cancelled = true; };
     }, [campaignId]);
 
@@ -159,11 +154,13 @@ function CampaignCheckoutContent() {
                     return;
                 }
                 if (isBlobCampaign) {
-                    const key = `af_campaign_purchases_${user?.id || user?.phone || 'user'}`;
-                    const raw = localStorage.getItem(key);
-                    const map = raw ? JSON.parse(raw) as Record<string, number> : {};
-                    const purchased = map[campaign.id] || 0;
-                    const remaining = Math.max(0, maxQty - purchased);
+                    const bearer = token || (typeof window !== 'undefined' ? localStorage.getItem('af_token') : null);
+                    const res = await fetch(`/api/public/campaigns/${encodeURIComponent(String(campaign.id))}/limit`, {
+                        headers: bearer ? { authorization: `Bearer ${bearer}` } : undefined,
+                        cache: 'no-store',
+                    });
+                    const json = (await res.json().catch(() => ({}))) as any;
+                    const remaining = Number(json?.data?.remaining_limit ?? maxQty);
                     setRemainingLimit(remaining);
                     if (remaining <= 0) {
                         setLimitMessage('Maximum participation limit reached for this campaign');
@@ -218,32 +215,27 @@ function CampaignCheckoutContent() {
                 const res = await campaignAPI.participate(campaign.id, currentQty);
                 allocatedTickets = res?.data?.data?.allocated_tickets || [];
             } else {
-                const purchaseKey = user.id?.startsWith('dev_')
-                    ? 'af_dev_campaign_purchases'
-                    : `af_campaign_purchases_${user?.id || user?.phone || 'user'}`;
-
-                const raw = localStorage.getItem(purchaseKey);
-                const map = raw ? JSON.parse(raw) as Record<string, number> : {};
-                const soldKey = user.id?.startsWith('dev_') ? 'af_dev_campaign_sold' : 'af_campaign_sold';
-                const soldRaw = localStorage.getItem(soldKey);
-                const soldMap = soldRaw ? JSON.parse(soldRaw) as Record<string, number> : {};
-                const alreadySold = soldMap[campaign.id] || 0;
-                allocatedTickets = Array.from({ length: currentQty }, (_, i) => alreadySold + i + 1);
-                const nextPurchased = (map[campaign.id] || 0) + currentQty;
-                map[campaign.id] = nextPurchased;
-                localStorage.setItem(purchaseKey, JSON.stringify(map));
-                soldMap[campaign.id] = alreadySold + currentQty;
-                localStorage.setItem(soldKey, JSON.stringify(soldMap));
-                const cap = Number.isFinite(Number(maxQty)) ? Number(maxQty) : 3;
-                const remaining = Math.max(0, cap - nextPurchased);
-                setRemainingLimit(remaining);
-                if (remaining <= 0) {
-                    setLimitMessage('Maximum participation limit reached for this campaign');
-                } else if (remaining < cap) {
-                    setLimitMessage(`You can access up to ${remaining} more for this campaign`);
-                } else {
-                    setLimitMessage('');
+                const bearer = token || (typeof window !== 'undefined' ? localStorage.getItem('af_token') : null);
+                if (!bearer) throw new Error('Not authenticated');
+                const res = await fetch(`/api/public/campaigns/${encodeURIComponent(String(campaign.id))}/purchase`, {
+                    method: 'POST',
+                    headers: { 'content-type': 'application/json', authorization: `Bearer ${bearer}` },
+                    body: JSON.stringify({ quantity: currentQty }),
+                });
+                const json = (await res.json().catch(() => ({}))) as any;
+                if (!res.ok || json?.success === false) {
+                    throw new Error(json?.message || 'Unable to complete purchase');
                 }
+                // Use server-issued tickets (Blob-backed, persists across devices).
+                const tickets = Array.isArray(json?.data?.tickets) ? json.data.tickets : [];
+                allocatedTickets = tickets
+                    .map((t: any) => Number(t?.ticket_number))
+                    .filter((n: number) => Number.isFinite(n));
+                const remaining = Number(json?.data?.remaining_limit ?? 0);
+                setRemainingLimit(remaining);
+                if (remaining <= 0) setLimitMessage('Maximum participation limit reached for this campaign');
+                else if (remaining < maxQty) setLimitMessage(`You can access up to ${remaining} more for this campaign`);
+                else setLimitMessage('');
                 window.dispatchEvent(new Event('campaign:purchase'));
             }
         } catch (err: any) {

@@ -2,7 +2,7 @@
 
 import { useParams } from 'next/navigation';
 import { useUIStore } from '@/store';
-import { campaigns, type CampaignInfo } from '@/data/dreamCampaigns';
+import { type CampaignInfo } from '@/data/dreamCampaigns';
 import BackNavigation from '@/components/BackNavigation';
 import { CheckCircle2, Ticket as TicketIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -21,15 +21,11 @@ export default function TicketDetailsPage() {
         (a) => a.campaignId === campaignId && a.ticketNumber !== undefined
     );
 
-    const [campaign, setCampaign] = useState<CampaignInfo | null>(() => campaigns.find((item) => item.id === campaignId) || null);
+    const [campaign, setCampaign] = useState<CampaignInfo | null>(null);
 
     useEffect(() => {
         if (!campaignId) return;
-        const local = campaigns.find((item) => item.id === campaignId) || null;
-        if (local) {
-            setCampaign(local);
-            return;
-        }
+        // Avoid static/dummy campaign flashes.
         let cancelled = false;
         const load = async () => {
             try {
