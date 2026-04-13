@@ -140,7 +140,8 @@ export default function HomePage() {
             description: meta.text || r.description,
             creditPack: Number(r.credit_price || 0),
             source: 'api',
-            isAd: meta.isAd ?? false,
+            // Campaign rows are not ad placements; do not bypass closed/upcoming logic.
+            isAd: false,
             maxQty: (Number.isFinite(Number((r as any).max_qty)) ? Number((r as any).max_qty) : undefined) ?? (meta.maxQty ?? 3),
             totalSlots: Number.isFinite(Number((r as any).total_slots)) ? Number((r as any).total_slots) : undefined,
             filledSlots: Number.isFinite(Number((r as any).filled_slots)) ? Number((r as any).filled_slots) : undefined,
@@ -166,9 +167,11 @@ export default function HomePage() {
     const refresh = () => setCampaignsReloadNonce((n) => n + 1);
     window.addEventListener('focus', refresh);
     window.addEventListener('campaign:purchase', refresh);
+    const id = window.setInterval(refresh, 30_000);
     return () => {
       window.removeEventListener('focus', refresh);
       window.removeEventListener('campaign:purchase', refresh);
+      window.clearInterval(id);
     };
   }, []);
 
@@ -354,7 +357,7 @@ export default function HomePage() {
                     )}
                     {/* Campaign Tag */}
                     <span className="absolute top-3 left-3 rounded-full bg-emerald-600 text-white px-3 py-1 text-xs font-bold z-10">
-                      {campaignTags[idx % campaignTags.length]}
+                      {isClosed ? 'Closed' : isUpcoming ? 'Upcoming' : campaignTags[idx % campaignTags.length]}
                     </span>
                   </div>
 
