@@ -1,5 +1,6 @@
 import { verifyJwtHS256 } from '@/app/api/_utils/jwt';
 import { loadDynamicAdminPhones, parsePhonesToLast10 } from '@/app/api/_utils/blobAdminPhones';
+import { getClientIp, rateLimitOrThrow, requireServerEnv } from '@/app/api/_utils/security';
 
 export type AdminLevel = 'owner' | 'team';
 
@@ -31,8 +32,21 @@ export async function requireAdmin(
   | { ok: true; payload: Record<string, any>; adminLevel: AdminLevel }
   | { ok: false; status: number; message: string }
 > {
+  try {
+    const ip = getClientIp(req);
+    rateLimitOrThrow({ key: `admin-auth:ip:${ip}`, limit: 600, windowMs: 15 * 60 * 1000 });
+  } catch (e) {
+    return { ok: false, status: 429, message: 'Too many requests' };
+  }
+
   const token = getBearer(req);
-  const secret = process.env.JWT_SECRET || process.env.MSG91_API_KEY || 'dev-secret';
+  let secret: string;
+  try {
+    secret = requireServerEnv('JWT_SECRET');
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Server misconfigured';
+    return { ok: false, status: 500, message: msg };
+  }
   if (!token) return { ok: false, status: 401, message: 'No token provided' };
   const payload = verifyJwtHS256(token, secret) as Record<string, any> | null;
   if (!payload) return { ok: false, status: 401, message: 'Invalid or expired token' };

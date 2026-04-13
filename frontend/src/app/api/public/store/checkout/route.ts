@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 import { requireUser } from '@/app/api/_utils/userAuth';
 import { loadStoreOrders, saveStoreOrders, type StoreOrderItem } from '@/app/api/_utils/blobStoreOrders';
 import { loadTransactions, saveTransactions } from '@/app/api/_utils/blobTransactions';
+import { getClientIp, rateLimitOrThrow } from '@/app/api/_utils/security';
 
 function nowIso() {
   return new Date().toISOString();
@@ -19,6 +20,21 @@ export async function POST(req: Request) {
   const auth = await requireUser(req);
   if (!auth.ok) return Response.json({ success: false, message: auth.message }, { status: auth.status });
 
+  try {
+    const ip = getClientIp(req);
+    rateLimitOrThrow({ key: `store-checkout:ip:${ip}`, limit: 40, windowMs: 15 * 60 * 1000 });
+    rateLimitOrThrow({ key: `store-checkout:phone:${auth.phoneLast10}`, limit: 20, windowMs: 15 * 60 * 1000 });
+  } catch (e) {
+    if (e && typeof e === 'object' && (e as any).status === 429) {
+      const retryAfter = (e as any).retryAfterSeconds || 60;
+      return new Response(JSON.stringify({ success: false, message: 'Too many requests' }), {
+        status: 429,
+        headers: { 'content-type': 'application/json', 'retry-after': String(retryAfter) },
+      });
+    }
+    return Response.json({ success: false, message: 'Request blocked' }, { status: 400 });
+  }
+
   const body = (await req.json().catch(() => ({}))) as {
     items?: Array<Partial<StoreOrderItem> & { item_id?: string; title?: string; type?: string; credits?: number; quantity?: number }>;
     delivery_address?: any;
@@ -31,8 +47,8 @@ export async function POST(req: Request) {
       const credits = Math.max(0, toInt(it.credits, 0));
       const quantity = Math.max(1, Math.min(20, toInt(it.quantity, 1)));
       return {
-        item_id: String(it.item_id || '').trim(),
-        title: String(it.title || '').trim() || 'Store Item',
+        item_id: String(it.item_id || '').trim().slice(0, 128),
+        title: (String(it.title || '').trim() || 'Store Item').slice(0, 200),
         type,
         credits,
         quantity,

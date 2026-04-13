@@ -1,37 +1,49 @@
-const mongoose = require('mongoose');
+const { Pool } = require('pg');
 
-let isConnected = false;
+function isProdLike() {
+  const nodeEnv = (process.env.NODE_ENV || '').toLowerCase();
+  const railwayEnv = (process.env.RAILWAY_ENVIRONMENT || '').toLowerCase();
+  return nodeEnv === 'production' || railwayEnv === 'production';
+}
+
+const databaseUrl =
+  process.env.DATABASE_URL ||
+  (process.env.PGHOST
+    ? undefined
+    : 'postgres://postgres:postgres@localhost:5432/assetforu');
+
+if (!databaseUrl && isProdLike()) {
+  console.error('\n❌ FATAL ERROR: DATABASE_URL is not set.\n');
+  process.exit(1);
+}
+
+const pool = new Pool(
+  databaseUrl
+    ? { connectionString: databaseUrl, ssl: process.env.PGSSLMODE === 'require' ? { rejectUnauthorized: false } : undefined }
+    : {
+        host: process.env.PGHOST,
+        port: process.env.PGPORT ? Number(process.env.PGPORT) : 5432,
+        user: process.env.PGUSER,
+        password: process.env.PGPASSWORD,
+        database: process.env.PGDATABASE,
+        ssl: process.env.PGSSLMODE === 'require' ? { rejectUnauthorized: false } : undefined,
+      }
+);
+
+const query = (text, params) => pool.query(text, params);
 
 const connectDB = async () => {
-  if (isConnected) {
-    console.log('[DB] Already connected to MongoDB');
-    return;
-  }
-
   try {
-    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/assetforu';
-    
-    await mongoose.connect(mongoUri, {
-      connectTimeoutMS: 10000,
-      socketTimeoutMS: 45000,
-    });
-
-    isConnected = true;
-    console.log('[DB] ✅ MongoDB Connected Successfully');
-  } catch (error) {
-    console.error('[DB] ❌ MongoDB Connection Error:', error.message);
+    await pool.query('SELECT 1');
+    console.log('[DB] ✅ Postgres connected');
+  } catch (err) {
+    console.error('[DB] ❌ Postgres connection error:', err.message || err);
     process.exit(1);
   }
 };
 
-// Handle connection events
-mongoose.connection.on('error', (err) => {
-  console.error('[DB] MongoDB connection error:', err);
+pool.on('error', (err) => {
+  console.error('[DB] Postgres pool error:', err);
 });
 
-mongoose.connection.on('disconnected', () => {
-  console.warn('[DB] MongoDB disconnected');
-  isConnected = false;
-});
-
-module.exports = { connectDB, mongoose };
+module.exports = { pool, query, connectDB };

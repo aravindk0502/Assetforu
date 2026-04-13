@@ -44,12 +44,14 @@ const sendOTP = async (phone, otp) => {
 // Razorpay signature verification
 const crypto = require('crypto');
 const verifyRazorpaySignature = (orderId, paymentId, signature) => {
+  if (!process.env.RAZORPAY_KEY_SECRET) {
+    throw new Error('RAZORPAY_KEY_SECRET is not configured');
+  }
   const body = `${orderId}|${paymentId}`;
-  const expectedSignature = crypto
-    .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET || 'test_secret')
-    .update(body)
-    .digest('hex');
-  return expectedSignature === signature;
+  const expectedSignature = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET).update(body).digest('hex');
+  const a = Buffer.from(String(expectedSignature || ''), 'utf8');
+  const b = Buffer.from(String(signature || ''), 'utf8');
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
 };
 
 module.exports = { generateToken, verifyToken, generateOTP, sendOTP, verifyRazorpaySignature };

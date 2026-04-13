@@ -8,10 +8,13 @@ const { query } = require('../db');
 let Razorpay;
 const getRazorpay = () => {
   if (!Razorpay) {
+    if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+      throw new Error('Razorpay is not configured');
+    }
     const RazorpaySDK = require('razorpay');
     Razorpay = new RazorpaySDK({
-      key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_placeholder',
-      key_secret: process.env.RAZORPAY_KEY_SECRET || 'placeholder_secret',
+      key_id: process.env.RAZORPAY_KEY_ID,
+      key_secret: process.env.RAZORPAY_KEY_SECRET,
     });
   }
   return Razorpay;
@@ -58,7 +61,8 @@ router.post('/create-order', authenticate, async (req, res) => {
     });
   } catch (err) {
     console.error('[payment-create]', err);
-    res.status(500).json({ success: false, message: 'Failed to create payment order' });
+    const message = err && err.message === 'Razorpay is not configured' ? 'Payments are temporarily unavailable' : 'Failed to create payment order';
+    res.status(500).json({ success: false, message });
   }
 });
 
@@ -132,7 +136,8 @@ router.post('/verify', authenticate, async (req, res) => {
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('[payment-verify]', err);
-    res.status(500).json({ success: false, message: 'Verification failed' });
+    const message = err && err.message === 'RAZORPAY_KEY_SECRET is not configured' ? 'Payments are temporarily unavailable' : 'Verification failed';
+    res.status(500).json({ success: false, message });
   } finally {
     client.release();
   }

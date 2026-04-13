@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { loadDynamicAdminPhones, parsePhonesToLast10 } from '@/app/api/_utils/blobAdminPhones';
+import { getClientIp, isDevOtpAllowed, rateLimitOrThrow, requireServerEnv } from '@/app/api/_utils/security';
 
 export const runtime = 'nodejs';
 
@@ -10,33 +11,12 @@ function normalizeMobile(phoneRaw: string): { mobile: string; local10?: string }
   throw new Error('Valid phone number required');
 }
 
-function parseAdminPhones(raw: string | undefined): Set<string> {
-  const set = new Set<string>();
-  if (!raw) return set;
-  for (const part of raw.split(',')) {
-    const digits = part.trim().replace(/\D/g, '');
-    if (!digits) continue;
-    if (digits.length === 10) set.add(digits);
-    else if (digits.length > 10) set.add(digits.slice(-10));
-  }
-  return set;
-}
-
 async function getAdminLevel(last10: string): Promise<'owner' | 'team' | null> {
   const envAdmins = parsePhonesToLast10(process.env.ADMIN_PHONES);
   if (envAdmins.has(last10)) return 'owner';
   const dynamic = await loadDynamicAdminPhones();
   if (dynamic.includes(last10)) return 'team';
   return null;
-}
-
-function parsePhones(raw: string | undefined): Set<string> {
-  return parseAdminPhones(raw);
-}
-
-function envTrue(raw: string | undefined) {
-  if (!raw) return false;
-  return ['true', '1', 'yes', 'y', 'on'].includes(raw.trim().toLowerCase());
 }
 
 function base64Url(input: Buffer | string) {
@@ -62,6 +42,9 @@ function signJwtHS256(payload: Record<string, unknown>, secret: string, expiresI
 
 export async function POST(req: Request) {
   try {
+    const ip = getClientIp(req);
+    rateLimitOrThrow({ key: `verify-otp:ip:${ip}`, limit: 30, windowMs: 15 * 60 * 1000 });
+
     const body = (await req.json()) as {
       phone?: string;
       otp?: string;
@@ -79,9 +62,10 @@ export async function POST(req: Request) {
     const { mobile, local10 } = normalizeMobile(phone);
 
     const apiKey = process.env.MSG91_API_KEY;
-    const devOtpEnabled = envTrue(process.env.DEV_OTP_ENABLED);
-    const jwtSecret = process.env.JWT_SECRET || apiKey || 'dev-secret';
+    const jwtSecret = requireServerEnv('JWT_SECRET');
     const last10 = (local10 || mobile).replace(/\D/g, '').slice(-10);
+    rateLimitOrThrow({ key: `verify-otp:phone:${last10}`, limit: 10, windowMs: 15 * 60 * 1000 });
+
     const adminLevel = await getAdminLevel(last10);
     const isAdmin = Boolean(adminLevel);
 
@@ -92,23 +76,19 @@ export async function POST(req: Request) {
 
     // Dev OTP fallback
     if (!apiKey) {
-      const allow = parsePhones(process.env.DEV_AUTH_PHONES || process.env.ADMIN_PHONES);
-      const isAllowed = allow.size > 0 && allow.has(last10);
-      // Require explicit opt-in (DEV_OTP_ENABLED) unless it's an admin allowlisted number.
-      if (!devOtpEnabled && !isAdmin) {
-        return Response.json({ success: false, message: 'MSG91 is not configured' }, { status: 500 });
-      }
-      if (!isAllowed && !isAdmin) {
+      if (!isDevOtpAllowed(last10)) {
         return Response.json({ success: false, message: 'MSG91 is not configured' }, { status: 500 });
       }
 
-      // In admin fallback mode, allow a short dev PIN to unblock access when SMS isn't configured.
-      const expected = process.env.DEV_OTP_CODE || (isAdmin ? '1234' : '123456');
+      // DEV OTP must be explicitly configured to avoid guessable defaults.
+      const expected = process.env.DEV_OTP_CODE;
+      if (!expected) {
+        return Response.json({ success: false, message: 'Server misconfigured: missing DEV_OTP_CODE' }, { status: 500 });
+      }
       const provided = String(otp || '').trim();
-      const ok =
-        provided === expected ||
-        // Backwards-compatible defaults for admin allowlisted numbers.
-        (isAdmin && (provided === '1234' || provided === '123456'));
+      const a = Buffer.from(provided);
+      const b = Buffer.from(expected);
+      const ok = a.length === b.length && crypto.timingSafeEqual(a, b);
       if (!ok) {
         return Response.json({ success: false, message: 'Invalid OTP' }, { status: 400 });
       }
@@ -180,6 +160,13 @@ export async function POST(req: Request) {
       user,
     });
   } catch (e) {
+    if (e && typeof e === 'object' && (e as any).status === 429) {
+      const retryAfter = (e as any).retryAfterSeconds || 60;
+      return new Response(JSON.stringify({ success: false, message: 'Too many requests' }), {
+        status: 429,
+        headers: { 'content-type': 'application/json', 'retry-after': String(retryAfter) },
+      });
+    }
     const msg = e instanceof Error ? e.message : 'Verification failed';
     return Response.json({ success: false, message: msg }, { status: 500 });
   }

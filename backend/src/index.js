@@ -6,15 +6,27 @@ const rateLimit = require('express-rate-limit');
 const { connectDB } = require('./db');
 
 const app = express();
+app.set('trust proxy', 1);
 
 // ─── Database Connection ────────────────────────────────────
 connectDB().catch((err) => {
-  console.error('Failed to connect to MongoDB:', err);
+  console.error('Failed to connect to Postgres:', err);
   process.exit(1);
 });
 
 // ─── Security ───────────────────────────────────────────────
 app.use(helmet());
+
+// Enforce HTTPS in production behind proxies (Railway/Vercel).
+app.use((req, res, next) => {
+  const nodeEnv = (process.env.NODE_ENV || '').toLowerCase();
+  if (nodeEnv !== 'production') return next();
+  const proto = (req.headers['x-forwarded-proto'] || '').toString().split(',')[0].trim();
+  if (req.secure || proto === 'https') return next();
+  const host = req.headers.host;
+  if (!host) return next();
+  return res.redirect(308, `https://${host}${req.originalUrl}`);
+});
 
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000').split(',');
 app.use(cors({
@@ -34,6 +46,23 @@ app.use(limiter);
 // ─── Body Parsing ───────────────────────────────────────────
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+
+// Basic audit logging for auth/admin/payment endpoints (no secrets/OTPs).
+app.use((req, res, next) => {
+  const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString().split(',')[0].trim();
+  const start = Date.now();
+  res.on('finish', () => {
+    const ms = Date.now() - start;
+    const path = req.originalUrl || '';
+    const shouldLog = path.startsWith('/api/auth') || path.startsWith('/api/admin') || path.startsWith('/api/payment');
+    if (!shouldLog) return;
+    const level = res.statusCode >= 500 ? 'error' : res.statusCode >= 400 ? 'warn' : 'info';
+    const msg = `[${level}] ${ip} ${req.method} ${path} ${res.statusCode} ${ms}ms`;
+    // eslint-disable-next-line no-console
+    console.log(msg);
+  });
+  next();
+});
 
 // ─── Health Check ───────────────────────────────────────────
 app.get('/health', (req, res) => {

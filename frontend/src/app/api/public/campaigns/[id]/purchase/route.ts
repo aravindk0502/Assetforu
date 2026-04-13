@@ -7,6 +7,7 @@ import { loadCampaignPurchases, saveCampaignPurchases } from '@/app/api/_utils/b
 import { loadCampaignTickets, saveCampaignTickets } from '@/app/api/_utils/blobCampaignTickets';
 import { loadTransactions, saveTransactions } from '@/app/api/_utils/blobTransactions';
 import { requireUser } from '@/app/api/_utils/userAuth';
+import { getClientIp, rateLimitOrThrow } from '@/app/api/_utils/security';
 
 function nowIso() {
   return new Date().toISOString();
@@ -34,6 +35,21 @@ function deriveStatus(c: any): 'active' | 'upcoming' | 'closed' {
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const auth = await requireUser(req);
   if (!auth.ok) return Response.json({ success: false, message: auth.message }, { status: auth.status });
+
+  try {
+    const ip = getClientIp(req);
+    rateLimitOrThrow({ key: `campaign-purchase:ip:${ip}`, limit: 60, windowMs: 15 * 60 * 1000 });
+    rateLimitOrThrow({ key: `campaign-purchase:phone:${auth.phoneLast10}`, limit: 30, windowMs: 15 * 60 * 1000 });
+  } catch (e) {
+    if (e && typeof e === 'object' && (e as any).status === 429) {
+      const retryAfter = (e as any).retryAfterSeconds || 60;
+      return new Response(JSON.stringify({ success: false, message: 'Too many requests' }), {
+        status: 429,
+        headers: { 'content-type': 'application/json', 'retry-after': String(retryAfter) },
+      });
+    }
+    return Response.json({ success: false, message: 'Request blocked' }, { status: 400 });
+  }
 
   const { id } = await ctx.params;
   const body = (await req.json().catch(() => ({}))) as { quantity?: number };
