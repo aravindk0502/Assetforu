@@ -279,6 +279,21 @@ export default function AdminCampaignsPage() {
       img.src = url;
     });
 
+  const blobToDataUrl = (blob: Blob): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => reject(new Error('Failed to read image'));
+      reader.readAsDataURL(blob);
+    });
+
+  const buildFallbackDataUrl = async (file: File) => {
+    const blob = await compressToBlob(file);
+    const dataUrl = await blobToDataUrl(blob);
+    if (!dataUrl.startsWith('data:image/')) throw new Error('Invalid image data');
+    return dataUrl;
+  };
+
   const uploadImage = async (file: File) => {
     const blob = await compressToBlob(file);
     const formData = new FormData();
@@ -295,12 +310,37 @@ export default function AdminCampaignsPage() {
     const remaining = Math.max(0, 5 - imageUrls.length);
     if (remaining <= 0) return;
     const selected = Array.from(files).slice(0, remaining);
+    setUploading(true);
     try {
-      setUploading(true);
-      const urls = await Promise.all(selected.map((f) => uploadImage(f)));
-      setImageUrls((prev) => [...prev, ...urls].slice(0, 5));
-    } catch {
-      setError('Failed to upload image. Configure Vercel Blob (BLOB_READ_WRITE_TOKEN) or use hosted URLs.');
+      const urls: string[] = [];
+      const warnings: string[] = [];
+
+      for (const file of selected) {
+        try {
+          const uploaded = await uploadImage(file);
+          urls.push(uploaded);
+        } catch (e) {
+          const serverMsg = e instanceof Error ? e.message : 'Upload failed';
+          try {
+            const localDataUrl = await buildFallbackDataUrl(file);
+            urls.push(localDataUrl);
+            warnings.push(`${file.name}: uploaded as local image (${serverMsg})`);
+          } catch (fallbackErr) {
+            const fallbackMsg = fallbackErr instanceof Error ? fallbackErr.message : 'Fallback failed';
+            warnings.push(`${file.name}: ${serverMsg}; ${fallbackMsg}`);
+          }
+        }
+      }
+
+      if (urls.length) {
+        setImageUrls((prev) => [...prev, ...urls].slice(0, 5));
+      }
+      if (warnings.length) {
+        setError(`Image upload warning: ${warnings[0]}`);
+      }
+      if (!urls.length) {
+        setError('Failed to upload selected images.');
+      }
     } finally {
       setUploading(false);
     }

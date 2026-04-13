@@ -64,6 +64,22 @@ async function uploadImage(file: File) {
   return json.url;
 }
 
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error('Failed to read image'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function buildFallbackDataUrl(file: File) {
+  const blob = await compressToBlob(file);
+  const dataUrl = await blobToDataUrl(blob);
+  if (!dataUrl.startsWith('data:image/')) throw new Error('Invalid image data');
+  return dataUrl;
+}
+
 export default function AdminAdsPage() {
   const token = useAuthStore((s) => s.token);
   const [ads, setAds] = useState<AdPlacementBanner[]>([]);
@@ -196,13 +212,31 @@ export default function AdminAdsPage() {
     const remaining = Math.max(0, 5 - imageUrls.length);
     if (remaining <= 0) return;
     const selected = Array.from(files).slice(0, remaining);
+    setUploading(true);
     try {
-      setUploading(true);
-      const urls = await Promise.all(selected.map((f) => uploadImage(f)));
-      setImageUrls((prev) => [...prev, ...urls].slice(0, 5));
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Upload failed';
-      setError(`Failed to upload image: ${msg}`);
+      const urls: string[] = [];
+      const warnings: string[] = [];
+
+      for (const file of selected) {
+        try {
+          const uploaded = await uploadImage(file);
+          urls.push(uploaded);
+        } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : 'Upload failed';
+          try {
+            const fallback = await buildFallbackDataUrl(file);
+            urls.push(fallback);
+            warnings.push(`${file.name}: uploaded as local image (${msg})`);
+          } catch (fallbackErr: unknown) {
+            const fallbackMsg = fallbackErr instanceof Error ? fallbackErr.message : 'Fallback failed';
+            warnings.push(`${file.name}: ${msg}; ${fallbackMsg}`);
+          }
+        }
+      }
+
+      if (urls.length) setImageUrls((prev) => [...prev, ...urls].slice(0, 5));
+      if (warnings.length) setError(`Image upload warning: ${warnings[0]}`);
+      if (!urls.length) setError('Failed to upload selected images.');
     } finally {
       setUploading(false);
     }

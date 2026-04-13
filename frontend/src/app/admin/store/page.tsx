@@ -99,6 +99,21 @@ export default function AdminStorePage() {
     return json.url;
   };
 
+  const blobToDataUrl = (blob: Blob): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => reject(new Error('Failed to read image'));
+      reader.readAsDataURL(blob);
+    });
+
+  const buildFallbackDataUrl = async (file: File) => {
+    const blob = await compressToBlob(file);
+    const dataUrl = await blobToDataUrl(blob);
+    if (!dataUrl.startsWith('data:image/')) throw new Error('Invalid image data');
+    return dataUrl;
+  };
+
   const handleImagePick = async (file: File | null) => {
     if (!file) return;
     if (!file.type.startsWith('image/')) return;
@@ -110,7 +125,15 @@ export default function AdminStorePage() {
       setImagePreview(url);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Upload failed';
-      setError(`Image upload failed: ${msg}`);
+      try {
+        const fallback = await buildFallbackDataUrl(file);
+        setForm((f) => ({ ...f, image_url: fallback }));
+        setImagePreview(fallback);
+        setError(`Image upload warning: using local image (${msg})`);
+      } catch (fallbackErr) {
+        const fallbackMsg = fallbackErr instanceof Error ? fallbackErr.message : 'Fallback failed';
+        setError(`Image upload failed: ${msg}; ${fallbackMsg}`);
+      }
     } finally {
       setUploading(false);
     }
