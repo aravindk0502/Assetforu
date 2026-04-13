@@ -16,6 +16,12 @@ function envTrue(raw: string | undefined) {
   return ['true', '1', 'yes', 'y', 'on'].includes(raw.trim().toLowerCase());
 }
 
+function parseIsoMs(raw: string | undefined): number | null {
+  if (!raw) return null;
+  const t = Date.parse(raw);
+  return Number.isFinite(t) ? t : null;
+}
+
 function normalizeLast10(raw: unknown) {
   const digits = String(raw || '').replace(/\D/g, '');
   if (!digits) return '';
@@ -92,16 +98,41 @@ export async function POST(req: Request) {
     const emergencyEnabled = envTrue(process.env.EMERGENCY_ADMIN_ENABLED);
     const emergencyPhone = normalizeLast10(process.env.EMERGENCY_ADMIN_PHONE);
     const emergencyCode = String(process.env.EMERGENCY_ADMIN_CODE || '');
+    const emergencyAllowWeak = envTrue(process.env.EMERGENCY_ADMIN_ALLOW_WEAK_CODE);
+    const emergencyExpiresAtMs = parseIsoMs(process.env.EMERGENCY_ADMIN_EXPIRES_AT);
     if (emergencyEnabled && emergencyPhone && emergencyPhone === last10) {
       // Only allow for Company Admin flow to avoid accidental use on user login.
       if (body.admin_mode !== 'company') {
         return Response.json({ success: false, message: 'Company admin mode required' }, { status: 400 });
       }
-      if (!emergencyCode || emergencyCode.length < 16) {
-        return Response.json(
-          { success: false, message: 'Server misconfigured: EMERGENCY_ADMIN_CODE is missing/too short' },
-          { status: 500 }
-        );
+      const trimmedEmergency = emergencyCode.trim();
+      const isWeak = trimmedEmergency.length > 0 && trimmedEmergency.length < 16;
+      if (!trimmedEmergency) {
+        return Response.json({ success: false, message: 'Server misconfigured: EMERGENCY_ADMIN_CODE is missing' }, { status: 500 });
+      }
+      if (isWeak) {
+        if (!emergencyAllowWeak) {
+          return Response.json(
+            { success: false, message: 'Server misconfigured: EMERGENCY_ADMIN_CODE too short (set a longer code)' },
+            { status: 500 }
+          );
+        }
+        // Safety: require an expiry for weak (short) codes so they can’t be left enabled indefinitely.
+        const nowMs = Date.now();
+        if (!emergencyExpiresAtMs || emergencyExpiresAtMs <= nowMs) {
+          return Response.json(
+            { success: false, message: 'Server misconfigured: EMERGENCY_ADMIN_EXPIRES_AT is missing/expired' },
+            { status: 500 }
+          );
+        }
+        // Hard cap: weak-code window max 24h from now.
+        if (emergencyExpiresAtMs - nowMs > 24 * 60 * 60 * 1000) {
+          return Response.json(
+            { success: false, message: 'Server misconfigured: EMERGENCY_ADMIN_EXPIRES_AT must be within 24h' },
+            { status: 500 }
+          );
+        }
+        console.warn(`[EMERGENCY ADMIN] weak code enabled; expires_at=${new Date(emergencyExpiresAtMs).toISOString()}`);
       }
       const ok = constantTimeEqual(String(otp || '').trim(), emergencyCode);
       console.warn(`[EMERGENCY ADMIN] verify attempt phone=${last10} ip=${ip} ok=${ok}`);
