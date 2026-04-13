@@ -4,6 +4,7 @@ import { useAuthStore } from '@/store';
 import { SignupModal } from '@/components/SignupModal';
 import { ToastContainer } from '@/components/Toast';
 import { useUIStore } from '@/store';
+import { FcmRegistrar } from '@/components/FcmRegistrar';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const loadFromStorage = useAuthStore((s) => s.loadFromStorage);
@@ -23,6 +24,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <>
       {children}
+      <FcmRegistrar />
       <ModalManager />
       <ToastContainer />
     </>
