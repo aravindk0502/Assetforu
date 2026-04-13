@@ -46,6 +46,7 @@ export interface StoreItem {
   title: string;
   description: string;
   image_url: string;
+  image_urls?: string[];
   type: 'service' | 'product';
   category: string;
   credit_cost: number;

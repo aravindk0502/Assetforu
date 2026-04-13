@@ -76,7 +76,7 @@ function StoreContent() {
                 name: i.title,
                 credits: Number(i.credit_cost || 0),
                 description: i.description || '',
-                image: i.image_url,
+                image: (Array.isArray(i.image_urls) && i.image_urls[0]) || i.image_url,
                 tag: i.is_popular ? 'Popular' : 'New',
                 category: i.category || 'Other',
             }));
@@ -90,7 +90,7 @@ function StoreContent() {
                 name: i.title,
                 credits: Number(i.credit_cost || 0),
                 description: i.description || '',
-                image: i.image_url,
+                image: (Array.isArray(i.image_urls) && i.image_urls[0]) || i.image_url,
                 icon: 'Shield',
                 category: i.category || 'Other',
             }));

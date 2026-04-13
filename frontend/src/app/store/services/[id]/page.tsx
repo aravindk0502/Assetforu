@@ -45,7 +45,7 @@ export default function ServiceDetailPage() {
           name: row.title,
           credits: Number(row.credit_cost || 0),
           description: row.description || '',
-          image: row.image_url,
+          image: (Array.isArray(row.image_urls) && row.image_urls[0]) || row.image_url,
           category: row.category || 'Other',
         });
       })

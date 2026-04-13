@@ -17,8 +17,18 @@ export default function AdminStorePage() {
   const [editItem, setEditItem] = useState<StoreItem | null>(null);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState('');
-  const [form, setForm] = useState({ title: '', description: '', image_url: '', type: 'service', category: 'legal', credit_cost: '', is_popular: false });
-  const [imagePreview, setImagePreview] = useState<string>('');
+  const [form, setForm] = useState({
+    title: '',
+    description: '',
+    image_url: '',
+    image_urls: [] as string[],
+    type: 'service',
+    category: 'legal',
+    credit_cost: '',
+    is_popular: false,
+  });
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [imageUrlInput, setImageUrlInput] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'service' | 'product'>('all');
   const [categoryFilter, setCategoryFilter] = useState<'all' | string>('all');
   const [query, setQuery] = useState('');
@@ -114,34 +124,71 @@ export default function AdminStorePage() {
     return dataUrl;
   };
 
-  const handleImagePick = async (file: File | null) => {
-    if (!file) return;
-    if (!file.type.startsWith('image/')) return;
+  const addImages = async (files: FileList | null) => {
+    if (!files || !files.length) return;
     setError('');
+    const remaining = Math.max(0, 5 - imageUrls.length);
+    if (remaining <= 0) return;
+    const selected = Array.from(files)
+      .filter((f) => f.type.startsWith('image/'))
+      .slice(0, remaining);
+    if (!selected.length) return;
     try {
       setUploading(true);
-      const url = await uploadImage(file);
-      setForm((f) => ({ ...f, image_url: url }));
-      setImagePreview(url);
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Upload failed';
-      try {
-        const fallback = await buildFallbackDataUrl(file);
-        setForm((f) => ({ ...f, image_url: fallback }));
-        setImagePreview(fallback);
-        setError(`Image upload warning: using local image (${msg})`);
-      } catch (fallbackErr) {
-        const fallbackMsg = fallbackErr instanceof Error ? fallbackErr.message : 'Fallback failed';
-        setError(`Image upload failed: ${msg}; ${fallbackMsg}`);
+      const urls: string[] = [];
+      const warnings: string[] = [];
+
+      for (const file of selected) {
+        try {
+          const uploaded = await uploadImage(file);
+          urls.push(uploaded);
+        } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : 'Upload failed';
+          try {
+            const fallback = await buildFallbackDataUrl(file);
+            urls.push(fallback);
+            warnings.push(`${file.name}: uploaded as local image (${msg})`);
+          } catch (fallbackErr) {
+            const fallbackMsg = fallbackErr instanceof Error ? fallbackErr.message : 'Fallback failed';
+            warnings.push(`${file.name}: ${msg}; ${fallbackMsg}`);
+          }
+        }
+      }
+
+      if (urls.length) {
+        setImageUrls((prev) => [...prev, ...urls].slice(0, 5));
+      }
+      if (warnings.length) {
+        setError(`Image upload warning: ${warnings[0]}`);
+      }
+      if (!urls.length) {
+        setError('Failed to upload selected images.');
       }
     } finally {
       setUploading(false);
     }
   };
 
+  const addImageUrl = () => {
+    const url = imageUrlInput.trim();
+    if (!url) return;
+    setImageUrls((prev) => [...prev, url].slice(0, 5));
+    setImageUrlInput('');
+  };
+
   const resetForm = () => {
-    setForm({ title: '', description: '', image_url: '', type: 'service', category: 'legal', credit_cost: '', is_popular: false });
-    setImagePreview('');
+    setForm({
+      title: '',
+      description: '',
+      image_url: '',
+      image_urls: [],
+      type: 'service',
+      category: 'legal',
+      credit_cost: '',
+      is_popular: false,
+    });
+    setImageUrls([]);
+    setImageUrlInput('');
     setUseCustomCategory(false);
     setCustomCategory('');
     setEditItem(null);
@@ -159,12 +206,15 @@ export default function AdminStorePage() {
       title: item.title || '',
       description: item.description || '',
       image_url: item.image_url || '',
+      image_urls: Array.isArray(item.image_urls) ? item.image_urls : [],
       type: item.type || 'service',
       category: item.category || 'legal',
       credit_cost: String(item.credit_cost ?? ''),
       is_popular: Boolean(item.is_popular),
     });
-    setImagePreview(item.image_url || '');
+    const existingImages = Array.isArray(item.image_urls) && item.image_urls.length ? item.image_urls : (item.image_url ? [item.image_url] : []);
+    setImageUrls(existingImages.slice(0, 5));
+    setImageUrlInput('');
     setUseCustomCategory(false);
     setCustomCategory('');
     setError('');
@@ -176,14 +226,21 @@ export default function AdminStorePage() {
     if (!form.title || !form.credit_cost) { setError('Title and credit cost are required'); return; }
     const category = (useCustomCategory ? customCategory.trim() : form.category.trim());
     if (!category) { setError('Category is required'); return; }
-    if (!form.image_url) { setError('Image is required'); return; }
+    const normalizedImages = imageUrls.map((img) => String(img || '').trim()).filter(Boolean).slice(0, 5);
+    if (!normalizedImages.length) { setError('At least one image is required'); return; }
 
     setSaving(true);
     try {
       const bearer = token || (typeof window !== 'undefined' ? localStorage.getItem('af_token') : null);
       if (!bearer) throw new Error('Not authenticated');
 
-      const payload = { ...form, category, credit_cost: parseFloat(form.credit_cost) };
+      const payload = {
+        ...form,
+        category,
+        credit_cost: parseFloat(form.credit_cost),
+        image_url: normalizedImages[0],
+        image_urls: normalizedImages,
+      };
       const isEdit = Boolean(editItem?.id);
       const res = await fetch(isEdit ? `/api/admin/store-items/${editItem!.id}` : '/api/admin/store-items', {
         method: isEdit ? 'PATCH' : 'POST',
@@ -216,7 +273,10 @@ export default function AdminStorePage() {
   };
 
   useEffect(() => {
-    if (!showForm) setImagePreview('');
+    if (!showForm) {
+      setImageUrls([]);
+      setImageUrlInput('');
+    }
   }, [showForm]);
 
   const visibleItems = items.filter((item) => {
@@ -306,41 +366,52 @@ export default function AdminStorePage() {
               ))}
 
               <div>
-                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Image (Gallery)</label>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Images (up to 5)</label>
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={(e) => void handleImagePick(e.target.files?.[0] || null)}
+                  multiple
+                  onChange={(e) => void addImages(e.target.files)}
                   disabled={uploading}
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-200 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-slate-700 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-white hover:file:bg-slate-600"
                 />
                 <p className="text-[11px] text-slate-500 mt-1">
-                  Selecting an image will auto-fill `image_url`. For best performance, use a hosted URL when possible.
+                  {uploading ? 'Uploading…' : 'Select multiple images. We support up to 5 images per product/service.'}
                 </p>
-                {(imagePreview || form.image_url) && (
-                  <div className="mt-3 flex items-start gap-3">
-                    <img
-                      src={imagePreview || form.image_url}
-                      alt="Preview"
-                      className="h-16 w-24 rounded-lg object-cover border border-slate-700 bg-slate-950"
-                    />
-                    <div className="flex-1">
-                      <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Image URL</label>
-                      <input
-                        type="url"
-                        value={form.image_url}
-                        onChange={(e) => { setForm((f) => ({ ...f, image_url: e.target.value })); setImagePreview(''); }}
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:ring-2 focus:ring-primary-700 focus:outline-none"
-                        placeholder="https://…"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => { setForm((f) => ({ ...f, image_url: '' })); setImagePreview(''); }}
-                        className="mt-2 text-xs font-bold text-slate-400 hover:text-white"
-                      >
-                        Clear image
-                      </button>
-                    </div>
+                <div className="mt-3 flex items-center gap-2">
+                  <input
+                    type="url"
+                    value={imageUrlInput}
+                    onChange={(e) => setImageUrlInput(e.target.value)}
+                    placeholder="Paste hosted image URL and click Add"
+                    className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:ring-2 focus:ring-primary-700 focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={addImageUrl}
+                    className="px-4 py-2.5 rounded-xl bg-slate-700 text-white text-sm font-bold hover:bg-slate-600"
+                  >
+                    Add
+                  </button>
+                </div>
+                {imageUrls.length > 0 && (
+                  <div className="mt-3 grid grid-cols-3 gap-2">
+                    {imageUrls.map((src, idx) => (
+                      <div key={`${src}-${idx}`} className="relative">
+                        <img
+                          src={src}
+                          alt={`Image ${idx + 1}`}
+                          className="h-20 w-full rounded-lg object-cover border border-slate-700 bg-slate-950"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setImageUrls((prev) => prev.filter((_, i) => i !== idx))}
+                          className="absolute top-1 right-1 rounded-md bg-black/60 text-white text-xs px-2 py-1 hover:bg-black/80"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
