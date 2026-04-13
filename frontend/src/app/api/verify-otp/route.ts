@@ -11,6 +11,24 @@ function normalizeMobile(phoneRaw: string): { mobile: string; local10?: string }
   throw new Error('Valid phone number required');
 }
 
+function envTrue(raw: string | undefined) {
+  if (!raw) return false;
+  return ['true', '1', 'yes', 'y', 'on'].includes(raw.trim().toLowerCase());
+}
+
+function normalizeLast10(raw: unknown) {
+  const digits = String(raw || '').replace(/\D/g, '');
+  if (!digits) return '';
+  if (digits.length <= 10) return digits.padStart(10, '0').slice(-10);
+  return digits.slice(-10);
+}
+
+function constantTimeEqual(aRaw: string, bRaw: string) {
+  const a = Buffer.from(String(aRaw || ''), 'utf8');
+  const b = Buffer.from(String(bRaw || ''), 'utf8');
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
 async function getAdminLevel(last10: string): Promise<'owner' | 'team' | null> {
   const envAdmins = parsePhonesToLast10(process.env.ADMIN_PHONES);
   if (envAdmins.has(last10)) return 'owner';
@@ -69,6 +87,46 @@ export async function POST(req: Request) {
     const adminLevel = await getAdminLevel(last10);
     const isAdmin = Boolean(adminLevel);
 
+    // Break-glass: allow admin login without MSG91 using a long emergency code.
+    // Enabled only when EMERGENCY_ADMIN_ENABLED=true AND phone matches EMERGENCY_ADMIN_PHONE.
+    const emergencyEnabled = envTrue(process.env.EMERGENCY_ADMIN_ENABLED);
+    const emergencyPhone = normalizeLast10(process.env.EMERGENCY_ADMIN_PHONE);
+    const emergencyCode = String(process.env.EMERGENCY_ADMIN_CODE || '');
+    if (emergencyEnabled && emergencyPhone && emergencyPhone === last10) {
+      // Only allow for Company Admin flow to avoid accidental use on user login.
+      if (body.admin_mode !== 'company') {
+        return Response.json({ success: false, message: 'Company admin mode required' }, { status: 400 });
+      }
+      if (!emergencyCode || emergencyCode.length < 16) {
+        return Response.json(
+          { success: false, message: 'Server misconfigured: EMERGENCY_ADMIN_CODE is missing/too short' },
+          { status: 500 }
+        );
+      }
+      const ok = constantTimeEqual(String(otp || '').trim(), emergencyCode);
+      console.warn(`[EMERGENCY ADMIN] verify attempt phone=${last10} ip=${ip} ok=${ok}`);
+      if (!ok) {
+        return Response.json({ success: false, message: 'Invalid OTP' }, { status: 400 });
+      }
+
+      const id = `phone:${local10 || mobile}`;
+      const user = {
+        id,
+        phone: local10 || mobile,
+        role: 'admin' as const,
+        admin_level: 'owner' as const,
+        kyc_status: 'pending' as const,
+        isNew: false,
+      };
+
+      const token = signJwtHS256(
+        { sub: id, phone: user.phone, role: user.role, admin_level: user.admin_level, kyc_status: user.kyc_status, termsAccepted },
+        jwtSecret
+      );
+
+      return Response.json({ success: true, message: 'Logged in successfully', token, user });
+    }
+
     // If user explicitly selects "Company Admin", require owner-level admin.
     if (body.admin_mode === 'company' && adminLevel !== 'owner') {
       return Response.json({ success: false, message: 'Company admin access is restricted to owner accounts' }, { status: 403 });
@@ -86,9 +144,7 @@ export async function POST(req: Request) {
         return Response.json({ success: false, message: 'Server misconfigured: missing DEV_OTP_CODE' }, { status: 500 });
       }
       const provided = String(otp || '').trim();
-      const a = Buffer.from(provided);
-      const b = Buffer.from(expected);
-      const ok = a.length === b.length && crypto.timingSafeEqual(a, b);
+      const ok = constantTimeEqual(provided, expected);
       if (!ok) {
         return Response.json({ success: false, message: 'Invalid OTP' }, { status: 400 });
       }

@@ -24,6 +24,14 @@ export async function POST(req: Request) {
     const last10 = (local10 || mobile).replace(/\D/g, '').slice(-10);
     rateLimitOrThrow({ key: `send-otp:phone:${last10}`, limit: 10, windowMs: 15 * 60 * 1000 });
 
+    // Break-glass: allow proceeding without MSG91 so the verify step can use EMERGENCY_ADMIN_CODE.
+    const emergencyEnabled = envTrue(process.env.EMERGENCY_ADMIN_ENABLED);
+    const emergencyPhone = String(process.env.EMERGENCY_ADMIN_PHONE || '').replace(/\D/g, '').slice(-10);
+    if (emergencyEnabled && emergencyPhone && last10 === emergencyPhone) {
+      console.warn(`[EMERGENCY ADMIN] send-otp bypass for phone=${last10} ip=${ip}`);
+      return Response.json({ success: true, message: 'OTP sent' });
+    }
+
     if (!apiKey || !templateId) {
       if (!isDevOtpAllowed(last10)) {
         return Response.json({ success: false, message: 'MSG91 is not configured' }, { status: 500 });
@@ -75,4 +83,9 @@ export async function POST(req: Request) {
     const msg = e instanceof Error ? e.message : 'Failed to send OTP';
     return Response.json({ success: false, message: msg }, { status: 500 });
   }
+}
+
+function envTrue(raw: string | undefined) {
+  if (!raw) return false;
+  return ['true', '1', 'yes', 'y', 'on'].includes(raw.trim().toLowerCase());
 }

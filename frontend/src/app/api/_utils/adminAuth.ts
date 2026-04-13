@@ -4,12 +4,6 @@ import { getClientIp, rateLimitOrThrow, requireServerEnv } from '@/app/api/_util
 
 export type AdminLevel = 'owner' | 'team';
 
-function getBearer(req: Request) {
-  const auth = req.headers.get('authorization') || '';
-  if (!auth.toLowerCase().startsWith('bearer ')) return null;
-  return auth.slice(7).trim();
-}
-
 function normalizeLast10(raw: unknown) {
   const digits = String(raw || '').replace(/\D/g, '');
   if (!digits) return '';
@@ -17,7 +11,27 @@ function normalizeLast10(raw: unknown) {
   return digits.slice(-10);
 }
 
+function envTrue(raw: string | undefined) {
+  if (!raw) return false;
+  return ['true', '1', 'yes', 'y', 'on'].includes(raw.trim().toLowerCase());
+}
+
+function getEmergencyOwnerPhoneLast10(): string | null {
+  if (!envTrue(process.env.EMERGENCY_ADMIN_ENABLED)) return null;
+  const last10 = normalizeLast10(process.env.EMERGENCY_ADMIN_PHONE || '');
+  return last10 || null;
+}
+
+function getBearer(req: Request) {
+  const auth = req.headers.get('authorization') || '';
+  if (!auth.toLowerCase().startsWith('bearer ')) return null;
+  return auth.slice(7).trim();
+}
+
 async function getAdminLevelByPhone(last10: string): Promise<AdminLevel | null> {
+  const emergencyOwner = getEmergencyOwnerPhoneLast10();
+  if (emergencyOwner && last10 === emergencyOwner) return 'owner';
+
   const envAdmins = parsePhonesToLast10(process.env.ADMIN_PHONES);
   if (envAdmins.has(last10)) return 'owner';
   const dynamic = await loadDynamicAdminPhones();
