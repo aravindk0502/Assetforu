@@ -39,6 +39,7 @@ export default function ProductRedeemPage() {
   const [message, setMessage] = useState('');
   const [showTopUp, setShowTopUp] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [quantity, setQuantity] = useState(1);
   const [apiLoading, setApiLoading] = useState(false);
   const [apiProduct, setApiProduct] = useState<null | { id: string; name: string; credits: number; description: string; image: string }>(null);
   const [redeemOrderId, setRedeemOrderId] = useState<string | null>(null);
@@ -71,6 +72,7 @@ export default function ProductRedeemPage() {
   const product = staticProduct
     ? { id: staticProduct.id, name: staticProduct.name, credits: staticProduct.credits, description: staticProduct.description, image: staticProduct.image }
     : apiProduct;
+  const totalCredits = (product?.credits || 0) * quantity;
 
   const isAuthed = !!user || !!token;
 
@@ -91,7 +93,7 @@ export default function ProductRedeemPage() {
       setMessage('Please fill all delivery details.');
       return;
     }
-    if (walletBalance < product.credits) {
+    if (walletBalance < totalCredits) {
       setMessage('Insufficient Asset Credits. Please top up in wallet.');
       setShowTopUp(true);
       return;
@@ -112,7 +114,7 @@ export default function ProductRedeemPage() {
             method: 'POST',
             headers: { 'content-type': 'application/json', authorization: `Bearer ${bearer}` },
             body: JSON.stringify({
-              items: [{ item_id: product.id, title: product.name, type: 'product', credits: product.credits, quantity: 1 }],
+              items: [{ item_id: product.id, title: product.name, type: 'product', credits: product.credits, quantity }],
               delivery_address: address,
             }),
           });
@@ -127,9 +129,9 @@ export default function ProductRedeemPage() {
 
       setRedeemOrderId(nextOrderId);
       localStorage.setItem('af_delivery_address', JSON.stringify(address));
-      setWalletBalance(walletBalance - product.credits);
-      addTransaction({ type: 'debit', description: `Redeemed ${product.name} (product)`, credits: product.credits, reference_id: nextOrderId });
-      addActivity({ id: nextOrderId, campaignId: product.id, campaignName: product.name, creditsUsed: product.credits, status: 'Completed' });
+      setWalletBalance(walletBalance - totalCredits);
+      addTransaction({ type: 'debit', description: `Redeemed ${quantity}x ${product.name} (product)`, credits: totalCredits, reference_id: nextOrderId });
+      addActivity({ id: nextOrderId, campaignId: product.id, campaignName: product.name, creditsUsed: totalCredits, status: 'Completed' });
       const eta = new Date();
       const pin = address.pincode.trim();
       const days = pin.startsWith('6') ? 4 : pin ? 6 : 5;
@@ -230,7 +232,29 @@ export default function ProductRedeemPage() {
           </div>
           <div className="mt-4 border-t border-slate-100 pt-4 flex items-center justify-between">
             <span className="text-sm text-slate-500">Total</span>
-            <span className="text-xl font-black text-primary-700">{formatCurrency(product.credits, currency)}</span>
+            <span className="text-xl font-black text-primary-700">{formatCurrency(totalCredits, currency)}</span>
+          </div>
+          <div className="mt-3 flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2">
+            <span className="text-sm text-slate-500">Quantity</span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                disabled={quantity <= 1}
+                className="h-8 w-8 rounded-lg border border-slate-200 text-slate-700 disabled:opacity-50"
+              >
+                −
+              </button>
+              <span className="min-w-[40px] text-center font-semibold text-slate-900">{quantity}</span>
+              <button
+                type="button"
+                onClick={() => setQuantity((q) => Math.min(20, q + 1))}
+                disabled={quantity >= 20}
+                className="h-8 w-8 rounded-lg border border-slate-200 text-slate-700 disabled:opacity-50"
+              >
+                +
+              </button>
+            </div>
           </div>
           <button
             onClick={handlePay}

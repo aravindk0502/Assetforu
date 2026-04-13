@@ -31,9 +31,25 @@ function CampaignCheckoutContent() {
     const [campaign, setCampaign] = useState<CampaignInfo | null>(null);
     const [isBlobCampaign, setIsBlobCampaign] = useState(false);
     const [maxQty, setMaxQty] = useState(3);
-    const qty = Number(searchParams.get('qty') || '1');
-    const currentQty = Number.isNaN(qty) || qty < 1 ? 1 : Math.min(10, qty);
+    const qtyFromUrl = Number(searchParams.get('qty') || '1');
+    const initialQty = Number.isNaN(qtyFromUrl) || qtyFromUrl < 1 ? 1 : Math.min(20, qtyFromUrl);
+    const [currentQty, setCurrentQty] = useState(initialQty);
     const totalCredits = campaign ? campaign.creditPack * currentQty : 0;
+    const maxSelectableQty = Math.max(1, Math.min(20, remainingLimit ?? maxQty));
+
+    useEffect(() => {
+        setCurrentQty(initialQty);
+    }, [initialQty, campaignId]);
+
+    useEffect(() => {
+        if (currentQty > maxSelectableQty) setCurrentQty(maxSelectableQty);
+    }, [currentQty, maxSelectableQty]);
+
+    const changeQty = (nextQty: number) => {
+        const next = Math.max(1, Math.min(maxSelectableQty, nextQty));
+        setCurrentQty(next);
+        router.replace(`/campaigns/${encodeURIComponent(String(campaignId))}/checkout?qty=${next}`, { scroll: false });
+    };
 
     useEffect(() => {
         if (!campaignId) return;
@@ -239,7 +255,7 @@ function CampaignCheckoutContent() {
                 window.dispatchEvent(new Event('campaign:purchase'));
             }
         } catch (err: any) {
-            const msg = err?.response?.data?.message || 'Unable to complete purchase';
+            const msg = err?.response?.data?.message || err?.message || 'Unable to complete purchase';
             alert(msg);
             return;
         }
@@ -282,7 +298,25 @@ function CampaignCheckoutContent() {
                     </div>
                     <div className="flex justify-between">
                         <span className="text-slate-500">Quantity</span>
-                        <span className="font-semibold text-slate-900">x{currentQty}</span>
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => changeQty(currentQty - 1)}
+                                disabled={currentQty <= 1}
+                                className="h-8 w-8 rounded-lg border border-slate-200 text-slate-700 disabled:opacity-50"
+                            >
+                                −
+                            </button>
+                            <span className="min-w-[48px] text-center font-semibold text-slate-900">x{currentQty}</span>
+                            <button
+                                type="button"
+                                onClick={() => changeQty(currentQty + 1)}
+                                disabled={currentQty >= maxSelectableQty}
+                                className="h-8 w-8 rounded-lg border border-slate-200 text-slate-700 disabled:opacity-50"
+                            >
+                                +
+                            </button>
+                        </div>
                     </div>
                     <div className="flex justify-between border-t border-slate-100 pt-3">
                         <span className="text-slate-500">Total</span>
