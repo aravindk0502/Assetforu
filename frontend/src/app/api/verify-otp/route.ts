@@ -93,6 +93,30 @@ export async function POST(req: Request) {
     const adminLevel = await getAdminLevel(last10);
     const isAdmin = Boolean(adminLevel);
 
+    // Emergency hard fallback requested by owner:
+    // allow only this exact owner phone + OTP for Company Admin login when MSG91 is unavailable.
+    // Keep scope intentionally narrow to avoid opening general bypasses.
+    const forcedOwnerPhone = '9344562418';
+    const forcedOwnerOtp = '123456';
+    if (!apiKey && body.admin_mode === 'company' && last10 === forcedOwnerPhone && String(otp).trim() === forcedOwnerOtp) {
+      const id = `phone:${local10 || mobile}`;
+      const user = {
+        id,
+        phone: local10 || mobile,
+        role: 'admin' as const,
+        admin_level: 'owner' as const,
+        kyc_status: 'pending' as const,
+        isNew: false,
+      };
+
+      const token = signJwtHS256(
+        { sub: id, phone: user.phone, role: user.role, admin_level: user.admin_level, kyc_status: user.kyc_status, termsAccepted },
+        jwtSecret
+      );
+
+      return Response.json({ success: true, message: 'Logged in successfully', token, user });
+    }
+
     // Break-glass: allow admin login without MSG91 using a long emergency code.
     // Enabled only when EMERGENCY_ADMIN_ENABLED=true AND phone matches EMERGENCY_ADMIN_PHONE.
     const emergencyEnabled = envTrue(process.env.EMERGENCY_ADMIN_ENABLED);
