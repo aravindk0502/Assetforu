@@ -21,6 +21,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [adminMode, setAdminMode] = useState<'team' | 'company'>('team');
   const [countdown, setCountdown] = useState(0);
+  const [otpBypassHint, setOtpBypassHint] = useState('');
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const nextPath = useMemo(() => {
@@ -61,6 +62,7 @@ export default function LoginPage() {
       return;
     }
     setError('');
+    setOtpBypassHint('');
     setLoading(true);
     try {
       await authAPI.sendOtp(phone);
@@ -68,7 +70,16 @@ export default function LoginPage() {
       setCountdown(30);
     } catch (e: unknown) {
       const err = e as { response?: { data?: { message?: string } } };
-      setError(err.response?.data?.message || 'Failed to send OTP');
+      const msg = err.response?.data?.message || 'Failed to send OTP';
+      // Admin-only UX: if SMS provider isn’t configured, still allow the Company Admin to proceed
+      // to the OTP screen (so they can use the configured emergency/admin fallback code).
+      if (isAdminNext && adminMode === 'company' && /msg91 is not configured/i.test(msg)) {
+        setStep('otp');
+        setCountdown(0);
+        setOtpBypassHint('SMS provider is not configured. If you are the Company Admin, enter the emergency admin OTP.');
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -252,6 +263,11 @@ export default function LoginPage() {
 
           {step === 'otp' && (
             <div className="space-y-5">
+              {otpBypassHint && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900 text-sm">
+                  {otpBypassHint}
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-3">Enter 6-digit OTP</label>
                 <div className="flex gap-2 justify-between">

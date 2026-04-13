@@ -34,7 +34,14 @@ export async function POST(req: Request) {
 
     if (!apiKey || !templateId) {
       if (!isDevOtpAllowed(last10)) {
-        return Response.json({ success: false, message: 'MSG91 is not configured' }, { status: 500 });
+        return Response.json(
+          {
+            success: false,
+            message:
+              'MSG91 is not configured. If you are the Company Admin, enable Emergency Admin env vars in Vercel (Production) and redeploy.',
+          },
+          { status: 500 }
+        );
       }
 
       const devOtp = process.env.DEV_OTP_CODE;
