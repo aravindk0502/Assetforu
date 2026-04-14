@@ -5,7 +5,6 @@ import { useMemo, useState, useEffect } from 'react';
 import { useAuthStore, useCartStore, useUIStore } from '@/store';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { BadgeCheck, Sparkles, Shield, Briefcase, Landmark, Leaf, Heart } from 'lucide-react';
-import { productCatalog, servicesCatalog } from '@/data/storeCatalog';
 import { formatCurrency } from '@/lib/currency';
 import { addToast } from '@/components/Toast';
 import { fetchPublicStoreItems } from '@/lib/publicStore';
@@ -96,12 +95,12 @@ function StoreContent() {
             }));
     }, [dynamicItems]);
 
-    // For search - combine both products and services
-    const allItems = useMemo(() => [...dynamicProducts, ...dynamicServices, ...productCatalog, ...servicesCatalog], [dynamicProducts, dynamicServices]);
+    // For search - combine both products and services from admin-managed data only
+    const allItems = useMemo(() => [...dynamicProducts, ...dynamicServices], [dynamicProducts, dynamicServices]);
 
-    // For tab display - use only active tab items
+    // For tab display - use only active tab items from admin-managed data only
     const items = useMemo(
-        () => (activeTab === 'products' ? [...dynamicProducts, ...productCatalog] : [...dynamicServices, ...servicesCatalog]),
+        () => (activeTab === 'products' ? dynamicProducts : dynamicServices),
         [activeTab, dynamicProducts, dynamicServices]
     );
 
@@ -290,7 +289,7 @@ function StoreContent() {
                     </div>
                 </div>
 
-                {activeTab === 'products' && !query && (
+                {activeTab === 'products' && !query && dynamicProducts.length > 0 && (
                     <section className="mb-10">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-xl font-black text-slate-900">New Arrivals</h3>
@@ -310,7 +309,7 @@ function StoreContent() {
                             </button>
                         </div>
                         <div className="flex gap-4 overflow-x-auto pb-2">
-                            {productCatalog.slice(0, 6).map((item) => (
+                            {dynamicProducts.slice(0, 6).map((item) => (
                                 <button
                                     key={item.id}
                                     type="button"

@@ -272,6 +272,30 @@ export default function AdminStorePage() {
     await load();
   };
 
+  const handleDeleteAll = async () => {
+    if (!items.length) return;
+    const bearer = token || (typeof window !== 'undefined' ? localStorage.getItem('af_token') : null);
+    if (!bearer) return;
+    const ok = typeof window !== 'undefined' ? window.confirm(`Delete all ${items.length} store items? This cannot be undone.`) : false;
+    if (!ok) return;
+    setSaving(true);
+    setError('');
+    try {
+      await Promise.all(
+        items.map((item) =>
+          fetch(`/api/admin/store-items/${item.id}`, { method: 'DELETE', headers: { authorization: `Bearer ${bearer}` } })
+        )
+      );
+      setSuccess('All store items deleted.');
+      await load();
+      setTimeout(() => setSuccess(''), 3000);
+    } catch {
+      setError('Failed to delete all store items');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   useEffect(() => {
     if (!showForm) {
       setImageUrls([]);
@@ -296,14 +320,23 @@ export default function AdminStorePage() {
   return (
     <div>
       <BackNavigation />
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-8">
         <div>
           <h1 className="text-3xl font-black text-white">Store Items</h1>
           <p className="text-slate-400 mt-1">{items.length} items in store</p>
         </div>
-        <button onClick={openCreate} className="flex items-center gap-2 bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-primary-600 transition-colors">
-          <Plus className="w-4 h-4" /> Add Item
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => void handleDeleteAll()}
+            disabled={!items.length || saving}
+            className="flex items-center gap-2 bg-rose-900/40 text-rose-200 px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-rose-900/60 transition-colors disabled:opacity-50"
+          >
+            <Trash2 className="w-4 h-4" /> Delete All
+          </button>
+          <button onClick={openCreate} className="flex items-center gap-2 bg-primary-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-primary-600 transition-colors">
+            <Plus className="w-4 h-4" /> Add Item
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-col md:flex-row md:items-center gap-3 mb-5">
