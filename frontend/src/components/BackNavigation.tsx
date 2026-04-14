@@ -2,6 +2,7 @@
 
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
+import { useLanguage } from '@/components/LanguageProvider';
 
 interface BackNavigationProps {
     href?: string;
@@ -11,6 +12,7 @@ export default function BackNavigation({ href }: BackNavigationProps) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
+    const { t } = useLanguage();
 
     // Determine the destination based on current path
     const getDefaultHref = () => {
@@ -65,10 +67,10 @@ export default function BackNavigation({ href }: BackNavigationProps) {
         <button
             onClick={handleClick}
             className="inline-flex items-center gap-2 text-sm font-semibold text-primary-700 hover:text-primary-800 hover:underline transition-colors mb-6"
-            title="Go to previous page"
+            title={t('back.previous', 'Back to Previous Page')}
         >
             <ArrowLeft className="w-4 h-4" />
-            Back to Previous Page
+            {t('back.previous', 'Back to Previous Page')}
         </button>
     );
 }

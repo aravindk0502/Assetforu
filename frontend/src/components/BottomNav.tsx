@@ -6,22 +6,24 @@ import { useEffect, useState } from 'react';
 import { Home, Megaphone, ShoppingBag, Activity, Heart } from 'lucide-react';
 import clsx from 'clsx';
 import { useUIStore } from '@/store';
+import { useLanguage } from '@/components/LanguageProvider';
 
 export function BottomNav() {
     const pathname = usePathname();
     const favorites = useUIStore((state) => state.favorites);
     const [mounted, setMounted] = useState(false);
+    const { t } = useLanguage();
 
     useEffect(() => {
         setMounted(true);
     }, []);
 
     const navItems = [
-        { href: '/', label: 'Home', icon: Home },
-        { href: '/campaigns', label: 'Campaigns', icon: Megaphone },
-        { href: '/store', label: 'Store', icon: ShoppingBag },
-        { href: '/activity', label: 'Activity', icon: Activity },
-        { href: '/favourites', label: 'Favorites', icon: Heart },
+        { href: '/', label: t('nav.home', 'Home'), icon: Home },
+        { href: '/campaigns', label: t('nav.campaigns', 'Campaigns'), icon: Megaphone },
+        { href: '/store', label: t('nav.store', 'Asset Store'), icon: ShoppingBag },
+        { href: '/activity', label: t('nav.activity', 'Activity'), icon: Activity },
+        { href: '/favourites', label: t('nav.favorites', 'Favorites'), icon: Heart },
     ];
 
     return (

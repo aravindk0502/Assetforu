@@ -4,8 +4,10 @@ import Link from 'next/link';
 import { Leaf, Instagram, Facebook, Linkedin, Youtube } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { fetchSiteContent } from '@/lib/siteContent';
+import { useLanguage } from '@/components/LanguageProvider';
 
 export function Footer() {
+  const { t } = useLanguage();
   const [siteFooter, setSiteFooter] = useState<any | null>(null);
   useEffect(() => {
     fetchSiteContent()
@@ -18,32 +20,32 @@ export function Footer() {
       (Array.isArray(siteFooter?.explore_links) && siteFooter.explore_links.length
         ? siteFooter.explore_links
         : [
-            { href: '/', label: 'Home' },
-            { href: '/campaigns', label: 'Campaigns' },
-            { href: '/store', label: 'Asset Store' },
-            { href: '/wallet', label: 'My Wallet' },
+            { href: '/', label: t('nav.home', 'Home') },
+            { href: '/campaigns', label: t('nav.campaigns', 'Campaigns') },
+            { href: '/store', label: t('nav.store', 'Asset Store') },
+            { href: '/wallet', label: t('nav.wallet', 'Wallet') },
           ]) as Array<{ href: string; label: string }>,
-    [siteFooter]
+    [siteFooter, t]
   );
   const supportLinks = useMemo(
     () =>
       (Array.isArray(siteFooter?.support_links) && siteFooter.support_links.length
         ? siteFooter.support_links
         : [
-            { href: '/help', label: 'Help Center' },
-            { href: '/contact', label: 'Contact Us' },
+            { href: '/help', label: t('footer.helpCenter', 'Help Center') },
+            { href: '/contact', label: t('footer.contactUs', 'Contact Us') },
           ]) as Array<{ href: string; label: string }>,
-    [siteFooter]
+    [siteFooter, t]
   );
   const legalLinks = useMemo(
     () =>
       (Array.isArray(siteFooter?.legal_links) && siteFooter.legal_links.length
         ? siteFooter.legal_links
         : [
-            { href: '/privacy', label: 'Privacy Policy' },
-            { href: '/terms', label: 'Terms & Conditions' },
+            { href: '/privacy', label: t('footer.privacy', 'Privacy Policy') },
+            { href: '/terms', label: t('footer.terms', 'Terms & Conditions') },
           ]) as Array<{ href: string; label: string }>,
-    [siteFooter]
+    [siteFooter, t]
   );
   const disclaimerLines = useMemo(
     () =>
@@ -88,7 +90,7 @@ export function Footer() {
 
           {/* Explore */}
           <div>
-            <h4 className="font-bold text-slate-900 mb-4 text-sm uppercase tracking-wider">Explore</h4>
+            <h4 className="font-bold text-slate-900 mb-4 text-sm uppercase tracking-wider">{t('footer.explore', 'Explore')}</h4>
             <ul className="space-y-2.5 text-sm text-slate-500">
               {exploreLinks.map((l) => (
                 <li key={`${l.href}-${l.label}`}>
@@ -100,7 +102,7 @@ export function Footer() {
 
           {/* Support */}
           <div>
-            <h4 className="font-bold text-slate-900 mb-4 text-sm uppercase tracking-wider">Support</h4>
+            <h4 className="font-bold text-slate-900 mb-4 text-sm uppercase tracking-wider">{t('footer.support', 'Support')}</h4>
             <ul className="space-y-2.5 text-sm text-slate-500">
               {supportLinks.map((l) => (
                 <li key={`${l.href}-${l.label}`}>
@@ -112,7 +114,7 @@ export function Footer() {
 
           {/* Legal */}
           <div>
-            <h4 className="font-bold text-slate-900 mb-4 text-sm uppercase tracking-wider">Legal</h4>
+            <h4 className="font-bold text-slate-900 mb-4 text-sm uppercase tracking-wider">{t('footer.legal', 'Legal')}</h4>
             <ul className="space-y-2.5 text-sm text-slate-500">
               {legalLinks.map((l) => (
                 <li key={`${l.href}-${l.label}`}>

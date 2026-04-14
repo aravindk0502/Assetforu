@@ -6,6 +6,8 @@ import { useAuthStore, useCartStore, useUIStore } from '@/store';
 import { formatCurrency } from '@/lib/currency';
 import { Leaf, Wallet, LogOut, UserCircle, Activity, ShoppingCart, Bell, Heart } from 'lucide-react';
 import { fetchSiteContent } from '@/lib/siteContent';
+import { useLanguage } from '@/components/LanguageProvider';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 
 export function Header() {
     const router = useRouter();
@@ -23,6 +25,7 @@ export function Header() {
     const [mounted, setMounted] = useState(false);
     const [hasStoredToken, setHasStoredToken] = useState(false);
     const [siteHeader, setSiteHeader] = useState<any | null>(null);
+    const { t } = useLanguage();
 
     const isAuthed = !!user || !!token || hasStoredToken;
 
@@ -95,7 +98,17 @@ export function Header() {
                                 { label: 'Wallet', href: '/wallet' },
                               ]).map((l: any) => (
                             <Link key={`${l.label}-${l.href}`} href={String(l.href)} className="text-slate-700 hover:text-primary-700 transition-colors">
-                                {String(l.label)}
+                                {String(l.href) === '/'
+                                  ? t('nav.home', 'Home')
+                                  : String(l.href).includes('/campaign')
+                                  ? t('nav.campaigns', 'Campaigns')
+                                  : String(l.href).includes('/store')
+                                  ? t('nav.store', 'Asset Store')
+                                  : String(l.href).includes('/activity')
+                                  ? t('nav.activity', 'Activity')
+                                  : String(l.href).includes('/wallet')
+                                  ? t('nav.wallet', 'Wallet')
+                                  : String(l.label)}
                             </Link>
                         ))}
 
@@ -126,6 +139,10 @@ export function Header() {
                             <span className="text-xs text-primary-600 hidden sm:block">Credits</span>
                         </Link>
 
+                        <div className="hidden sm:block">
+                            <LanguageSwitcher />
+                        </div>
+
                         {/* Wallet - Mobile Badge */}
                         <Link href="/wallet" className="sm:hidden flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-primary-300 bg-primary-50 hover:bg-primary-100 transition-colors">
                             <Wallet className="w-3.5 h-3.5 text-primary-700" />
@@ -153,12 +170,16 @@ export function Header() {
                             <Bell className="w-4 h-4" />
                         </button>
 
+                        <div className="sm:hidden">
+                            <LanguageSwitcher compact />
+                        </div>
+
                         {/* Favourites - Desktop */}
                         <Link
                             href="/favourites"
                             className="group relative hidden sm:flex items-center justify-center h-9 w-9 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
                             aria-label="Favourites"
-                            title="Favorites"
+                            title={t('nav.favorites', 'Favorites')}
                         >
                             <Heart className={`w-4 h-4 ${favorites.length > 0 ? 'fill-rose-500 text-rose-500' : ''}`} />
                             {favorites.length > 0 && (
@@ -167,14 +188,14 @@ export function Header() {
                                 </span>
                             )}
                             <span className="pointer-events-none absolute top-11 right-1/2 translate-x-1/2 whitespace-nowrap rounded-lg bg-slate-900 px-2 py-1 text-[11px] font-semibold text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-                                Favorites
+                                {t('nav.favorites', 'Favorites')}
                             </span>
                         </Link>
 
                         {/* Cart */}
                         <Link href="/cart" className="relative flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 sm:px-3 py-2 text-slate-700 hover:bg-slate-50">
                             <ShoppingCart className="w-4 h-4" />
-                            <span className="hidden sm:block text-sm font-semibold">Cart</span>
+                            <span className="hidden sm:block text-sm font-semibold">{t('nav.cart', 'Cart')}</span>
                             {cartItems.length > 0 && (
                                 <span className="absolute -top-2 -right-2 h-5 min-w-5 px-1 rounded-full bg-primary-700 text-white text-[10px] font-bold flex items-center justify-center">
                                     {cartItems.reduce((sum, i) => sum + (i.quantity || 0), 0)}
@@ -185,7 +206,7 @@ export function Header() {
                         {/* Profile / Auth */}
                         {!isAuthed ? (
                             <button onClick={() => openSignupModal()} className="inline-block px-3 sm:px-5 py-2 bg-primary-700 text-white font-semibold rounded-lg text-xs sm:text-sm hover:bg-primary-800 transition-colors flex-shrink-0">
-                                Sign-Up/Login
+                                {t('auth.login', 'Sign-Up/Login')}
                             </button>
                         ) : (
                             <div className="relative flex-shrink-0">
@@ -203,7 +224,7 @@ export function Header() {
                                                     <UserCircle className="w-4 h-4" /> My Profile
                                                 </Link>
                                                 <Link href="/activity" onClick={() => setProfileDropdownOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-lg">
-                                                    <Activity className="w-4 h-4" /> Activity
+                                                    <Activity className="w-4 h-4" /> {t('nav.activity', 'Activity')}
                                                 </Link>
                                                 <button onClick={handleLogout} className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg w-full text-left">
                                                     <LogOut className="w-4 h-4" /> Sign Out

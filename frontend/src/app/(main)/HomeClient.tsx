@@ -13,6 +13,7 @@ import { CampaignImageCarousel } from '@/components/CampaignImageCarousel';
 import { AdsBadge } from '@/components/AdsBadge';
 import { parseCampaignMeta } from '@/lib/campaignMeta';
 import { fetchSiteContent } from '@/lib/siteContent';
+import { useLanguage } from '@/components/LanguageProvider';
 
 const campaignTags = ['Just Launched', 'Closing Soon', 'Exclusive Series', 'Trending'];
 
@@ -39,6 +40,7 @@ export default function HomePage() {
   const [campaignsReloadNonce, setCampaignsReloadNonce] = useState(0);
   const [siteHero, setSiteHero] = useState<any | null>(null);
   const [activeCampaignCount, setActiveCampaignCount] = useState<number | null>(null);
+  const { t } = useLanguage();
   const activeCountLabel =
     activeCampaignCount != null
       ? activeCampaignCount
@@ -259,24 +261,24 @@ export default function HomePage() {
         </div>
         <div className="relative z-10 mx-auto max-w-7xl px-6 lg:px-10 py-24 md:py-28">
           <div className="max-w-3xl text-white">
-            <p className="text-xs uppercase tracking-[0.35em] text-emerald-200/80 mb-4">Digital Platform Experience</p>
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight tracking-tight">{siteHero?.heading || 'Explore Premium Land Opportunities with Asset Credits'}</h1>
-            <p className="mt-6 max-w-2xl text-base sm:text-lg text-slate-100/85 leading-8">{siteHero?.subheading || 'Access curated land campaigns, view property details, and enter complimentary benefits when you purchase Asset Credits.'}</p>
-            <p className="mt-6 text-sm text-slate-200/70 max-w-xl">{siteHero?.note || 'Campaign-related benefits are complimentary platform features and not the primary purpose of credit purchase.'}</p>
+            <p className="text-xs uppercase tracking-[0.35em] text-emerald-200/80 mb-4">{t('home.hero.kicker', 'Digital Platform Experience')}</p>
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight tracking-tight">{siteHero?.heading || t('home.hero.heading', 'Explore Premium Land Opportunities with Asset Credits')}</h1>
+            <p className="mt-6 max-w-2xl text-base sm:text-lg text-slate-100/85 leading-8">{siteHero?.subheading || t('home.hero.subheading', 'Access curated land campaigns, view property details, and enter complimentary benefits when you purchase Asset Credits.')}</p>
+            <p className="mt-6 text-sm text-slate-200/70 max-w-xl">{siteHero?.note || t('home.hero.note', 'Campaign-related benefits are complimentary platform features and not the primary purpose of credit purchase.')}</p>
             <div className="mt-10 flex flex-wrap items-center gap-4">
               <button onClick={() => router.push(siteHero?.primary_cta_href || '/campaigns')} className="rounded-full bg-emerald-300 text-slate-950 px-6 py-3 text-sm font-semibold shadow-xl shadow-emerald-500/20 transition hover:bg-emerald-200">
-                {siteHero?.primary_cta_label || 'Get Started'}
+                {siteHero?.primary_cta_label || t('home.hero.ctaPrimary', 'Get Started')}
               </button>
               <button onClick={() => router.push(siteHero?.secondary_cta_href || '/store')} className="rounded-full border border-emerald-200/75 text-white px-6 py-3 text-sm font-semibold transition hover:bg-white/10">
-                {siteHero?.secondary_cta_label || 'Explore Store'}
+                {siteHero?.secondary_cta_label || t('home.hero.ctaSecondary', 'Explore Store')}
               </button>
             </div>
           </div>
           <div className="mt-14 grid gap-4 md:grid-cols-3">
             {[
-              { label: 'Wallet Balance', value: `${formatCurrency(isAuthed ? walletBalance : 0, currency)}` },
-              { label: 'Active Campaigns', value: `${activeCountLabel}` },
-              { label: 'Items in Cart', value: `${cartItems.length}` },
+              { label: t('home.stats.wallet', 'Wallet Balance'), value: `${formatCurrency(isAuthed ? walletBalance : 0, currency)}` },
+              { label: t('home.stats.active', 'Active Campaigns'), value: `${activeCountLabel}` },
+              { label: t('home.stats.cart', 'Items in Cart'), value: `${cartItems.length}` },
             ].map((stat) => (
               <div key={stat.label} className="rounded-[28px] bg-slate-900/70 border border-white/10 px-5 py-4 text-white backdrop-blur-sm shadow-xl shadow-slate-950/20">
                 <p className="text-[11px] uppercase tracking-[0.3em] text-slate-300">{stat.label}</p>
@@ -290,33 +292,33 @@ export default function HomePage() {
       <section className="mx-auto max-w-7xl px-6 lg:px-10 py-12">
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div>
-            <p className="text-xs uppercase tracking-[0.25em] text-emerald-600">Platform Campaigns</p>
-            <h2 className="text-3xl font-black text-slate-900 mt-2">Featured Campaigns</h2>
-            <p className="text-slate-500 mt-2">Explore available campaigns as part of your platform experience with Asset Credits.</p>
+            <p className="text-xs uppercase tracking-[0.25em] text-emerald-600">{t('home.featured.kicker', 'Platform Campaigns')}</p>
+            <h2 className="text-3xl font-black text-slate-900 mt-2">{t('home.featured.title', 'Featured Campaigns')}</h2>
+            <p className="text-slate-500 mt-2">{t('home.featured.subtitle', 'Explore available campaigns as part of your platform experience with Asset Credits.')}</p>
           </div>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[1fr_2fr]">
           <div className="rounded-3xl bg-white p-6 border border-slate-200 shadow-sm">
-            <h3 className="text-lg font-black text-slate-900">Why AssetForU?</h3>
+            <h3 className="text-lg font-black text-slate-900">{t('home.why.title', 'Why AssetForU?')}</h3>
             <ul className="mt-4 space-y-3 text-sm text-slate-600">
-              <li className="flex items-start gap-2"><Sparkles className="w-4 h-4 text-emerald-500" /> Verified campaigns with transparent pricing.</li>
-              <li className="flex items-start gap-2"><Ticket className="w-4 h-4 text-emerald-500" /> Automatic entry on credit purchase.</li>
-              <li className="flex items-start gap-2"><ArrowUpRight className="w-4 h-4 text-emerald-500" /> Dedicated advisory support.</li>
+              <li className="flex items-start gap-2"><Sparkles className="w-4 h-4 text-emerald-500" /> {t('home.why.one', 'Verified campaigns with transparent pricing.')}</li>
+              <li className="flex items-start gap-2"><Ticket className="w-4 h-4 text-emerald-500" /> {t('home.why.two', 'Automatic entry on credit purchase.')}</li>
+              <li className="flex items-start gap-2"><ArrowUpRight className="w-4 h-4 text-emerald-500" /> {t('home.why.three', 'Dedicated advisory support.')}</li>
             </ul>
-            <button onClick={() => router.push('/campaigns')} className="mt-6 w-full rounded-xl bg-primary-700 text-white py-2 text-sm font-bold flex items-center justify-center gap-2">View All Campaigns <ChevronDown className="w-4 h-4" /></button>
+            <button onClick={() => router.push('/campaigns')} className="mt-6 w-full rounded-xl bg-primary-700 text-white py-2 text-sm font-bold flex items-center justify-center gap-2">{t('home.viewAll', 'View All Campaigns')} <ChevronDown className="w-4 h-4" /></button>
           </div>
 
           <div className="space-y-5">
             {!homeCampaigns.length && !campaignsLoaded ? (
               <div className="rounded-3xl bg-white border border-slate-200 shadow-sm p-6 text-slate-500 text-sm">
-                Loading campaigns…
+                {t('home.loadingCampaigns', 'Loading campaigns…')}
               </div>
             ) : campaignsLoaded && !homeCampaigns.length ? (
               <div className="rounded-3xl bg-white border border-slate-200 shadow-sm p-6">
-                <p className="text-sm font-extrabold text-slate-900">No campaigns available right now</p>
+                <p className="text-sm font-extrabold text-slate-900">{t('home.noCampaigns.title', 'No campaigns available right now')}</p>
                 <p className="mt-2 text-sm text-slate-600">
-                  Asset Credits purchases are not available at the moment. Please check back later for upcoming campaigns.
+                  {t('home.noCampaigns.text', 'Asset Credits purchases are not available at the moment. Please check back later for upcoming campaigns.')}
                 </p>
               </div>
             ) : (
@@ -330,8 +332,6 @@ export default function HomePage() {
                   c.filledSlots >= c.totalSlots;
                 const isClosed = !c.isAd && (status === 'closed' || isSlotSoldOut);
                 const isUpcoming = !c.isAd && status === 'upcoming' && !isClosed;
-                const announcement =
-                  c.soldOutAnnouncement || 'Campaign closed — will announce live event soon.';
                 const limitReached = limitMap[campaign.id] === 0;
                 const disableActions = isClosed || isUpcoming || limitReached;
 
@@ -357,7 +357,7 @@ export default function HomePage() {
                     )}
                     {/* Campaign Tag */}
                     <span className="absolute top-3 left-3 rounded-full bg-emerald-600 text-white px-3 py-1 text-xs font-bold z-10">
-                      {isClosed ? 'Closed' : isUpcoming ? 'Upcoming' : campaignTags[idx % campaignTags.length]}
+                      {isClosed ? t('campaign.closed', 'Closed') : isUpcoming ? t('campaign.upcoming', 'Upcoming') : campaignTags[idx % campaignTags.length]}
                     </span>
                   </div>
 
@@ -370,19 +370,19 @@ export default function HomePage() {
                     </div>
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
-                        <p className="text-xs text-slate-400">Entry Pack</p>
+                        <p className="text-xs text-slate-400">{t('campaign.entryPack', 'Entry Pack')}</p>
                         <p className="text-lg font-black text-slate-900">{formatCurrency(campaign.creditPack, currency)} Credits</p>
                         {!isClosed && !isUpcoming && typeof limitMap[campaign.id] === 'number' && limitMap[campaign.id] > 0 && (
                           <p className="text-xs text-emerald-600 mt-1">
-                            You can access up to {limitMap[campaign.id]} more
+                            {t('campaign.limitLeft', 'You can access up to {count} more', { count: limitMap[campaign.id] })}
                           </p>
                         )}
                         {isClosed ? (
-                          <p className="text-xs text-rose-600 mt-1">{announcement}</p>
+                          <p className="text-xs text-rose-600 mt-1">{c.soldOutAnnouncement || t('campaign.closedAnnouncement', 'Campaign closed — will announce live event soon.')}</p>
                         ) : isUpcoming ? (
-                          <p className="text-xs text-amber-600 mt-1">Upcoming campaign — check back soon.</p>
+                          <p className="text-xs text-amber-600 mt-1">{t('campaign.upcomingAnnouncement', 'Upcoming campaign — check back soon.')}</p>
                         ) : limitReached ? (
-                          <p className="text-xs text-rose-600 mt-1">Limit reached for this campaign</p>
+                          <p className="text-xs text-rose-600 mt-1">{t('campaign.limitReached', 'Limit reached for this campaign')}</p>
                         ) : null}
                       </div>
                       <div className="flex gap-2">
@@ -419,12 +419,19 @@ export default function HomePage() {
                           className="rounded-xl bg-primary-700 text-white px-4 py-2 text-sm font-bold disabled:opacity-60"
                         >
                           {isClosed
-                            ? 'Campaign Closed'
+                            ? t('campaign.state.closed', 'Campaign Closed')
                             : isUpcoming
-                            ? 'Upcoming'
+                            ? t('campaign.upcoming', 'Upcoming')
                             : limitReached
-                            ? 'Limit Reached'
-                            : `Buy ${formatCurrency(campaign.creditPack, currency)} Credits & Enter a free Land Gifting Campaign${limitMap[campaign.id] ? ` (${limitMap[campaign.id]} left)` : ''}`}
+                            ? t('campaign.state.limit', 'Limit Reached')
+                            : limitMap[campaign.id]
+                            ? t('campaign.buyCta', 'Buy {amount} Credits & Enter a free Land Gifting Campaign ({count} left)', {
+                                amount: formatCurrency(campaign.creditPack, currency),
+                                count: limitMap[campaign.id],
+                              })
+                            : t('campaign.buyCtaNoCount', 'Buy {amount} Credits & Enter a free Land Gifting Campaign', {
+                                amount: formatCurrency(campaign.creditPack, currency),
+                              })}
                         </button>
                         <button
                           onClick={(e) => {
@@ -450,7 +457,7 @@ export default function HomePage() {
                           disabled={disableActions}
                           className="rounded-xl border border-primary-700 text-primary-700 px-4 py-2 text-sm font-bold disabled:opacity-50"
                         >
-                          Add to Cart
+                          {t('campaign.addToCart', 'Add to Cart')}
                         </button>
                       </div>
                     </div>

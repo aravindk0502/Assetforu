@@ -5,6 +5,7 @@ import { SignupModal } from '@/components/SignupModal';
 import { ToastContainer } from '@/components/Toast';
 import { useUIStore } from '@/store';
 import { FcmRegistrar } from '@/components/FcmRegistrar';
+import { LanguageProvider } from '@/components/LanguageProvider';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const loadFromStorage = useAuthStore((s) => s.loadFromStorage);
@@ -22,12 +23,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }, [loadFromStorage, logout, resetUserData]);
 
   return (
-    <>
+    <LanguageProvider>
       {children}
       <FcmRegistrar />
       <ModalManager />
       <ToastContainer />
-    </>
+    </LanguageProvider>
   );
 }
 
