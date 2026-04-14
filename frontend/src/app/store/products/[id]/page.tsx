@@ -7,6 +7,7 @@ import { Heart } from 'lucide-react';
 import BackNavigation from '@/components/BackNavigation';
 import { fetchPublicStoreItem, fetchPublicStoreItems } from '@/lib/publicStore';
 import type { StoreItem } from '@/types';
+import { CampaignImageCarousel } from '@/components/CampaignImageCarousel';
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -23,6 +24,7 @@ export default function ProductDetailPage() {
     credits: number;
     description: string;
     image: string;
+    images: string[];
     category: string;
   }>(null);
   const [allItems, setAllItems] = useState<StoreItem[]>([]);
@@ -45,6 +47,7 @@ export default function ProductDetailPage() {
           credits: Number(row.credit_cost || 0),
           description: row.description || '',
           image: (Array.isArray(row.image_urls) && row.image_urls[0]) || row.image_url,
+          images: (Array.isArray(row.image_urls) && row.image_urls.length ? row.image_urls : [row.image_url]).filter(Boolean).slice(0, 5),
           category: row.category || 'Other',
         });
       })
@@ -137,7 +140,9 @@ export default function ProductDetailPage() {
       <div className="grid gap-8 lg:grid-cols-[2fr_1fr]">
         <div>
           <div className="relative">
-            <img src={product.image} alt={product.name} className="h-80 w-full rounded-3xl object-cover border border-slate-200" />
+            <div className="rounded-3xl overflow-hidden border border-slate-200">
+              <CampaignImageCarousel images={product.images.length ? product.images : [product.image]} title={product.name} showAds={false} />
+            </div>
             <button
               type="button"
               onClick={() =>

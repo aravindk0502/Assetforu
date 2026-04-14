@@ -309,7 +309,9 @@ export default function AdminCampaignsPage() {
     setError('');
     const remaining = Math.max(0, 5 - imageUrls.length);
     if (remaining <= 0) return;
-    const selected = Array.from(files).slice(0, remaining);
+    const selected = Array.from(files)
+      .filter((f) => f.type.startsWith('image/'))
+      .slice(0, remaining);
     setUploading(true);
     try {
       const urls: string[] = [];
@@ -467,7 +469,10 @@ export default function AdminCampaignsPage() {
                   type="file"
                   accept="image/*"
                   multiple
-                  onChange={(e) => void addImages(e.target.files)}
+                  onChange={(e) => {
+                    void addImages(e.target.files);
+                    e.currentTarget.value = '';
+                  }}
                   disabled={uploading}
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-200 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-slate-700 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-white hover:file:bg-slate-600"
                 />

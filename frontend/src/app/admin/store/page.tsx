@@ -404,7 +404,10 @@ export default function AdminStorePage() {
                   type="file"
                   accept="image/*"
                   multiple
-                  onChange={(e) => void addImages(e.target.files)}
+                  onChange={(e) => {
+                    void addImages(e.target.files);
+                    e.currentTarget.value = '';
+                  }}
                   disabled={uploading}
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-200 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-slate-700 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-white hover:file:bg-slate-600"
                 />
