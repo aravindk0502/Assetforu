@@ -1,12 +1,12 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { productCatalog, servicesCatalog } from '@/data/storeCatalog';
 import { useAuthStore, useCartStore, useUIStore } from '@/store';
 import { formatCurrency } from '@/lib/currency';
 import { Heart } from 'lucide-react';
 import BackNavigation from '@/components/BackNavigation';
-import { fetchPublicStoreItem } from '@/lib/publicStore';
+import { fetchPublicStoreItem, fetchPublicStoreItems } from '@/lib/publicStore';
+import type { StoreItem } from '@/types';
 
 export default function ServiceDetailPage() {
   const params = useParams();
@@ -25,14 +25,13 @@ export default function ServiceDetailPage() {
     image: string;
     category: string;
   }>(null);
+  const [allItems, setAllItems] = useState<StoreItem[]>([]);
 
   const id = Array.isArray(params?.id) ? params.id[0] : params?.id;
-  const staticService = useMemo(() => servicesCatalog.find((item) => item.id === id), [id]);
 
   useEffect(() => {
     const itemId = String(id || '');
     if (!itemId) return;
-    if (staticService) return;
     setApiLoading(true);
     fetchPublicStoreItem(itemId)
       .then((row) => {
@@ -50,27 +49,42 @@ export default function ServiceDetailPage() {
         });
       })
       .finally(() => setApiLoading(false));
-  }, [id, staticService]);
+  }, [id]);
 
-  const service = staticService
-    ? {
-      id: staticService.id,
-      name: staticService.name,
-      credits: staticService.credits,
-      description: staticService.description,
-      image: staticService.image,
-      category: staticService.category || 'Store',
-    }
-    : apiService;
+  useEffect(() => {
+    fetchPublicStoreItems().then(setAllItems).catch(() => setAllItems([]));
+  }, []);
+
+  const service = apiService;
 
   const similarServices = useMemo(() => {
-    if (!service || !staticService) return [];
-    const sameCategory = servicesCatalog.filter((item) => item.category === staticService.category && item.id !== staticService.id);
-    const fallback = servicesCatalog.filter((item) => item.id !== staticService.id);
-    return (sameCategory.length ? sameCategory : fallback).slice(0, 3);
-  }, [service, staticService]);
+    if (!service) return [];
+    const services = allItems
+      .filter((item) => item.type === 'service' && item.id !== service.id)
+      .map((item) => ({
+        id: item.id,
+        name: item.title,
+        credits: Number(item.credit_cost || 0),
+        image: (Array.isArray(item.image_urls) && item.image_urls[0]) || item.image_url,
+        category: item.category || 'Other',
+      }));
+    const sameCategory = services.filter((item) => item.category === service.category);
+    return (sameCategory.length ? sameCategory : services).slice(0, 3);
+  }, [allItems, service]);
 
-  const recommendedProducts = useMemo(() => productCatalog.slice(0, 4), []);
+  const recommendedProducts = useMemo(
+    () =>
+      allItems
+        .filter((item) => item.type === 'product')
+        .map((item) => ({
+          id: item.id,
+          name: item.title,
+          credits: Number(item.credit_cost || 0),
+          image: (Array.isArray(item.image_urls) && item.image_urls[0]) || item.image_url,
+        }))
+        .slice(0, 4),
+    [allItems]
+  );
 
   const isAuthed = !!user || !!token;
 

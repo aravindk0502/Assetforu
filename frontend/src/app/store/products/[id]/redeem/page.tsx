@@ -1,7 +1,6 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { productCatalog } from '@/data/storeCatalog';
 import { useAuthStore, useUIStore } from '@/store';
 import { formatCurrency } from '@/lib/currency';
 import BackNavigation from '@/components/BackNavigation';
@@ -45,12 +44,10 @@ export default function ProductRedeemPage() {
   const [redeemOrderId, setRedeemOrderId] = useState<string | null>(null);
 
   const id = Array.isArray(params?.id) ? params.id[0] : params?.id;
-  const staticProduct = useMemo(() => productCatalog.find((item) => item.id === id), [id]);
 
   useEffect(() => {
     const itemId = String(id || '');
     if (!itemId) return;
-    if (staticProduct) return;
     setApiLoading(true);
     fetchPublicStoreItem(itemId)
       .then((row) => {
@@ -67,11 +64,9 @@ export default function ProductRedeemPage() {
         });
       })
       .finally(() => setApiLoading(false));
-  }, [id, staticProduct]);
+  }, [id]);
 
-  const product = staticProduct
-    ? { id: staticProduct.id, name: staticProduct.name, credits: staticProduct.credits, description: staticProduct.description, image: staticProduct.image }
-    : apiProduct;
+  const product = apiProduct;
   const totalCredits = (product?.credits || 0) * quantity;
 
   const isAuthed = !!user || !!token;

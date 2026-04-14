@@ -1,7 +1,6 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { servicesCatalog } from '@/data/storeCatalog';
 import { formatCurrency } from '@/lib/currency';
 import { fetchPublicStoreItem } from '@/lib/publicStore';
 import type { StoreItem } from '@/types';
@@ -12,19 +11,11 @@ export default function ServiceRedeemSuccessPage() {
     const searchParams = useSearchParams();
     const id = Array.isArray(params?.id) ? params.id[0] : params?.id;
     const orderId = searchParams.get('orderId') || '';
-    const service = useMemo(
-        () => servicesCatalog.find((item) => item.id === id),
-        [id]
-    );
     const [dynamicItem, setDynamicItem] = useState<StoreItem | null>(null);
     const [dynamicLoading, setDynamicLoading] = useState(false);
 
     useEffect(() => {
         if (!id) return;
-        if (service) {
-            setDynamicItem(null);
-            return;
-        }
         let cancelled = false;
         setDynamicLoading(true);
         fetchPublicStoreItem(String(id))
@@ -43,11 +34,9 @@ export default function ServiceRedeemSuccessPage() {
         return () => {
             cancelled = true;
         };
-    }, [id, service]);
+    }, [id]);
 
-    const display = service
-        ? { name: service.name, credits: service.credits }
-        : dynamicItem
+    const display = dynamicItem
             ? { name: dynamicItem.title, credits: Number(dynamicItem.credit_cost || 0) }
             : null;
 

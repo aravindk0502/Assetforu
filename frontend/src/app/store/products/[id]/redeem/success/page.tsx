@@ -1,8 +1,7 @@
 'use client';
 import { Suspense } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
-import { productCatalog } from '@/data/storeCatalog';
+import { useEffect, useState } from 'react';
 import { formatCurrency } from '@/lib/currency';
 import { useUIStore } from '@/store';
 import { fetchPublicStoreItem } from '@/lib/publicStore';
@@ -15,16 +14,11 @@ function ProductRedeemSuccessContent() {
   const { currency } = useUIStore();
 
   const id = Array.isArray(params?.id) ? params.id[0] : params?.id;
-  const product = useMemo(() => productCatalog.find((item) => item.id === id), [id]);
   const [dynamicItem, setDynamicItem] = useState<StoreItem | null>(null);
   const [dynamicLoading, setDynamicLoading] = useState(false);
 
   useEffect(() => {
     if (!id) return;
-    if (product) {
-      setDynamicItem(null);
-      return;
-    }
     let cancelled = false;
     setDynamicLoading(true);
     fetchPublicStoreItem(String(id))
@@ -43,16 +37,14 @@ function ProductRedeemSuccessContent() {
     return () => {
       cancelled = true;
     };
-  }, [id, product]);
+  }, [id]);
 
   const etaRaw = searchParams.get('eta');
   const orderId = searchParams.get('orderId') || '';
   const etaDate = etaRaw ? new Date(etaRaw) : null;
   const etaLabel = etaDate && !Number.isNaN(etaDate.getTime()) ? etaDate.toLocaleDateString() : 'within 5 business days';
 
-  const display = product
-    ? { name: product.name, image: product.image, credits: product.credits }
-    : dynamicItem
+  const display = dynamicItem
       ? { name: dynamicItem.title, image: dynamicItem.image_url, credits: Number(dynamicItem.credit_cost || 0) }
       : null;
 

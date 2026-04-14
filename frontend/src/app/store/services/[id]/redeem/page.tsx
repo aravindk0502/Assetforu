@@ -1,7 +1,6 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { servicesCatalog } from '@/data/storeCatalog';
 import { useAuthStore, useUIStore } from '@/store';
 import { formatCurrency } from '@/lib/currency';
 import BackNavigation from '@/components/BackNavigation';
@@ -23,14 +22,9 @@ export default function ServiceRedeemPage() {
     const [apiService, setApiService] = useState<null | { id: string; name: string; credits: number; description: string; image: string; category: string }>(null);
 
     const id = Array.isArray(params?.id) ? params.id[0] : params?.id;
-    const staticService = useMemo(
-        () => servicesCatalog.find((item) => item.id === id),
-        [id]
-    );
     useEffect(() => {
         const itemId = String(id || '');
         if (!itemId) return;
-        if (staticService) return;
         setApiLoading(true);
         fetchPublicStoreItem(itemId)
             .then((row) => {
@@ -48,11 +42,9 @@ export default function ServiceRedeemPage() {
                 });
             })
             .finally(() => setApiLoading(false));
-    }, [id, staticService]);
+    }, [id]);
 
-    const service = staticService
-        ? { id: staticService.id, name: staticService.name, credits: staticService.credits, description: staticService.description, image: staticService.image, category: staticService.category || 'Store' }
-        : apiService;
+    const service = apiService;
     const totalCredits = (service?.credits || 0) * quantity;
 
     const isAuthed = !!user || !!token;

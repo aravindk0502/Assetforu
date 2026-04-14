@@ -1,12 +1,12 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { productCatalog, servicesCatalog } from '@/data/storeCatalog';
 import { useAuthStore, useCartStore, useUIStore } from '@/store';
 import { formatCurrency } from '@/lib/currency';
 import { Heart } from 'lucide-react';
 import BackNavigation from '@/components/BackNavigation';
-import { fetchPublicStoreItem } from '@/lib/publicStore';
+import { fetchPublicStoreItem, fetchPublicStoreItems } from '@/lib/publicStore';
+import type { StoreItem } from '@/types';
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -25,17 +25,13 @@ export default function ProductDetailPage() {
     image: string;
     category: string;
   }>(null);
+  const [allItems, setAllItems] = useState<StoreItem[]>([]);
 
   const id = Array.isArray(params?.id) ? params.id[0] : params?.id;
-  const staticProduct = useMemo(
-    () => productCatalog.find((item) => item.id === id),
-    [id]
-  );
 
   useEffect(() => {
     const itemId = String(id || '');
     if (!itemId) return;
-    if (staticProduct) return;
     setApiLoading(true);
     fetchPublicStoreItem(itemId)
       .then((row) => {
@@ -53,27 +49,42 @@ export default function ProductDetailPage() {
         });
       })
       .finally(() => setApiLoading(false));
-  }, [id, staticProduct]);
+  }, [id]);
 
-  const product = staticProduct
-    ? {
-      id: staticProduct.id,
-      name: staticProduct.name,
-      credits: staticProduct.credits,
-      description: staticProduct.description,
-      image: staticProduct.image,
-      category: staticProduct.category || 'Store',
-    }
-    : apiProduct;
+  useEffect(() => {
+    fetchPublicStoreItems().then(setAllItems).catch(() => setAllItems([]));
+  }, []);
+
+  const product = apiProduct;
 
   const similarProducts = useMemo(() => {
-    if (!product || !staticProduct) return [];
-    const sameCategory = productCatalog.filter((item) => item.category === staticProduct.category && item.id !== staticProduct.id);
-    const fallback = productCatalog.filter((item) => item.id !== product.id);
-    return (sameCategory.length ? sameCategory : fallback).slice(0, 3);
-  }, [product, staticProduct]);
+    if (!product) return [];
+    const products = allItems
+      .filter((item) => item.type === 'product' && item.id !== product.id)
+      .map((item) => ({
+        id: item.id,
+        name: item.title,
+        credits: Number(item.credit_cost || 0),
+        image: (Array.isArray(item.image_urls) && item.image_urls[0]) || item.image_url,
+        category: item.category || 'Other',
+      }));
+    const sameCategory = products.filter((item) => item.category === product.category);
+    return (sameCategory.length ? sameCategory : products).slice(0, 3);
+  }, [allItems, product]);
 
-  const recommendedServices = useMemo(() => servicesCatalog.slice(0, 4), []);
+  const recommendedServices = useMemo(
+    () =>
+      allItems
+        .filter((item) => item.type === 'service')
+        .map((item) => ({
+          id: item.id,
+          name: item.title,
+          credits: Number(item.credit_cost || 0),
+          image: (Array.isArray(item.image_urls) && item.image_urls[0]) || item.image_url,
+        }))
+        .slice(0, 4),
+    [allItems]
+  );
 
   const isAuthed = !!user || !!token;
 
