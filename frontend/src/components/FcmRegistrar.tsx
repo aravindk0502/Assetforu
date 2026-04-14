@@ -7,8 +7,16 @@ import { useAuthStore } from '@/store';
 
 const STORAGE_KEY = 'af_fcm_token';
 
-function getVapidKey() {
-  return process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY || '';
+async function getVapidKey() {
+  const envVapid = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY || '';
+  if (envVapid) return envVapid;
+  try {
+    const res = await fetch('/api/public/firebase-config', { cache: 'no-store' });
+    const json = (await res.json().catch(() => ({}))) as { data?: { vapidKey?: string } | null };
+    return String(json?.data?.vapidKey || '');
+  } catch {
+    return '';
+  }
 }
 
 export function FcmRegistrar() {
@@ -32,7 +40,7 @@ export function FcmRegistrar() {
         const messaging = await getFirebaseMessaging();
         if (!messaging) return;
 
-        const vapidKey = getVapidKey();
+        const vapidKey = await getVapidKey();
         if (!vapidKey) return;
 
         const swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
@@ -61,4 +69,3 @@ export function FcmRegistrar() {
 
   return null;
 }
-

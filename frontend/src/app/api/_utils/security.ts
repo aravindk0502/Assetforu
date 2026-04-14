@@ -25,9 +25,35 @@ export function envTrue(raw: string | undefined) {
 }
 
 export function requireServerEnv(name: string): string {
-  const v = process.env[name];
+  const v = getServerEnv(name);
   if (!v) throw new Error(`Server misconfigured: missing ${name}`);
   return v;
+}
+
+const ENV_ALIASES: Record<string, string[]> = {
+  MSG91_API_KEY: ['smsGatewayAPIKey'],
+  MSG91_TEMPLATE_ID: ['smsOTPDLTEID'],
+  JWT_SECRET: ['JWT', 'JWT_SECRET_KEY'],
+  RAZORPAY_KEY_ID: ['RAZORPAY_ID'],
+  RAZORPAY_KEY_SECRET: ['RAZORPAY_SECRET'],
+  FIREBASE_SERVICE_ACCOUNT_JSON: ['GOOGLE_APPLICATION_CREDENTIALS_JSON'],
+  NEXT_PUBLIC_FIREBASE_API_KEY: ['FIREBASE_API_KEY'],
+  NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ['FIREBASE_AUTH_DOMAIN'],
+  NEXT_PUBLIC_FIREBASE_PROJECT_ID: ['FIREBASE_PROJECT_ID'],
+  NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ['FIREBASE_STORAGE_BUCKET'],
+  NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ['FIREBASE_MESSAGING_SENDER_ID'],
+  NEXT_PUBLIC_FIREBASE_APP_ID: ['FIREBASE_APP_ID'],
+  NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: ['FIREBASE_MEASUREMENT_ID'],
+  NEXT_PUBLIC_FIREBASE_VAPID_KEY: ['FIREBASE_VAPID_KEY'],
+};
+
+export function getServerEnv(name: string): string {
+  const candidates = [name, ...(ENV_ALIASES[name] || [])];
+  for (const key of candidates) {
+    const value = process.env[key];
+    if (value && String(value).trim()) return String(value).trim();
+  }
+  return '';
 }
 
 export function getClientIp(req: Request): string {
@@ -80,4 +106,3 @@ export function isDevOtpAllowed(phoneLast10: string): boolean {
   );
   return allow.has(phoneLast10);
 }
-

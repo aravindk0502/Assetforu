@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
+import { getServerEnv } from '@/app/api/_utils/security';
 
 function env(name: string) {
-  return process.env[name] ?? '';
+  const value = getServerEnv(name);
+  return value || '';
 }
 
 export const runtime = 'nodejs';
@@ -74,4 +76,3 @@ self.addEventListener('notificationclick', (event) => {
     },
   });
 }
-

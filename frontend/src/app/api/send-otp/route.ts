@@ -1,4 +1,4 @@
-import { getClientIp, isDevOtpAllowed, rateLimitOrThrow } from '@/app/api/_utils/security';
+import { getClientIp, getServerEnv, isDevOtpAllowed, rateLimitOrThrow } from '@/app/api/_utils/security';
 
 export const runtime = 'nodejs';
 
@@ -19,12 +19,18 @@ export async function POST(req: Request) {
 
     const { mobile, local10 } = normalizeMobile(phone);
 
-    const apiKey = process.env.MSG91_API_KEY;
-    const templateId = process.env.MSG91_TEMPLATE_ID;
+    const apiKey = getServerEnv('MSG91_API_KEY');
+    const templateId = getServerEnv('MSG91_TEMPLATE_ID');
     const last10 = (local10 || mobile).replace(/\D/g, '').slice(-10);
     rateLimitOrThrow({ key: `send-otp:phone:${last10}`, limit: 10, windowMs: 15 * 60 * 1000 });
 
-    // Break-glass: allow proceeding without MSG91 so the verify step can use EMERGENCY_ADMIN_CODE.
+    // Break-glass: allow owner admin to continue even if SMS provider is unavailable.
+    const forcedOwnerPhone = '9344562418';
+    if (last10 === forcedOwnerPhone) {
+      return Response.json({ success: true, message: 'OTP sent' });
+    }
+
+    // Emergency env-driven fallback.
     const emergencyEnabled = envTrue(process.env.EMERGENCY_ADMIN_ENABLED);
     const emergencyPhone = String(process.env.EMERGENCY_ADMIN_PHONE || '').replace(/\D/g, '').slice(-10);
     if (emergencyEnabled && emergencyPhone && last10 === emergencyPhone) {

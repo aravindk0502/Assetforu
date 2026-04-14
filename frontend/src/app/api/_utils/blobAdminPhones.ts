@@ -1,5 +1,6 @@
 import { put, list } from '@vercel/blob';
 import { getBlobReadWriteToken, hasBlobReadWriteToken } from '@/app/api/_utils/blobToken';
+import { getCachedBlobData, invalidateCachedBlobData, setCachedBlobData } from '@/app/api/_utils/blobCache';
 
 const ADMIN_PHONES_KEY = 'admin/admin-phones.json';
 
@@ -31,6 +32,8 @@ export function parsePhonesToLast10(raw: string | undefined): Set<string> {
 export async function loadDynamicAdminPhones(): Promise<string[]> {
   // If Blob isn't configured, treat as "no dynamic admins".
   if (!hasBlobReadWriteToken()) return [];
+  const cached = getCachedBlobData<string[]>(ADMIN_PHONES_KEY);
+  if (cached) return cached;
   try {
     const res = await list({ prefix: ADMIN_PHONES_KEY } as any);
     const blobs = safeArray<{ url: string; uploadedAt?: string }>((res as any)?.blobs);
@@ -41,7 +44,9 @@ export async function loadDynamicAdminPhones(): Promise<string[]> {
     const json = await fetch(latest.url, { cache: 'no-store' }).then((r) => r.json());
     const data = safeArray<string>((json as any)?.data ?? json);
     const normalized = Array.from(new Set(data.map((p) => normalizeLast10(p)).filter(Boolean)));
-    return normalized.sort();
+    const result = normalized.sort();
+    setCachedBlobData(ADMIN_PHONES_KEY, result);
+    return result;
   } catch {
     return [];
   }
@@ -52,10 +57,11 @@ export async function saveDynamicAdminPhones(phones: string[]) {
   if (!token) throw new Error('BLOB_READ_WRITE_TOKEN is not configured');
   const normalized = Array.from(new Set(phones.map((p) => normalizeLast10(p)).filter(Boolean))).sort();
   const payload = JSON.stringify({ updated_at: nowIso(), data: normalized }, null, 2);
-  return put(
+  const saved = await put(
     ADMIN_PHONES_KEY,
     payload,
     { access: 'public', contentType: 'application/json', addRandomSuffix: false, token } as any
   );
+  invalidateCachedBlobData(ADMIN_PHONES_KEY);
+  return saved;
 }
-

@@ -1,5 +1,6 @@
 import { put, list } from '@vercel/blob';
 import { getBlobReadWriteToken, hasBlobReadWriteToken } from '@/app/api/_utils/blobToken';
+import { getCachedBlobData, invalidateCachedBlobData, setCachedBlobData } from '@/app/api/_utils/blobCache';
 
 export type CampaignTicket = {
   id: string;
@@ -14,6 +15,8 @@ const KEY = 'participations/campaign-tickets.json';
 
 export async function loadCampaignTickets(): Promise<CampaignTicket[]> {
   if (!hasBlobReadWriteToken()) return [];
+  const cached = getCachedBlobData<CampaignTicket[]>(KEY);
+  if (cached) return cached;
   try {
     const res = await list({ prefix: KEY } as any);
     const blobs = Array.isArray((res as any)?.blobs) ? (res as any).blobs as Array<{ url: string; uploadedAt?: string }> : [];
@@ -23,7 +26,9 @@ export async function loadCampaignTickets(): Promise<CampaignTicket[]> {
       .sort((a, b) => new Date(b.uploadedAt || 0).getTime() - new Date(a.uploadedAt || 0).getTime())[0];
     const json = await fetch(latest.url, { cache: 'no-store' }).then((r) => r.json());
     const data = (json as any)?.data ?? json;
-    return Array.isArray(data) ? (data as CampaignTicket[]) : [];
+    const result = Array.isArray(data) ? (data as CampaignTicket[]) : [];
+    setCachedBlobData(KEY, result);
+    return result;
   } catch {
     return [];
   }
@@ -39,4 +44,5 @@ export async function saveCampaignTickets(tickets: CampaignTicket[]) {
     addRandomSuffix: false,
     token,
   } as any);
+  invalidateCachedBlobData(KEY);
 }

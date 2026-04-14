@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore, useUIStore } from '@/store';
 import { formatCurrency } from '@/lib/currency';
 import BackNavigation from '@/components/BackNavigation';
+import { startRazorpayPayment } from '@/lib/razorpayCheckout';
 
 const presetAmounts = [10, 20, 50, 100, 200, 500, 1000];
 const upiOptions = [
@@ -23,6 +24,7 @@ export default function BuyCreditsPage() {
   const [customAmount, setCustomAmount] = useState('');
   const [upi, setUpi] = useState(upiOptions[0].id);
   const [message, setMessage] = useState('');
+  const [paying, setPaying] = useState(false);
 
   const amount = useMemo(() => {
     if (customAmount.trim().length) {
@@ -32,7 +34,7 @@ export default function BuyCreditsPage() {
     return selected || 0;
   }, [customAmount, selected]);
 
-  const handlePay = () => {
+  const handlePay = async () => {
     if (!user) {
       openSignupModal(() => router.push('/wallet/buy'));
       return;
@@ -41,16 +43,31 @@ export default function BuyCreditsPage() {
       setMessage('Please choose a valid amount.');
       return;
     }
-    setWalletBalance(walletBalance + amount);
-    addTransaction({
-      type: 'credit',
-      description: `Purchased ${formatCurrency(amount, currency)} Asset Credits for Asset Store via ${upiOptions.find((u) => u.id === upi)?.label || 'UPI'}`,
-      credits: amount,
-    });
-    setMessage('Payment successful. Credits added to your wallet.');
-    setSelected(null);
-    setCustomAmount('');
-    setTimeout(() => setMessage(''), 3000);
+    setPaying(true);
+    try {
+      await startRazorpayPayment({
+        amountInr: amount,
+        title: 'Wallet Top-up',
+        description: `Add ${formatCurrency(amount, currency)} to wallet`,
+        prefill: { phone: user.phone, name: user.name },
+        notes: { purpose: 'wallet_topup', method: upi },
+      });
+      setWalletBalance(walletBalance + amount);
+      addTransaction({
+        type: 'credit',
+        description: `Purchased ${formatCurrency(amount, currency)} Asset Credits for Asset Store via ${upiOptions.find((u) => u.id === upi)?.label || 'UPI'}`,
+        credits: amount,
+      });
+      setMessage('Payment successful. Credits added to your wallet.');
+      setSelected(null);
+      setCustomAmount('');
+      setTimeout(() => setMessage(''), 3000);
+    } catch (e: unknown) {
+      const err = e instanceof Error ? e.message : 'Payment failed';
+      setMessage(err);
+    } finally {
+      setPaying(false);
+    }
   };
 
   return (
@@ -124,9 +141,10 @@ export default function BuyCreditsPage() {
           <button
             type="button"
             onClick={handlePay}
+            disabled={paying || amount <= 0}
             className="mt-6 w-full rounded-xl bg-primary-700 text-white py-3 font-bold"
           >
-            Pay Now
+            {paying ? 'Processing…' : 'Pay Now'}
           </button>
           <p className="mt-3 text-xs text-slate-500">Payments are processed via Razorpay. UPI will be shown on checkout.</p>
         </div>

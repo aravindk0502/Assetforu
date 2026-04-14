@@ -1,5 +1,6 @@
 import { put, list } from '@vercel/blob';
 import { getBlobReadWriteToken, hasBlobReadWriteToken } from '@/app/api/_utils/blobToken';
+import { getCachedBlobData, invalidateCachedBlobData, setCachedBlobData } from '@/app/api/_utils/blobCache';
 
 export type CampaignPurchase = {
   id: string;
@@ -22,6 +23,8 @@ function safeArray<T>(value: unknown): T[] {
 
 export async function loadCampaignPurchases(): Promise<CampaignPurchase[]> {
   if (!hasBlobReadWriteToken()) return [];
+  const cached = getCachedBlobData<CampaignPurchase[]>(PURCHASES_KEY);
+  if (cached) return cached;
   try {
     const res = await list({ prefix: PURCHASES_KEY } as any);
     const blobs = safeArray<{ url: string; uploadedAt?: string }>((res as any)?.blobs);
@@ -30,7 +33,9 @@ export async function loadCampaignPurchases(): Promise<CampaignPurchase[]> {
       .slice()
       .sort((a, b) => new Date(b.uploadedAt || 0).getTime() - new Date(a.uploadedAt || 0).getTime())[0];
     const json = await fetch(latest.url, { cache: 'no-store' }).then((r) => r.json());
-    return safeArray<CampaignPurchase>((json as any)?.data ?? json);
+    const data = safeArray<CampaignPurchase>((json as any)?.data ?? json);
+    setCachedBlobData(PURCHASES_KEY, data);
+    return data;
   } catch {
     return [];
   }
@@ -40,11 +45,12 @@ export async function saveCampaignPurchases(purchases: CampaignPurchase[]) {
   const token = getBlobReadWriteToken();
   if (!token) throw new Error('BLOB_READ_WRITE_TOKEN is not configured');
   const payload = JSON.stringify({ updated_at: nowIso(), data: purchases }, null, 2);
-  return put(PURCHASES_KEY, payload, {
+  const saved = await put(PURCHASES_KEY, payload, {
     access: 'public',
     contentType: 'application/json',
     addRandomSuffix: false,
     token,
   } as any);
+  invalidateCachedBlobData(PURCHASES_KEY);
+  return saved;
 }
-

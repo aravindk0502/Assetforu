@@ -1,6 +1,7 @@
 import { put, list } from '@vercel/blob';
 import type { Campaign } from '@/types';
 import { getBlobReadWriteToken, hasBlobReadWriteToken } from '@/app/api/_utils/blobToken';
+import { getCachedBlobData, invalidateCachedBlobData, setCachedBlobData } from '@/app/api/_utils/blobCache';
 
 const CAMPAIGNS_KEY = 'campaigns/campaigns.json';
 
@@ -15,6 +16,8 @@ function safeArray<T>(value: unknown): T[] {
 export async function loadCampaigns(): Promise<Campaign[]> {
   // If Blob isn't configured, treat as "no campaigns" and let callers fallback.
   if (!hasBlobReadWriteToken()) return [];
+  const cached = getCachedBlobData<Campaign[]>(CAMPAIGNS_KEY);
+  if (cached) return cached;
   try {
     const res = await list({ prefix: CAMPAIGNS_KEY } as any);
     const blobs = safeArray<{ url: string; uploadedAt?: string }>((res as any)?.blobs);
@@ -23,7 +26,9 @@ export async function loadCampaigns(): Promise<Campaign[]> {
       .slice()
       .sort((a, b) => new Date(b.uploadedAt || 0).getTime() - new Date(a.uploadedAt || 0).getTime())[0];
     const json = await fetch(latest.url, { cache: 'no-store' }).then((r) => r.json());
-    return safeArray<Campaign>((json as any)?.data ?? json);
+    const data = safeArray<Campaign>((json as any)?.data ?? json);
+    setCachedBlobData(CAMPAIGNS_KEY, data);
+    return data;
   } catch {
     return [];
   }
@@ -41,5 +46,7 @@ export async function saveCampaigns(campaigns: Campaign[]) {
     token,
   };
   const payload = JSON.stringify({ updated_at: nowIso(), data: campaigns }, null, 2);
-  return put(CAMPAIGNS_KEY, payload, putOptions);
+  const saved = await put(CAMPAIGNS_KEY, payload, putOptions);
+  invalidateCachedBlobData(CAMPAIGNS_KEY);
+  return saved;
 }

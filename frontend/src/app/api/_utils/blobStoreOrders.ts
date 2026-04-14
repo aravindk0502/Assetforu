@@ -1,5 +1,6 @@
 import { put, list } from '@vercel/blob';
 import { getBlobReadWriteToken, hasBlobReadWriteToken } from '@/app/api/_utils/blobToken';
+import { getCachedBlobData, invalidateCachedBlobData, setCachedBlobData } from '@/app/api/_utils/blobCache';
 
 export type StoreOrderItem = {
   item_id: string;
@@ -30,6 +31,8 @@ const KEY = 'orders/store-orders.json';
 
 export async function loadStoreOrders(): Promise<StoreOrder[]> {
   if (!hasBlobReadWriteToken()) return [];
+  const cached = getCachedBlobData<StoreOrder[]>(KEY);
+  if (cached) return cached;
   try {
     const res = await list({ prefix: KEY } as any);
     const blobs = Array.isArray((res as any)?.blobs) ? (res as any).blobs as Array<{ url: string; uploadedAt?: string }> : [];
@@ -39,7 +42,9 @@ export async function loadStoreOrders(): Promise<StoreOrder[]> {
       .sort((a, b) => new Date(b.uploadedAt || 0).getTime() - new Date(a.uploadedAt || 0).getTime())[0];
     const json = await fetch(latest.url, { cache: 'no-store' }).then((r) => r.json());
     const data = (json as any)?.data ?? json;
-    return Array.isArray(data) ? (data as StoreOrder[]) : [];
+    const result = Array.isArray(data) ? (data as StoreOrder[]) : [];
+    setCachedBlobData(KEY, result);
+    return result;
   } catch {
     return [];
   }
@@ -55,4 +60,5 @@ export async function saveStoreOrders(orders: StoreOrder[]) {
     addRandomSuffix: false,
     token,
   } as any);
+  invalidateCachedBlobData(KEY);
 }

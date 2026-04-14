@@ -10,6 +10,7 @@ import { formatCurrency } from '@/lib/currency';
 import BackNavigation from '@/components/BackNavigation';
 import { parseCampaignMeta } from '@/lib/campaignMeta';
 import { parseCampaignImages } from '@/lib/campaignImages';
+import { startRazorpayPayment } from '@/lib/razorpayCheckout';
 
 function CampaignCheckoutContent() {
     const router = useRouter();
@@ -26,6 +27,7 @@ function CampaignCheckoutContent() {
     const [cardNumber, setCardNumber] = useState('');
     const [cardExpiry, setCardExpiry] = useState('');
     const [cardCvv, setCardCvv] = useState('');
+    const [paying, setPaying] = useState(false);
 
     const campaignId = (params?.id as string) || '';
     const [campaign, setCampaign] = useState<CampaignInfo | null>(null);
@@ -225,6 +227,22 @@ function CampaignCheckoutContent() {
             return;
         }
 
+        setPaying(true);
+        try {
+            await startRazorpayPayment({
+                amountInr: totalCredits,
+                title: `Campaign: ${campaign.title}`,
+                description: `Buy ${currentQty} credit pack(s)`,
+                prefill: { phone: user.phone, name: user.name },
+                notes: { purpose: 'campaign_checkout', campaign_id: String(campaign.id), qty: String(currentQty), mode: paymentMode },
+            });
+        } catch (paymentErr: unknown) {
+            const msg = paymentErr instanceof Error ? paymentErr.message : 'Payment failed';
+            alert(msg);
+            setPaying(false);
+            return;
+        }
+
         let allocatedTickets: number[] = [];
         try {
             if (!user.id?.startsWith('dev_') && !isBlobCampaign) {
@@ -257,6 +275,7 @@ function CampaignCheckoutContent() {
         } catch (err: any) {
             const msg = err?.response?.data?.message || err?.message || 'Unable to complete purchase';
             alert(msg);
+            setPaying(false);
             return;
         }
 
@@ -280,6 +299,7 @@ function CampaignCheckoutContent() {
 
         const ticketParam = allocatedTickets.length ? `&tickets=${allocatedTickets.join(',')}` : '';
         router.push(`/campaigns/${campaign.id}/success?qty=${currentQty}${ticketParam}`);
+        setPaying(false);
     };
 
     return (
@@ -383,10 +403,10 @@ function CampaignCheckoutContent() {
 
                 <button
                     onClick={handlePayment}
-                    disabled={remainingLimit !== null && remainingLimit <= 0}
+                    disabled={paying || (remainingLimit !== null && remainingLimit <= 0)}
                     className="mt-6 w-full rounded-xl bg-primary-700 text-white py-3 font-bold hover:bg-primary-800 transition disabled:opacity-60"
                 >
-                    Pay Now
+                    {paying ? 'Processing…' : 'Pay Now'}
                 </button>
 
                 <p className="mt-3 text-xs text-slate-500">

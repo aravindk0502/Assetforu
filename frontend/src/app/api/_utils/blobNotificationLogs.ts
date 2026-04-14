@@ -1,5 +1,6 @@
 import { put, list } from '@vercel/blob';
 import { getBlobReadWriteToken, hasBlobReadWriteToken } from '@/app/api/_utils/blobToken';
+import { getCachedBlobData, invalidateCachedBlobData, setCachedBlobData } from '@/app/api/_utils/blobCache';
 
 export type NotificationSendLog = {
   id: string;
@@ -27,6 +28,8 @@ function safeArray<T>(value: unknown): T[] {
 
 export async function loadNotificationLogs(): Promise<NotificationSendLog[]> {
   if (!hasBlobReadWriteToken()) return [];
+  const cached = getCachedBlobData<NotificationSendLog[]>(LOGS_KEY);
+  if (cached) return cached;
   try {
     const res = await list({ prefix: LOGS_KEY } as any);
     const blobs = safeArray<{ url: string; uploadedAt?: string }>((res as any)?.blobs);
@@ -35,7 +38,9 @@ export async function loadNotificationLogs(): Promise<NotificationSendLog[]> {
       .slice()
       .sort((a, b) => new Date(b.uploadedAt || 0).getTime() - new Date(a.uploadedAt || 0).getTime())[0];
     const json = await fetch(latest.url, { cache: 'no-store' }).then((r) => r.json());
-    return safeArray<NotificationSendLog>((json as any)?.data ?? json);
+    const data = safeArray<NotificationSendLog>((json as any)?.data ?? json);
+    setCachedBlobData(LOGS_KEY, data);
+    return data;
   } catch {
     return [];
   }
@@ -45,11 +50,12 @@ export async function saveNotificationLogs(logs: NotificationSendLog[]) {
   const token = getBlobReadWriteToken();
   if (!token) throw new Error('BLOB_READ_WRITE_TOKEN is not configured');
   const payload = JSON.stringify({ updated_at: nowIso(), data: logs }, null, 2);
-  return put(LOGS_KEY, payload, {
+  const saved = await put(LOGS_KEY, payload, {
     access: 'public',
     contentType: 'application/json',
     addRandomSuffix: false,
     token,
   } as any);
+  invalidateCachedBlobData(LOGS_KEY);
+  return saved;
 }
-

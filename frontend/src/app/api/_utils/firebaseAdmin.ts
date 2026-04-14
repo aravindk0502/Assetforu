@@ -1,5 +1,5 @@
 import * as admin from 'firebase-admin';
-import { requireServerEnv } from '@/app/api/_utils/security';
+import { getServerEnv, requireServerEnv } from '@/app/api/_utils/security';
 
 type FirebaseServiceAccount = {
   project_id: string;
@@ -8,12 +8,16 @@ type FirebaseServiceAccount = {
 };
 
 function parseServiceAccount(): FirebaseServiceAccount | null {
-  const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  const raw = getServerEnv('FIREBASE_SERVICE_ACCOUNT_JSON');
   if (!raw) return null;
   try {
     const json = JSON.parse(raw) as Partial<FirebaseServiceAccount>;
     if (!json?.project_id || !json?.client_email || !json?.private_key) return null;
-    return json as FirebaseServiceAccount;
+    return {
+      project_id: json.project_id,
+      client_email: json.client_email,
+      private_key: String(json.private_key).replace(/\\n/g, '\n'),
+    };
   } catch {
     return null;
   }
@@ -49,4 +53,3 @@ export function requireFirebaseAdminApp(): admin.app.App {
   }
   return app;
 }
-

@@ -1,5 +1,6 @@
 import { put, list } from '@vercel/blob';
 import { getBlobReadWriteToken, hasBlobReadWriteToken } from '@/app/api/_utils/blobToken';
+import { getCachedBlobData, invalidateCachedBlobData, setCachedBlobData } from '@/app/api/_utils/blobCache';
 
 export type NotificationTokenRecord = {
   phone_last10: string;
@@ -20,6 +21,8 @@ function safeArray<T>(value: unknown): T[] {
 
 export async function loadNotificationTokens(): Promise<NotificationTokenRecord[]> {
   if (!hasBlobReadWriteToken()) return [];
+  const cached = getCachedBlobData<NotificationTokenRecord[]>(TOKENS_KEY);
+  if (cached) return cached;
   try {
     const res = await list({ prefix: TOKENS_KEY } as any);
     const blobs = safeArray<{ url: string; uploadedAt?: string }>((res as any)?.blobs);
@@ -28,7 +31,9 @@ export async function loadNotificationTokens(): Promise<NotificationTokenRecord[
       .slice()
       .sort((a, b) => new Date(b.uploadedAt || 0).getTime() - new Date(a.uploadedAt || 0).getTime())[0];
     const json = await fetch(latest.url, { cache: 'no-store' }).then((r) => r.json());
-    return safeArray<NotificationTokenRecord>((json as any)?.data ?? json);
+    const data = safeArray<NotificationTokenRecord>((json as any)?.data ?? json);
+    setCachedBlobData(TOKENS_KEY, data);
+    return data;
   } catch {
     return [];
   }
@@ -38,11 +43,12 @@ export async function saveNotificationTokens(tokens: NotificationTokenRecord[]) 
   const token = getBlobReadWriteToken();
   if (!token) throw new Error('BLOB_READ_WRITE_TOKEN is not configured');
   const payload = JSON.stringify({ updated_at: nowIso(), data: tokens }, null, 2);
-  return put(TOKENS_KEY, payload, {
+  const saved = await put(TOKENS_KEY, payload, {
     access: 'public',
     contentType: 'application/json',
     addRandomSuffix: false,
     token,
   } as any);
+  invalidateCachedBlobData(TOKENS_KEY);
+  return saved;
 }
-
