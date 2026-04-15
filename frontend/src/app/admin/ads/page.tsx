@@ -54,11 +54,15 @@ function compressToBlob(file: File): Promise<Blob> {
   });
 }
 
-async function uploadImage(file: File) {
+async function uploadImage(file: File, bearer?: string | null) {
   const blob = await compressToBlob(file);
   const formData = new FormData();
   formData.append('file', new File([blob], file.name.replace(/\.[^.]+$/, '.webp'), { type: 'image/webp' }));
-  const res = await fetch('/api/upload', { method: 'POST', body: formData });
+  const res = await fetch('/api/upload', {
+    method: 'POST',
+    headers: bearer ? { authorization: `Bearer ${bearer}` } : undefined,
+    body: formData,
+  });
   const json = (await res.json().catch(() => ({}))) as { success?: boolean; url?: string; message?: string };
   if (!res.ok || !json?.url) throw new Error(json?.message || 'Upload failed');
   return json.url;
@@ -214,12 +218,13 @@ export default function AdminAdsPage() {
     const selected = Array.from(files).slice(0, remaining);
     setUploading(true);
     try {
+      const bearer = token || (typeof window !== 'undefined' ? localStorage.getItem('af_token') : null);
       const urls: string[] = [];
       const warnings: string[] = [];
 
       for (const file of selected) {
         try {
-          const uploaded = await uploadImage(file);
+          const uploaded = await uploadImage(file, bearer);
           urls.push(uploaded);
         } catch (e: unknown) {
           const msg = e instanceof Error ? e.message : 'Upload failed';

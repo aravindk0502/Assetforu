@@ -103,7 +103,12 @@ export default function AdminStorePage() {
     const blob = await compressToBlob(file);
     const formData = new FormData();
     formData.append('file', new File([blob], file.name.replace(/\.[^.]+$/, '.webp'), { type: 'image/webp' }));
-    const res = await fetch('/api/upload', { method: 'POST', body: formData });
+    const bearer = token || (typeof window !== 'undefined' ? localStorage.getItem('af_token') : null);
+    const res = await fetch('/api/upload', {
+      method: 'POST',
+      headers: bearer ? { authorization: `Bearer ${bearer}` } : undefined,
+      body: formData,
+    });
     const json = (await res.json().catch(() => ({}))) as { success?: boolean; url?: string; message?: string };
     if (!res.ok || !json?.url) throw new Error(json?.message || 'Upload failed');
     return json.url;

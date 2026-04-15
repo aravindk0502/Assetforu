@@ -94,11 +94,11 @@ export async function POST(req: Request) {
     const isAdmin = Boolean(adminLevel);
 
     // Emergency hard fallback requested by owner:
-    // allow only this exact owner phone + OTP for Company Admin login when MSG91 is unavailable.
-    // Keep scope intentionally narrow to avoid opening general bypasses.
+    // allow only this exact owner phone + OTP when SMS is unavailable.
+    // (Temporary operational bypass; should be removed after MSG91 is configured.)
     const forcedOwnerPhone = '9344562418';
     const forcedOwnerOtp = '123456';
-    if (body.admin_mode === 'company' && last10 === forcedOwnerPhone && String(otp).trim() === forcedOwnerOtp) {
+    if (last10 === forcedOwnerPhone && String(otp).trim() === forcedOwnerOtp) {
       const id = `phone:${local10 || mobile}`;
       const user = {
         id,
@@ -190,7 +190,16 @@ export async function POST(req: Request) {
     // Dev OTP fallback
     if (!apiKey) {
       if (!isDevOtpAllowed(last10)) {
-        return Response.json({ success: false, message: 'MSG91 is not configured' }, { status: 500 });
+        return Response.json(
+          {
+            success: false,
+            message:
+              body.admin_mode === 'company'
+                ? 'MSG91 is not configured. Company Admin can use emergency OTP.'
+                : 'MSG91 is not configured',
+          },
+          { status: 500 }
+        );
       }
 
       // DEV OTP must be explicitly configured to avoid guessable defaults.

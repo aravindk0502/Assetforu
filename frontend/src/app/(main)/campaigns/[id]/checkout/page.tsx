@@ -257,6 +257,12 @@ function CampaignCheckoutContent() {
                     body: JSON.stringify({ quantity: currentQty }),
                 });
                 const json = (await res.json().catch(() => ({}))) as any;
+                if (res.status === 401 && typeof window !== 'undefined') {
+                    localStorage.removeItem('af_token');
+                    localStorage.removeItem('af_user');
+                    window.dispatchEvent(new Event('auth:logout'));
+                    throw new Error('Session expired. Please login again and retry purchase.');
+                }
                 if (!res.ok || json?.success === false) {
                     throw new Error(json?.message || 'Unable to complete purchase');
                 }

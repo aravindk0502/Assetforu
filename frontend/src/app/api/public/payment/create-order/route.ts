@@ -60,8 +60,14 @@ export async function POST(req: Request) {
     });
     const rzpJson = (await rzpRes.json().catch(() => ({}))) as any;
     if (!rzpRes.ok || !rzpJson?.id) {
+      const providerMsg = String(rzpJson?.error?.description || rzpJson?.message || '').trim();
+      const normalized = providerMsg.toLowerCase();
+      const message =
+        normalized.includes('authentication failed') || normalized.includes('invalid') && normalized.includes('key')
+          ? 'Razorpay is not configured correctly. Update RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in Vercel Production.'
+          : providerMsg || 'Failed to create payment order';
       return Response.json(
-        { success: false, message: String(rzpJson?.error?.description || rzpJson?.message || 'Failed to create payment order') },
+        { success: false, message },
         { status: 400 }
       );
     }

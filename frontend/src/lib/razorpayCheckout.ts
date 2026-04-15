@@ -38,6 +38,13 @@ function getAuthToken() {
   return localStorage.getItem('af_token') || '';
 }
 
+function handleAuthFailure() {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem('af_token');
+  localStorage.removeItem('af_user');
+  window.dispatchEvent(new Event('auth:logout'));
+}
+
 let scriptLoadingPromise: Promise<void> | null = null;
 async function loadRazorpayScript() {
   if (typeof window === 'undefined') return;
@@ -87,6 +94,10 @@ export async function startRazorpayPayment(input: StartPaymentInput) {
     }),
   });
   const createJson = (await createRes.json().catch(() => ({}))) as CreateOrderResponse;
+  if (createRes.status === 401) {
+    handleAuthFailure();
+    throw new Error('Session expired. Please login again and retry payment.');
+  }
   if (!createRes.ok || !createJson?.success || !createJson?.data?.order_id || !createJson?.data?.key_id) {
     throw new Error(createJson?.message || 'Unable to start payment');
   }
@@ -116,10 +127,13 @@ export async function startRazorpayPayment(input: StartPaymentInput) {
     }),
   });
   const verifyJson = (await verifyRes.json().catch(() => ({}))) as VerifyResponse;
+  if (verifyRes.status === 401) {
+    handleAuthFailure();
+    throw new Error('Session expired. Please login again and retry payment.');
+  }
   if (!verifyRes.ok || !verifyJson?.success) {
     throw new Error(verifyJson?.message || 'Payment verification failed');
   }
 
   return payment;
 }
-
