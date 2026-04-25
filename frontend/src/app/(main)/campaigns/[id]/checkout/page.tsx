@@ -23,11 +23,9 @@ function CampaignCheckoutContent() {
     const [limitMessage, setLimitMessage] = useState('');
     const isDevUser = !!user?.id?.startsWith('dev_');
     const [paymentMode, setPaymentMode] = useState<'upi' | 'card'>('upi');
-    const [cardName, setCardName] = useState('');
-    const [cardNumber, setCardNumber] = useState('');
-    const [cardExpiry, setCardExpiry] = useState('');
-    const [cardCvv, setCardCvv] = useState('');
     const [paying, setPaying] = useState(false);
+    const [isMobileWeb, setIsMobileWeb] = useState(false);
+    const isRazorpayLive = String(process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '').startsWith('rzp_live_');
 
     const campaignId = (params?.id as string) || '';
     const [campaign, setCampaign] = useState<CampaignInfo | null>(null);
@@ -42,6 +40,15 @@ function CampaignCheckoutContent() {
     useEffect(() => {
         setCurrentQty(initialQty);
     }, [initialQty, campaignId]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const media = window.matchMedia('(max-width: 768px)');
+        const update = () => setIsMobileWeb(media.matches);
+        update();
+        media.addEventListener('change', update);
+        return () => media.removeEventListener('change', update);
+    }, []);
 
     useEffect(() => {
         if (currentQty > maxSelectableQty) setCurrentQty(maxSelectableQty);
@@ -222,7 +229,7 @@ function CampaignCheckoutContent() {
             alert(`You can only purchase ${remainingLimit} more for this campaign`);
             return;
         }
-        if (!user) {
+        if (!user || !token) {
             openSignupModal(() => router.push(`/campaigns/${params?.id ?? ''}/success?qty=${currentQty}`));
             return;
         }
@@ -235,6 +242,7 @@ function CampaignCheckoutContent() {
                 description: `Buy ${currentQty} credit pack(s)`,
                 prefill: { phone: user.phone, name: user.name },
                 notes: { purpose: 'campaign_checkout', campaign_id: String(campaign.id), qty: String(currentQty), mode: paymentMode },
+                preferredMethod: paymentMode,
             });
         } catch (paymentErr: unknown) {
             const msg = paymentErr instanceof Error ? paymentErr.message : 'Payment failed';
@@ -355,9 +363,11 @@ function CampaignCheckoutContent() {
             <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <div className="flex items-center justify-between">
                     <h2 className="text-lg font-black text-slate-900">Payment Mode</h2>
-                    <span className="rounded-full bg-slate-900 text-white px-3 py-1 text-xs font-bold">Razorpay Test Mode</span>
+                    <span className={`rounded-full px-3 py-1 text-xs font-bold ${isRazorpayLive ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-white'}`}>
+                        {isRazorpayLive ? 'Razorpay Live Mode' : 'Razorpay Test Mode'}
+                    </span>
                 </div>
-                <p className="text-xs text-slate-500 mt-2">Choose your payment method for the Razorpay test checkout.</p>
+                <p className="text-xs text-slate-500 mt-2">Choose UPI or Card. Razorpay checkout opens with your selected method first.</p>
 
                 <div className="mt-4 grid gap-3 md:grid-cols-2">
                     <button
@@ -366,7 +376,7 @@ function CampaignCheckoutContent() {
                         className={`rounded-xl border px-4 py-3 text-left text-sm font-bold ${paymentMode === 'upi' ? 'border-primary-700 bg-primary-50 text-primary-800' : 'border-slate-200 text-slate-700'
                             }`}
                     >
-                        UPI (Razorpay)
+                        UPI
                     </button>
                     <button
                         type="button"
@@ -378,33 +388,17 @@ function CampaignCheckoutContent() {
                     </button>
                 </div>
 
+                {paymentMode === 'upi' && (
+                    <p className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                        {isMobileWeb
+                            ? 'UPI selected: Razorpay uses UPI Intent (Google Pay / PhonePe / Paytm apps).'
+                            : 'UPI selected: Razorpay shows QR on desktop.'}
+                    </p>
+                )}
                 {paymentMode === 'card' && (
-                    <div className="mt-4 grid gap-3 md:grid-cols-2">
-                        <input
-                            value={cardName}
-                            onChange={(e) => setCardName(e.target.value)}
-                            placeholder="Name on card"
-                            className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                        />
-                        <input
-                            value={cardNumber}
-                            onChange={(e) => setCardNumber(e.target.value.replace(/[^0-9]/g, '').slice(0, 16))}
-                            placeholder="Card number"
-                            className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                        />
-                        <input
-                            value={cardExpiry}
-                            onChange={(e) => setCardExpiry(e.target.value)}
-                            placeholder="MM/YY"
-                            className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                        />
-                        <input
-                            value={cardCvv}
-                            onChange={(e) => setCardCvv(e.target.value.replace(/[^0-9]/g, '').slice(0, 4))}
-                            placeholder="CVV"
-                            className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                        />
-                    </div>
+                    <p className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                        Card selected. Razorpay will show saved/new cards first.
+                    </p>
                 )}
 
                 <button
@@ -414,6 +408,7 @@ function CampaignCheckoutContent() {
                 >
                     {paying ? 'Processing…' : 'Pay Now'}
                 </button>
+                <p className="mt-3 text-xs text-slate-500">If popup controls are not visible, press `Esc` to close payment.</p>
 
                 <p className="mt-3 text-xs text-slate-500">
                     By proceeding, you agree to our{' '}

@@ -25,12 +25,24 @@ type StartPaymentInput = {
   description?: string;
   prefill?: { phone?: string; name?: string };
   notes?: Record<string, string>;
+  preferredMethod?: 'upi' | 'card';
+  preferredUpiApp?: 'gpay' | 'phonepe' | 'paytm' | 'bhim';
 };
 
 declare global {
   interface Window {
-    Razorpay?: new (options: Record<string, unknown>) => { open: () => void };
+    Razorpay?: new (options: Record<string, unknown>) => {
+      open: () => void;
+      close: () => void;
+      on?: (event: string, cb: (...args: unknown[]) => void) => void;
+    };
   }
+}
+
+function isMobileWeb() {
+  if (typeof window === 'undefined') return false;
+  const ua = String(window.navigator.userAgent || '').toLowerCase();
+  return /android|iphone|ipad|ipod/.test(ua);
 }
 
 function getAuthToken() {
@@ -46,6 +58,7 @@ function handleAuthFailure() {
 }
 
 let scriptLoadingPromise: Promise<void> | null = null;
+let activeCheckout: { close: () => void } | null = null;
 async function loadRazorpayScript() {
   if (typeof window === 'undefined') return;
   if (window.Razorpay) return;
@@ -62,19 +75,52 @@ async function loadRazorpayScript() {
   await scriptLoadingPromise;
 }
 
+export function cancelActiveRazorpayCheckout() {
+  if (!activeCheckout) return false;
+  try {
+    activeCheckout.close();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function openRazorpay(options: Record<string, unknown>) {
   return new Promise<RazorpayResult>((resolve, reject) => {
     if (typeof window === 'undefined' || !window.Razorpay) {
       reject(new Error('Razorpay SDK unavailable'));
       return;
     }
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && activeCheckout) {
+        try { activeCheckout.close(); } catch { /* ignore */ }
+      }
+    };
     const instance = new window.Razorpay({
       ...options,
       handler: (response: RazorpayResult) => resolve(response),
       modal: {
+        escape: true,
+        handleback: true,
+        confirm_close: true,
+        backdropclose: false,
         ondismiss: () => reject(new Error('Payment cancelled')),
       },
     });
+    activeCheckout = instance;
+    window.addEventListener('keydown', onEsc);
+    const cleanup = () => {
+      activeCheckout = null;
+      window.removeEventListener('keydown', onEsc);
+    };
+    // If SDK emits failures, cleanup happens before reject path unwinds.
+    if (instance.on) {
+      instance.on('payment.failed', cleanup);
+    }
+    const prevResolve = resolve;
+    const prevReject = reject;
+    resolve = (value) => { cleanup(); prevResolve(value); };
+    reject = (reason) => { cleanup(); prevReject(reason); };
     instance.open();
   });
 }
@@ -102,6 +148,50 @@ export async function startRazorpayPayment(input: StartPaymentInput) {
     throw new Error(createJson?.message || 'Unable to start payment');
   }
 
+  const preferUpi = input.preferredMethod === 'upi';
+  const mobile = isMobileWeb();
+  const preferredUpiLabel =
+    input.preferredUpiApp === 'gpay'
+      ? 'Google Pay'
+      : input.preferredUpiApp === 'phonepe'
+        ? 'PhonePe'
+        : input.preferredUpiApp === 'paytm'
+          ? 'Paytm'
+          : input.preferredUpiApp === 'bhim'
+            ? 'BHIM'
+            : 'UPI';
+
+  const displayConfig = preferUpi
+    ? {
+      blocks: {
+        upi_only: {
+          name: `Pay with ${preferredUpiLabel} / UPI`,
+          instruments: [{ method: 'upi', flows: mobile ? ['intent'] : ['qr'] }],
+        },
+      },
+      sequence: ['block.upi_only'],
+      preferences: { show_default_blocks: false },
+    }
+    : {
+      blocks: {
+        card_only: {
+          name: 'Pay with Cards',
+          instruments: [{ method: 'card' }],
+        },
+      },
+      sequence: ['block.card_only'],
+      preferences: { show_default_blocks: false },
+    };
+
+  const methodConfig =
+    input.preferredMethod === 'upi'
+      ? { upi: true, card: false, netbanking: false, wallet: false, emi: false, paylater: false }
+      : { upi: false, card: true, netbanking: false, wallet: false, emi: false, paylater: false };
+
+  const prefill = input.preferredMethod === 'card'
+    ? { name: input.prefill?.name }
+    : { contact: input.prefill?.phone, name: input.prefill?.name };
+
   const payment = await openRazorpay({
     key: createJson.data.key_id,
     amount: createJson.data.amount_paise,
@@ -109,11 +199,14 @@ export async function startRazorpayPayment(input: StartPaymentInput) {
     name: 'AssetForU',
     description: input.description || input.title,
     order_id: createJson.data.order_id,
-    prefill: {
-      contact: input.prefill?.phone,
-      name: input.prefill?.name,
+    prefill,
+    notes: {
+      ...(input.notes || {}),
+      preferred_method: input.preferredMethod || 'upi',
+      preferred_upi_app: input.preferredUpiApp || '',
     },
-    notes: input.notes || {},
+    method: methodConfig,
+    config: { display: displayConfig },
     theme: { color: '#128148' },
   });
 

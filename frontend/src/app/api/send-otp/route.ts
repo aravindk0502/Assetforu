@@ -58,7 +58,11 @@ export async function POST(req: Request) {
       // Log DEV OTP only on the server, only in non-production environments.
       console.info(`[DEV OTP] phone=${last10} otp=${devOtp}`);
 
-      return Response.json({ success: true, message: 'OTP sent' });
+      return Response.json({
+        success: true,
+        message: `OTP sent (dev mode). Use code: ${devOtp}`,
+        data: { dev_mode: true },
+      });
     }
 
     const url = new URL('https://control.msg91.com/api/v5/otp');

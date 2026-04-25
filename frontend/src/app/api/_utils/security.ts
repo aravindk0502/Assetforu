@@ -14,6 +14,7 @@ function nowMs() {
 }
 
 function isProdLike() {
+  if (envTrue(process.env.ALLOW_LOCAL_DEV_AUTH)) return false;
   const nodeEnv = (process.env.NODE_ENV || '').toLowerCase();
   const vercelEnv = (process.env.VERCEL_ENV || '').toLowerCase();
   return nodeEnv === 'production' || vercelEnv === 'production';
@@ -96,7 +97,9 @@ export function isDevOtpAllowed(phoneLast10: string): boolean {
   if (isProdLike()) return false;
   if (!envTrue(process.env.DEV_OTP_ENABLED)) return false;
   const raw = process.env.DEV_AUTH_PHONES || '';
-  if (!raw) return false;
+  // Local developer convenience: when DEV_AUTH_PHONES is empty and dev OTP is
+  // explicitly enabled, allow all phones in non-production environments.
+  if (!raw.trim()) return true;
   const allow = new Set(
     raw
       .split(',')
