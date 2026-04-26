@@ -6,9 +6,11 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { campaigns as dreamCampaigns } from '@/data/dreamCampaigns';
 import { AdsBadge } from '@/components/AdsBadge';
 import { parseCampaignMeta } from '@/lib/campaignMeta';
+import { useLanguage } from '@/components/LanguageProvider';
 
 export default function LandPropertiesCarousel() {
     const router = useRouter();
+    const { t } = useLanguage();
     const [currentIndex, setCurrentIndex] = useState(0);
     const [autoScroll, setAutoScroll] = useState(true);
     const [slides, setSlides] = useState<Array<{ id: string; title: string; location: string; description: string; imageUrl: string; isAd: boolean; href?: string; ctaLabel?: string }>>(
@@ -39,10 +41,12 @@ export default function LandPropertiesCarousel() {
                         .filter((a) => Array.isArray(a.images) && a.images.length)
                         .flatMap((a) => {
                             const images = (a.images as any[]).filter((x) => typeof x === 'string' && x.trim());
-                            return images.map((img, idx) => ({
+                            return images.map((img) => ({
                                 id: String(a.id),
-                                title: String(a.title || 'Sponsored'),
-                                location: String(a.property?.city || a.property?.state || a.property?.country || 'Sponsored'),
+                                title: String(a.title || t('home.carousel.sponsored', 'Sponsored')),
+                                location: String(
+                                  a.property?.city || a.property?.state || a.property?.country || t('home.carousel.sponsored', 'Sponsored')
+                                ),
                                 description: String(a.property?.description || a.description || ''),
                                 imageUrl: String(img),
                                 isAd: true,
@@ -68,8 +72,8 @@ export default function LandPropertiesCarousel() {
                     const meta = parseCampaignMeta(r.description, r.image_urls || r.image_url);
                     return {
                         id: String(r.id),
-                        title: String(r.title || 'Property'),
-                        location: String(r.location || meta.land?.city || 'India'),
+                        title: String(r.title || t('home.carousel.property', 'Property')),
+                        location: String(r.location || meta.land?.city || t('home.carousel.defaultLocation', 'India')),
                         description: String(meta.text || r.description || ''),
                         imageUrl: String(meta.images?.[0] || r.image_url || dreamCampaigns[0]?.imageUrl),
                         isAd: meta.isAd ?? false,
@@ -84,7 +88,7 @@ export default function LandPropertiesCarousel() {
             }
         };
         load();
-    }, []);
+    }, [t]);
 
     const goToCampaign = (s: (typeof slides)[number]) => {
         // Ads/placements are independent of campaigns. Never route ads to `/land-listings/:id`,
@@ -134,7 +138,7 @@ export default function LandPropertiesCarousel() {
                 {/* Content */}
                 <div className="relative h-full flex flex-col justify-between p-8 md:p-12">
                     <div>
-                        <p className="text-xs uppercase tracking-[0.25em] text-emerald-400 mb-2">LAND FOR SALE/RENT</p>
+                        <p className="text-xs uppercase tracking-[0.25em] text-emerald-400 mb-2">{t('home.carousel.kicker', 'LAND FOR SALE/RENT')}</p>
                         <h3 className="text-4xl md:text-5xl font-black text-white mb-3 leading-tight">
                             {current.title}
                         </h3>
@@ -145,7 +149,9 @@ export default function LandPropertiesCarousel() {
                             onClick={() => goToCampaign(current)}
                             className="rounded-full bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-3 font-bold transition transform hover:scale-105"
                         >
-                            {current.isAd ? (current.ctaLabel ? `${current.ctaLabel} →` : 'See Properties →') : 'See More Properties →'}
+                            {current.isAd
+                              ? (current.ctaLabel ? `${current.ctaLabel} →` : t('home.carousel.ctaAd', 'See Properties →'))
+                              : t('home.carousel.ctaDefault', 'See More Properties →')}
                         </button>
                     </div>
 

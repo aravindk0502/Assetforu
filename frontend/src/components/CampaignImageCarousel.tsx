@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { AdsBadge } from '@/components/AdsBadge';
+import { useLanguage } from '@/components/LanguageProvider';
 
 interface CampaignImageCarouselProps {
     images: string[];
@@ -13,6 +14,7 @@ interface CampaignImageCarouselProps {
 export function CampaignImageCarousel({ images, title, showAds = true }: CampaignImageCarouselProps) {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isAutoPlay, setIsAutoPlay] = useState(true);
+    const { t } = useLanguage();
 
     // Auto-scroll every 5 seconds
     useEffect(() => {
@@ -53,7 +55,7 @@ export function CampaignImageCarousel({ images, title, showAds = true }: Campaig
     if (!images || images.length === 0) {
         return (
             <div className="w-full h-full bg-slate-200 flex items-center justify-center">
-                <span className="text-slate-500 text-sm">No images available</span>
+                <span className="text-slate-500 text-sm">{t('carousel.noImages', 'No images available')}</span>
             </div>
         );
     }
@@ -76,7 +78,7 @@ export function CampaignImageCarousel({ images, title, showAds = true }: Campaig
                 <button
                     onClick={goToPrevious}
                     className="absolute left-2 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-white/80 hover:bg-white text-slate-900 transition-all shadow-md hover:shadow-lg"
-                    aria-label="Previous image"
+                    aria-label={t('carousel.previous', 'Previous image')}
                 >
                     <ChevronLeft className="w-5 h-5" />
                 </button>
@@ -85,7 +87,7 @@ export function CampaignImageCarousel({ images, title, showAds = true }: Campaig
                 <button
                     onClick={goToNext}
                     className="absolute right-2 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-white/80 hover:bg-white text-slate-900 transition-all shadow-md hover:shadow-lg"
-                    aria-label="Next image"
+                    aria-label={t('carousel.next', 'Next image')}
                 >
                     <ChevronRight className="w-5 h-5" />
                 </button>
@@ -106,7 +108,7 @@ export function CampaignImageCarousel({ images, title, showAds = true }: Campaig
                                         ? 'bg-white w-6 h-2'
                                         : 'bg-white/50 w-2 h-2 hover:bg-white/75'
                                     }`}
-                                aria-label={`Go to image ${index + 1}`}
+                                aria-label={t('carousel.goToImage', 'Go to image {index}', { index: index + 1 })}
                             />
                         ))}
                     </div>

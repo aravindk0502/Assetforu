@@ -10,6 +10,7 @@ import { addToast } from '@/components/Toast';
 import { fetchPublicStoreItems } from '@/lib/publicStore';
 import type { StoreItem } from '@/types';
 import { fetchSiteContent } from '@/lib/siteContent';
+import { useLanguage } from '@/components/LanguageProvider';
 
 
 const serviceIconMap = {
@@ -46,6 +47,7 @@ function StoreContent() {
     const [visibleCount, setVisibleCount] = useState(9);
     const [dynamicItems, setDynamicItems] = useState<StoreItem[]>([]);
     const [siteStore, setSiteStore] = useState<any | null>(null);
+    const { language, t } = useLanguage();
 
     // Read tab from URL params on mount
     useEffect(() => {
@@ -135,6 +137,9 @@ function StoreContent() {
     const visibleItems = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
 
     const isAuthed = !!user || !!token;
+    const prefersSiteManagedCopy = language === 'en';
+    const maybeSiteCopy = (siteValue: string | undefined | null, key: string, fallback: string) =>
+        prefersSiteManagedCopy && siteValue ? siteValue : t(key, fallback);
 
     const handleUseCredits = (item: { id: string; name: string; credits: number }, type: 'product' | 'service') => {
         if (!isAuthed) {
@@ -182,9 +187,9 @@ function StoreContent() {
                 />
                 <div className="mx-auto max-w-7xl px-6 lg:px-10 py-14 relative">
 	                    <div className="max-w-2xl">
-	                        <p className="text-xs uppercase tracking-[0.25em] text-emerald-200 mb-3">{siteStore?.hero_kicker || 'AssetForU Store'}</p>
-	                        <h1 className="text-4xl md:text-5xl font-black leading-tight">{siteStore?.hero_heading || 'Premium products & services for land investors'}</h1>
-	                        <p className="mt-4 text-slate-200">{siteStore?.hero_subheading || 'Redeem Asset Credits for verified land solutions, advisory services, and premium access packs.'}</p>
+	                        <p className="text-xs uppercase tracking-[0.25em] text-emerald-200 mb-3">{maybeSiteCopy(siteStore?.hero_kicker, 'store.hero.kicker', 'AssetForU Store')}</p>
+	                        <h1 className="text-4xl md:text-5xl font-black leading-tight">{maybeSiteCopy(siteStore?.hero_heading, 'store.hero.heading', 'Premium products & services for land investors')}</h1>
+	                        <p className="mt-4 text-slate-200">{maybeSiteCopy(siteStore?.hero_subheading, 'store.hero.subheading', 'Redeem Asset Credits for verified land solutions, advisory services, and premium access packs.')}</p>
 	                        <div className="mt-6 flex flex-wrap gap-3">
 	                            <button
                                 className={`rounded-full px-6 py-2 text-sm font-bold transition ${activeTab === 'products'
@@ -200,7 +205,7 @@ function StoreContent() {
                                     window.scrollTo({ top: 520, behavior: 'smooth' });
                                 }}
 	                            >
-	                                {siteStore?.products_cta_label || 'Explore Products'}
+	                                {maybeSiteCopy(siteStore?.products_cta_label, 'store.hero.productsCta', 'Explore Products')}
 	                            </button>
                             <button
                                 className={`rounded-full px-6 py-2 text-sm font-bold transition ${activeTab === 'services'
@@ -216,7 +221,7 @@ function StoreContent() {
                                     window.scrollTo({ top: 520, behavior: 'smooth' });
                                 }}
 	                            >
-	                                {siteStore?.services_cta_label || 'View Services'}
+	                                {maybeSiteCopy(siteStore?.services_cta_label, 'store.hero.servicesCta', 'View Services')}
 	                            </button>
 	                        </div>
 	                    </div>
@@ -232,8 +237,8 @@ function StoreContent() {
 
 	                <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
 	                    <div>
-	                        <h2 className="text-2xl font-black text-slate-900">{siteStore?.section_title || 'Asset Store'}</h2>
-	                        <p className="text-slate-500">{siteStore?.section_subtitle || 'Choose from curated products and services aligned with land wealth strategy.'}</p>
+	                        <h2 className="text-2xl font-black text-slate-900">{maybeSiteCopy(siteStore?.section_title, 'store.section.title', 'Asset Store')}</h2>
+	                        <p className="text-slate-500">{maybeSiteCopy(siteStore?.section_subtitle, 'store.section.subtitle', 'Choose from curated products and services aligned with land wealth strategy.')}</p>
 	                    </div>
                     <div className="flex gap-2">
                         {(['products', 'services'] as const).map((tab) => (
@@ -246,7 +251,7 @@ function StoreContent() {
                                         : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
                                     }`}
                             >
-                                {tab === 'products' ? 'Products' : 'Services'}
+                                {tab === 'products' ? t('store.tab.products', 'Products') : t('store.tab.services', 'Services')}
                             </button>
                         ))}
                     </div>
@@ -261,7 +266,7 @@ function StoreContent() {
                                     setQuery(e.target.value);
                                     setVisibleCount(9);
                                 }}
-                                placeholder="Search products and services..."
+                                placeholder={t('store.search.placeholder', 'Search products and services...')}
                                 className="w-full bg-transparent text-sm outline-none"
                             />
                         </div>
@@ -279,12 +284,17 @@ function StoreContent() {
                                             : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
                                         }`}
                                 >
-                                    {cat}
+                                    {cat === 'All' ? t('store.filter.all', 'All') : cat === 'Other' ? t('store.filter.other', 'Other') : cat}
                                 </button>
                             ))}
                         </div>
                         <div className="text-xs text-slate-500">
-                            {filtered.length === 0 ? 'No results found matching your search or filter.' : `Showing ${Math.min(filtered.length, visibleCount)} of ${filtered.length} items`}
+                            {filtered.length === 0
+                                ? t('store.filter.noResults', 'No results found matching your search or filter.')
+                                : t('store.filter.showing', 'Showing {shown} of {total} items', {
+                                    shown: Math.min(filtered.length, visibleCount),
+                                    total: filtered.length,
+                                })}
                         </div>
                     </div>
                 </div>
@@ -292,7 +302,7 @@ function StoreContent() {
                 {activeTab === 'products' && !query && dynamicProducts.length > 0 && (
                     <section className="mb-10">
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-xl font-black text-slate-900">New Arrivals</h3>
+                            <h3 className="text-xl font-black text-slate-900">{t('store.newArrivals', 'New Arrivals')}</h3>
                             <button
                                 className="text-sm font-bold text-primary-700"
                                 type="button"
@@ -305,7 +315,7 @@ function StoreContent() {
                                     if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
                                 }}
                             >
-                                Show All
+                                {t('store.showAll', 'Show All')}
                             </button>
                         </div>
                         <div className="flex gap-4 overflow-x-auto pb-2">
@@ -319,7 +329,9 @@ function StoreContent() {
                                     <img src={item.image} alt={item.name} className="h-40 w-full object-cover" />
                                     <div className="p-4">
                                         <p className="text-sm font-bold text-slate-900">{item.name}</p>
-                                        <p className="text-xs text-slate-500 mt-1">{formatCurrency(item.credits, currency)} · {item.credits} Credits</p>
+                                        <p className="text-xs text-slate-500 mt-1">
+                                            {formatCurrency(item.credits, currency)} · {item.credits} {t('store.credits', 'Credits')}
+                                        </p>
                                     </div>
                                 </button>
                             ))}
@@ -331,13 +343,24 @@ function StoreContent() {
                     <div className="grid gap-6 lg:grid-cols-[2fr_1fr] mb-10">
                         <div className="rounded-3xl bg-gradient-to-r from-emerald-500 via-teal-500 to-sky-500 p-8 text-white relative overflow-hidden">
                             <div className="absolute right-6 top-6 w-24 h-24 rounded-full bg-white/20" />
-                            <p className="text-xs uppercase tracking-[0.3em] mb-3">Exclusive Pack</p>
-                            <h3 className="text-2xl font-black">Land Gift Campaign Boost</h3>
-                            <p className="mt-2 text-white/90">Increase your campaign eligibility with premium credits and advisory support.</p>
-                            <button className="mt-6 rounded-full bg-white text-slate-900 px-5 py-2 text-sm font-bold">Upgrade Now</button>
+                            <p className="text-xs uppercase tracking-[0.3em] mb-3">{t('store.exclusive.kicker', 'Exclusive Pack')}</p>
+                            <h3 className="text-2xl font-black">{t('store.exclusive.title', 'Land Gift Campaign Boost')}</h3>
+                            <p className="mt-2 text-white/90">{t('store.exclusive.text', 'Increase your campaign eligibility with premium credits and advisory support.')}</p>
+                            <button className="mt-6 rounded-full bg-white text-slate-900 px-5 py-2 text-sm font-bold">{t('store.exclusive.button', 'Upgrade Now')}</button>
                         </div>
                         <div className="grid gap-4">
-                            {adCards.map((card) => (
+                            {[
+                                {
+                                    title: t('store.ad.one.title', adCards[0].title),
+                                    text: t('store.ad.one.text', adCards[0].text),
+                                    cta: t('store.ad.one.cta', adCards[0].cta),
+                                },
+                                {
+                                    title: t('store.ad.two.title', adCards[1].title),
+                                    text: t('store.ad.two.text', adCards[1].text),
+                                    cta: t('store.ad.two.cta', adCards[1].cta),
+                                },
+                            ].map((card) => (
                                 <div key={card.title} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
                                     <h4 className="text-lg font-black text-slate-900">{card.title}</h4>
                                     <p className="text-sm text-slate-500 mt-2">{card.text}</p>
@@ -364,7 +387,7 @@ function StoreContent() {
                             : 'border border-slate-200 text-slate-700 hover:bg-slate-50'
                         }`}
                     >
-                        📦 Products
+                        📦 {t('store.tab.products', 'Products')}
                     </button>
                     <button
                         onClick={() => {
@@ -380,7 +403,7 @@ function StoreContent() {
                             : 'border border-slate-200 text-slate-700 hover:bg-slate-50'
                         }`}
                     >
-                        🛎️ Services
+                        🛎️ {t('store.tab.services', 'Services')}
                     </button>
                 </div>
 
@@ -389,8 +412,8 @@ function StoreContent() {
                     <div id="store-list">
                         {visibleItems.length === 0 ? (
                             <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-12 text-center">
-                                <p className="text-xl font-bold text-slate-700">No results found</p>
-                                <p className="text-slate-500 mt-2">Try adjusting your search or filter to find what you&apos;re looking for.</p>
+                                <p className="text-xl font-bold text-slate-700">{t('store.empty.title', 'No results found')}</p>
+                                <p className="text-slate-500 mt-2">{t('store.empty.text', "Try adjusting your search or filter to find what you're looking for.")}</p>
                                 {query && (
                                     <button
                                         onClick={() => {
@@ -399,7 +422,7 @@ function StoreContent() {
                                         }}
                                         className="mt-4 text-sm font-bold text-primary-700 hover:underline"
                                     >
-                                        Clear search
+                                        {t('store.empty.clear', 'Clear search')}
                                     </button>
                                 )}
                             </div>
@@ -426,7 +449,7 @@ function StoreContent() {
                                             <img src={item.image} alt={item.name} className="h-full w-full object-cover" />
                                             <div className="absolute top-3 left-3 inline-flex items-center gap-1 rounded-full bg-white/90 px-3 py-1 text-xs font-bold text-slate-700">
                                                 <Sparkles className="w-3 h-3" />
-                                                {isService ? 'Service' : 'Product'}
+                                                {isService ? t('store.badge.service', 'Service') : t('store.badge.product', 'Product')}
                                             </div>
                                             <button
                                                 type="button"
@@ -475,7 +498,9 @@ function StoreContent() {
                                             </div>
                                             <div className="mt-4 flex items-center gap-2">
                                                 <span className="text-2xl font-black text-slate-900">{formatCurrency(item.credits, currency)}</span>
-                                                <span className="text-xs font-bold uppercase text-emerald-700 bg-emerald-50 px-2 py-1 rounded-full">{item.credits} Credits</span>
+                                                <span className="text-xs font-bold uppercase text-emerald-700 bg-emerald-50 px-2 py-1 rounded-full">
+                                                    {item.credits} {t('store.credits', 'Credits')}
+                                                </span>
                                             </div>
                                             <div className="mt-4 grid grid-cols-2 gap-2">
                                                 <button
@@ -490,7 +515,7 @@ function StoreContent() {
                                                         }
                                                     }}
                                                 >
-                                                    Redeem
+                                                    {t('store.action.redeem', 'Redeem')}
                                                 </button>
                                                 <button
                                                     className="rounded-xl border border-primary-700 text-primary-700 py-2 text-sm font-bold"
@@ -500,7 +525,7 @@ function StoreContent() {
                                                         handleAddToCart(item);
                                                     }}
                                                 >
-                                                    Add to Cart
+                                                    {t('store.action.addToCart', 'Add to Cart')}
                                                 </button>
                                             </div>
                                         </div>
@@ -514,7 +539,7 @@ function StoreContent() {
                     {/* Sidebar - Switch between Products & Services */}
                     <aside className="hidden lg:block">
                         <div className="sticky top-20 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                            <p className="text-xs uppercase font-bold tracking-wider text-slate-500 mb-4">Quick Switch</p>
+                            <p className="text-xs uppercase font-bold tracking-wider text-slate-500 mb-4">{t('store.sidebar.quickSwitch', 'Quick Switch')}</p>
                             <div className="space-y-2">
                                 <button
                                     onClick={() => {
@@ -530,7 +555,7 @@ function StoreContent() {
                                         : 'border border-slate-200 text-slate-700 hover:bg-slate-50'
                                     }`}
                                 >
-                                    📦 All Products
+                                    📦 {t('store.sidebar.allProducts', 'All Products')}
                                 </button>
                                 <button
                                     onClick={() => {
@@ -546,16 +571,18 @@ function StoreContent() {
                                         : 'border border-slate-200 text-slate-700 hover:bg-slate-50'
                                     }`}
                                 >
-                                    🛎️ All Services
+                                    🛎️ {t('store.sidebar.allServices', 'All Services')}
                                 </button>
                             </div>
 
                             <div className="mt-6 pt-4 border-t border-slate-100">
-                                <p className="text-xs uppercase font-bold tracking-wider text-slate-500 mb-3">Viewing</p>
+                                <p className="text-xs uppercase font-bold tracking-wider text-slate-500 mb-3">{t('store.sidebar.viewing', 'Viewing')}</p>
                                 <div className="space-y-2 text-xs">
                                     <div className="rounded-lg bg-slate-50 p-3">
-                                        <p className="font-bold text-slate-900">{activeTab === 'products' ? 'Products' : 'Services'}</p>
-                                        <p className="text-slate-500 mt-1">{filtered.length} item{filtered.length !== 1 ? 's' : ''} available</p>
+                                        <p className="font-bold text-slate-900">{activeTab === 'products' ? t('store.tab.products', 'Products') : t('store.tab.services', 'Services')}</p>
+                                        <p className="text-slate-500 mt-1">
+                                            {t('store.sidebar.available', '{count} items available', { count: filtered.length })}
+                                        </p>
                                     </div>
                                 </div>
                             </div>
@@ -569,16 +596,25 @@ function StoreContent() {
                             onClick={() => setVisibleCount((c) => c + 6)}
                             className="rounded-full border border-slate-300 px-6 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50"
                         >
-                            Load More
+                            {t('store.loadMore', 'Load More')}
                         </button>
                     </div>
                 )}
 
                 <div className="mt-12 rounded-3xl bg-slate-900 text-white p-8 grid gap-6 lg:grid-cols-3">
                     {[
-                        { title: 'Verified Listings', text: 'All offerings undergo legal and compliance checks.' },
-                        { title: 'Advisor Access', text: 'Get guidance from seasoned land specialists.' },
-                        { title: 'Secure Credits', text: 'Every credit is traceable and protected.' },
+                        {
+                            title: t('store.trust.one.title', 'Verified Listings'),
+                            text: t('store.trust.one.text', 'All offerings undergo legal and compliance checks.'),
+                        },
+                        {
+                            title: t('store.trust.two.title', 'Advisor Access'),
+                            text: t('store.trust.two.text', 'Get guidance from seasoned land specialists.'),
+                        },
+                        {
+                            title: t('store.trust.three.title', 'Secure Credits'),
+                            text: t('store.trust.three.text', 'Every credit is traceable and protected.'),
+                        },
                     ].map((item) => (
                         <div key={item.title} className="flex items-start gap-3">
                             <BadgeCheck className="w-6 h-6 text-emerald-400" />

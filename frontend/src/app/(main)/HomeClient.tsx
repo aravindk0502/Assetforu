@@ -15,7 +15,12 @@ import { parseCampaignMeta } from '@/lib/campaignMeta';
 import { fetchSiteContent } from '@/lib/siteContent';
 import { useLanguage } from '@/components/LanguageProvider';
 
-const campaignTags = ['Just Launched', 'Closing Soon', 'Exclusive Series', 'Trending'];
+const campaignTagKeys = [
+  { key: 'campaign.tag.justLaunched', fallback: 'Just Launched' },
+  { key: 'campaign.tag.closingSoon', fallback: 'Closing Soon' },
+  { key: 'campaign.tag.exclusive', fallback: 'Exclusive Series' },
+  { key: 'campaign.tag.trending', fallback: 'Trending' },
+];
 
 type HomeCampaign = CampaignInfo & { source?: 'static' | 'api' };
 type HomeCampaignWithFlags = HomeCampaign & {
@@ -357,7 +362,11 @@ export default function HomePage() {
                     )}
                     {/* Campaign Tag */}
                     <span className="absolute top-3 left-3 rounded-full bg-emerald-600 text-white px-3 py-1 text-xs font-bold z-10">
-                      {isClosed ? t('campaign.closed', 'Closed') : isUpcoming ? t('campaign.upcoming', 'Upcoming') : campaignTags[idx % campaignTags.length]}
+                      {isClosed
+                        ? t('campaign.closed', 'Closed')
+                        : isUpcoming
+                          ? t('campaign.upcoming', 'Upcoming')
+                          : t(campaignTagKeys[idx % campaignTagKeys.length].key, campaignTagKeys[idx % campaignTagKeys.length].fallback)}
                     </span>
                   </div>
 
@@ -475,15 +484,15 @@ export default function HomePage() {
         <section className="mx-auto max-w-7xl px-6 lg:px-10 py-8">
           <div className="rounded-3xl bg-slate-900 text-white p-8 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
             <div>
-              <p className="text-xs uppercase tracking-[0.25em] text-emerald-300">Join Now</p>
-              <h2 className="text-3xl font-black mt-2">Ready to Get Started?</h2>
-              <p className="text-slate-200 mt-2">Create your account today and start exploring amazing opportunities with Asset Credits.</p>
+              <p className="text-xs uppercase tracking-[0.25em] text-emerald-300">{t('home.join.kicker', 'Join Now')}</p>
+              <h2 className="text-3xl font-black mt-2">{t('home.join.title', 'Ready to Get Started?')}</h2>
+              <p className="text-slate-200 mt-2">{t('home.join.text', 'Create your account today and start exploring amazing opportunities with Asset Credits.')}</p>
             </div>
             <button
               onClick={() => openSignupModal()}
               className="rounded-full bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-3 text-sm font-bold whitespace-nowrap transition"
             >
-              Create Account
+              {t('home.join.button', 'Create Account')}
             </button>
           </div>
         </section>
@@ -492,27 +501,27 @@ export default function HomePage() {
       <section className="mx-auto max-w-7xl px-6 lg:px-10 py-12">
         <div className="flex items-end justify-between gap-6 mb-8">
           <div>
-            <p className="text-xs uppercase tracking-[0.25em] text-emerald-600">How It Works</p>
-            <h2 className="text-3xl font-black text-slate-900 mt-2">How AssetForU Works</h2>
-            <p className="text-slate-500 mt-2">A clear, transparent flow designed for confidence.</p>
+            <p className="text-xs uppercase tracking-[0.25em] text-emerald-600">{t('home.how.kicker', 'How It Works')}</p>
+            <h2 className="text-3xl font-black text-slate-900 mt-2">{t('home.how.title', 'How AssetForU Works')}</h2>
+            <p className="text-slate-500 mt-2">{t('home.how.subtitle', 'A clear, transparent flow designed for confidence.')}</p>
           </div>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {[
             {
-              title: 'Add Credits',
-              text: 'Choose a campaign and purchase Asset Credits',
+              title: t('home.how.step1.title', 'Add Credits'),
+              text: t('home.how.step1.text', 'Choose a campaign and purchase Asset Credits'),
               icon: Wallet,
             },
             {
-              title: 'Secure Credits',
-              text: 'Your credits are added to your wallet after payment',
+              title: t('home.how.step2.title', 'Secure Credits'),
+              text: t('home.how.step2.text', 'Your credits are added to your wallet after payment'),
               icon: BadgeCheck,
             },
             {
-              title: 'Access Campaigns',
-              text: 'You become eligible for platform campaigns and can explore more opportunities',
+              title: t('home.how.step3.title', 'Access Campaigns'),
+              text: t('home.how.step3.text', 'You become eligible for platform campaigns and can explore more opportunities'),
               icon: BadgeCheck,
             },
           ].map((step) => (
@@ -532,32 +541,35 @@ export default function HomePage() {
       <section className="mx-auto max-w-7xl px-6 lg:px-10 py-12">
         <div className="flex items-end justify-between gap-6 mb-6">
           <div>
-            <p className="text-xs uppercase tracking-[0.25em] text-emerald-600">FAQ</p>
-            <h2 className="text-3xl font-black text-slate-900 mt-2">Frequently Asked Questions</h2>
+            <p className="text-xs uppercase tracking-[0.25em] text-emerald-600">{t('home.faq.kicker', 'FAQ')}</p>
+            <h2 className="text-3xl font-black text-slate-900 mt-2">{t('home.faq.title', 'Frequently Asked Questions')}</h2>
           </div>
         </div>
 
         <div className="space-y-3">
           {[
             {
-              q: 'What are Asset Credits?',
-              a: 'Asset Credits are prepaid value that can be used across products and services on the platform.',
+              q: t('home.faq.q1.q', 'What are Asset Credits?'),
+              a: t('home.faq.q1.a', 'Asset Credits are prepaid value that can be used across products and services on the platform.'),
             },
             {
-              q: 'Can I use my credits anytime?',
-              a: 'Yes, credits can be used anytime in the Asset Store.',
+              q: t('home.faq.q2.q', 'Can I use my credits anytime?'),
+              a: t('home.faq.q2.a', 'Yes, credits can be used anytime in the Asset Store.'),
             },
             {
-              q: 'Is participation guaranteed?',
-              a: 'No, campaign-related benefits are optional and subject to platform terms. No guaranteed allocation is provided.',
+              q: t('home.faq.q3.q', 'Is participation guaranteed?'),
+              a: t(
+                'home.faq.q3.a',
+                'No, campaign-related benefits are optional and subject to platform terms. No guaranteed allocation is provided.'
+              ),
             },
             {
-              q: 'How many times can I access a campaign?',
-              a: 'Each campaign has a limited number of accesses per user.',
+              q: t('home.faq.q4.q', 'How many times can I access a campaign?'),
+              a: t('home.faq.q4.a', 'Each campaign has a limited number of accesses per user.'),
             },
             {
-              q: 'Can I withdraw my credits?',
-              a: 'No, credits are non-withdrawable and intended for use within the platform.',
+              q: t('home.faq.q5.q', 'Can I withdraw my credits?'),
+              a: t('home.faq.q5.a', 'No, credits are non-withdrawable and intended for use within the platform.'),
             },
           ].map((item, index) => (
             <div key={item.q} className="rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -581,21 +593,27 @@ export default function HomePage() {
 
       <section className="mx-auto max-w-7xl px-6 lg:px-10 py-12">
         <div className="rounded-3xl border border-emerald-100 bg-emerald-50 p-8">
-          <p className="text-xs uppercase tracking-[0.25em] text-emerald-700">Platform Information</p>
-          <h2 className="text-3xl font-black text-slate-900 mt-2">Platform Information</h2>
+          <p className="text-xs uppercase tracking-[0.25em] text-emerald-700">{t('home.info.kicker', 'Platform Information')}</p>
+          <h2 className="text-3xl font-black text-slate-900 mt-2">{t('home.info.title', 'Platform Information')}</h2>
           <div className="mt-4 text-sm text-emerald-900/90 space-y-3">
-            <p>AssetForU is a platform where users purchase Asset Credits to access curated experiences and platform benefits.</p>
-            <p>Campaign-related benefits are provided as a complimentary feature and are not the primary purpose of purchase.</p>
-            <p>Credits hold value within the platform and can be used across available platform experiences.</p>
-            <p>No guaranteed allocation or outcome is associated with any campaign.</p>
-            <p>Users are encouraged to review all terms and conditions before purchasing credits.</p>
+            <p>{t('home.info.p1', 'AssetForU is a platform where users purchase Asset Credits to access curated experiences and platform benefits.')}</p>
+            <p>{t('home.info.p2', 'Campaign-related benefits are provided as a complimentary feature and are not the primary purpose of purchase.')}</p>
+            <p>{t('home.info.p3', 'Credits hold value within the platform and can be used across available platform experiences.')}</p>
+            <p>{t('home.info.p4', 'No guaranteed allocation or outcome is associated with any campaign.')}</p>
+            <p>{t('home.info.p5', 'Users are encouraged to review all terms and conditions before purchasing credits.')}</p>
           </div>
         </div>
       </section>
 
       <section className="mx-auto max-w-7xl px-6 lg:px-10 pb-12">
         <div className="rounded-2xl border border-primary-200 bg-primary-50 p-5 text-sm text-primary-800">
-          <p><strong>Note:</strong> No lottery language. No ticket/winner/gamble terms. This is a regulated asset credit program with campaign eligibility and benefits.</p>
+          <p>
+            <strong>{t('home.note.label', 'Note:')}</strong>{' '}
+            {t(
+              'home.note.text',
+              'No lottery language. No ticket/winner/gamble terms. This is a regulated asset credit program with campaign eligibility and benefits.'
+            )}
+          </p>
         </div>
       </section>
     </div>
