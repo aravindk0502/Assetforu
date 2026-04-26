@@ -5,6 +5,7 @@ import BackNavigation from '@/components/BackNavigation';
 import { useAuthStore } from '@/store';
 import { Loader2, Send, RefreshCw } from 'lucide-react';
 import clsx from 'clsx';
+import { registerFcmToken } from '@/lib/fcm/register';
 
 type LogItem = {
   id: string;
@@ -28,6 +29,13 @@ function parsePhones(value: string): string[] {
     .filter((p) => p.length === 10);
 }
 
+function readCachedFcmToken() {
+  if (typeof window === 'undefined') return '';
+  const token = String(localStorage.getItem('af_fcm_token') || '').trim();
+  if (token.length < 20 || token.length > 4096) return '';
+  return token;
+}
+
 export default function AdminNotificationsPage() {
   const token = useAuthStore((s) => s.token);
   const [title, setTitle] = useState('');
@@ -43,9 +51,10 @@ export default function AdminNotificationsPage() {
 
   const phones = useMemo(() => parsePhones(phonesRaw), [phonesRaw]);
 
-  const loadLogs = async () => {
-    setLoadingLogs(true);
-    setError('');
+  const loadLogs = async (opts?: { silent?: boolean }) => {
+    const silent = Boolean(opts?.silent);
+    if (!silent) setLoadingLogs(true);
+    if (!silent) setError('');
     try {
       const bearer = token || (typeof window !== 'undefined' ? localStorage.getItem('af_token') : null);
       if (!bearer) return;
@@ -58,14 +67,18 @@ export default function AdminNotificationsPage() {
       setLogs(Array.isArray(json?.data) ? json.data : []);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Failed to load logs';
-      setError(msg);
+      if (!silent) setError(msg);
     } finally {
-      setLoadingLogs(false);
+      if (!silent) setLoadingLogs(false);
     }
   };
 
   useEffect(() => {
     loadLogs();
+    const timer = window.setInterval(() => {
+      loadLogs({ silent: true });
+    }, 7000);
+    return () => window.clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -85,25 +98,61 @@ export default function AdminNotificationsPage() {
     try {
       const bearer = token || (typeof window !== 'undefined' ? localStorage.getItem('af_token') : null);
       if (!bearer) throw new Error('Not authenticated');
-      const res = await fetch('/api/admin/notifications/send', {
+
+      // Send button click is a user gesture, so this can prompt and register this device reliably.
+      const registerResult = await registerFcmToken({ authToken: bearer, promptIfNeeded: true });
+      let bootstrapToken = registerResult.token || readCachedFcmToken();
+      if (!registerResult.ok) {
+        const reason = String(registerResult.reason || '');
+        console.log('[FCM] pre-send registration skipped', reason);
+        if (reason.startsWith('notification-permission-')) {
+          throw new Error('Notifications are blocked in this browser. Please allow notifications for assetforu.com and retry.');
+        }
+        if (!bootstrapToken) {
+          throw new Error(`FCM device registration failed (${reason || 'unknown'}). Please enable notifications and login again.`);
+        }
+      }
+
+      const sendPayload = {
+        title,
+        message,
+        link,
+        target,
+        phones: target === 'phones' ? phones : undefined,
+        bootstrapToken: bootstrapToken || undefined,
+      };
+
+      const res = await fetch('/api/admin/send-push-notification', {
         method: 'POST',
         headers: { 'content-type': 'application/json', authorization: `Bearer ${bearer}` },
-        body: JSON.stringify({
-          title,
-          message,
-          link,
-          target,
-          phones: target === 'phones' ? phones : undefined,
-        }),
+        body: JSON.stringify(sendPayload),
       });
-      const json = (await res.json().catch(() => ({}))) as { success?: boolean; message?: string; data?: { success?: number; failure?: number } };
-      if (!res.ok || json?.success === false) throw new Error(json?.message || `HTTP ${res.status}`);
+      let json = (await res.json().catch(() => ({}))) as { success?: boolean; message?: string; data?: { success?: number; failure?: number; log?: LogItem } };
+
+      // If there were zero devices before this click, retry once after pre-send registration.
+      if ((!res.ok || json?.success === false) && String(json?.message || '').toLowerCase().includes('no registered devices found')) {
+        const retry = await fetch('/api/admin/send-push-notification', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', authorization: `Bearer ${bearer}` },
+          body: JSON.stringify(sendPayload),
+        });
+        json = (await retry.json().catch(() => ({}))) as { success?: boolean; message?: string; data?: { success?: number; failure?: number; log?: LogItem } };
+        if (!retry.ok || json?.success === false) throw new Error(json?.message || `HTTP ${retry.status}`);
+      } else if (!res.ok || json?.success === false) {
+        throw new Error(json?.message || `HTTP ${res.status}`);
+      }
+
       setSuccess(`Sent. Success: ${json?.data?.success ?? 0}, Failed: ${json?.data?.failure ?? 0}`);
+      if (json?.data?.log) {
+        setLogs((prev) => [json.data!.log as LogItem, ...prev.filter((x) => x.id !== json.data!.log!.id)]);
+      }
       setTitle('');
       setMessage('');
       setLink('');
       setPhonesRaw('');
-      await loadLogs();
+      setTimeout(() => {
+        loadLogs({ silent: true });
+      }, 600);
       setTimeout(() => setSuccess(''), 3500);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Failed to send';
@@ -266,4 +315,3 @@ export default function AdminNotificationsPage() {
     </div>
   );
 }
-

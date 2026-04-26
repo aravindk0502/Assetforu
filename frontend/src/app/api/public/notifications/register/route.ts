@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { createHash } from 'crypto';
 import { requireUser } from '@/app/api/_utils/userAuth';
 import { getClientIp, rateLimitOrThrow, requireServerEnv } from '@/app/api/_utils/security';
 import { loadNotificationTokens, saveNotificationTokens } from '@/app/api/_utils/blobNotificationTokens';
@@ -19,7 +20,11 @@ function validateToken(token: unknown) {
   return trimmed;
 }
 
-export async function POST(req: Request) {
+function hashToken(token: string) {
+  return createHash('sha256').update(token).digest('hex');
+}
+
+export async function handleSaveFcmToken(req: Request) {
   const auth = await requireUser(req);
   if (!auth.ok) return NextResponse.json({ success: false, message: auth.message }, { status: auth.status });
 
@@ -37,20 +42,33 @@ export async function POST(req: Request) {
 
   const secret = requireServerEnv('JWT_SECRET');
   const tokenSealed = sealString(secret, token);
+  const tokenHash = hashToken(token);
   const phoneLast10 = normalizeLast10(auth.phoneLast10);
   if (!phoneLast10) return NextResponse.json({ success: false, message: 'Invalid user' }, { status: 401 });
+  const userId = String(auth.payload?.sub || auth.payload?.id || '').trim() || undefined;
+  const userAgent = String(req.headers.get('user-agent') || '').trim().slice(0, 512) || undefined;
+  const devicePlatform = String(req.headers.get('sec-ch-ua-platform') || '').trim().replace(/^"|"$/g, '').slice(0, 64) || undefined;
 
   const existing = await loadNotificationTokens();
   const now = new Date().toISOString();
-  const next = existing.filter((r) => r.phone_last10 !== phoneLast10);
+  const duplicate = existing.find((r) => r.token_hash === tokenHash);
+  const next = existing.filter((r) => r.token_hash !== tokenHash);
   next.push({
+    user_id: userId,
     phone_last10: phoneLast10,
+    token_hash: tokenHash,
     token_sealed: tokenSealed,
-    created_at: existing.find((r) => r.phone_last10 === phoneLast10)?.created_at || now,
+    user_agent: userAgent,
+    device_platform: devicePlatform,
+    created_at: duplicate?.created_at || now,
     updated_at: now,
   });
 
   await saveNotificationTokens(next);
+  console.log('[FCM] token saved', { userId, phoneLast10, totalTokens: next.length });
   return NextResponse.json({ success: true });
 }
 
+export async function POST(req: Request) {
+  return handleSaveFcmToken(req);
+}

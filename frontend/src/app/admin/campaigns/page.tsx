@@ -12,6 +12,30 @@ import { buildCampaignDescription, parseCampaignMeta } from '@/lib/campaignMeta'
 import { useAuthStore } from '@/store';
 import { parseCampaignImages } from '@/lib/campaignImages';
 
+type AdminCampaignPurchase = {
+  id: string;
+  phone_last10: string;
+  campaign_id: string;
+  campaign_title?: string;
+  campaign_status?: string;
+  campaign_location?: string;
+  campaign_credit_price?: number;
+  purchaser?: {
+    name?: string;
+    email?: string;
+    phone?: string;
+  };
+  quantity: number;
+  total_credits?: number;
+  last_quantity?: number;
+  last_credits?: number;
+  last_ticket_numbers?: number[];
+  ticket_numbers?: number[];
+  status?: 'placed' | 'completed';
+  created_at: string;
+  updated_at: string;
+};
+
 function safeFormatDate(value: unknown, fmt = 'dd MMM yyyy') {
   if (!value) return '—';
   const d = new Date(String(value));
@@ -26,10 +50,13 @@ function safeFormatDate(value: unknown, fmt = 'dd MMM yyyy') {
 export default function AdminCampaignsPage() {
   const token = useAuthStore((s) => s.token);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [purchases, setPurchases] = useState<AdminCampaignPurchase[]>([]);
   const [loading, setLoading] = useState(true);
+  const [purchasesLoading, setPurchasesLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<'active' | 'upcoming' | 'closed'>('active');
   const [showForm, setShowForm] = useState(false);
   const [viewCampaign, setViewCampaign] = useState<Campaign | null>(null);
+  const [viewPurchase, setViewPurchase] = useState<AdminCampaignPurchase | null>(null);
   const [editCampaign, setEditCampaign] = useState<Campaign | null>(null);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState('');
@@ -88,7 +115,28 @@ export default function AdminCampaignsPage() {
     }
   };
 
+  const loadCampaignPurchases = async () => {
+    try {
+      const bearer = token || (typeof window !== 'undefined' ? localStorage.getItem('af_token') : null);
+      const res = await fetch('/api/admin/campaign-purchases', {
+        headers: bearer ? { authorization: `Bearer ${bearer}` } : undefined,
+        cache: 'no-store',
+      });
+      const json = (await res.json().catch(() => ({}))) as { success?: boolean; data?: AdminCampaignPurchase[] };
+      if (res.ok && json?.success && Array.isArray(json?.data)) {
+        setPurchases(json.data);
+      } else {
+        setPurchases([]);
+      }
+    } catch {
+      setPurchases([]);
+    } finally {
+      setPurchasesLoading(false);
+    }
+  };
+
   useEffect(() => { setLoading(true); loadCampaigns(); }, [statusFilter]);
+  useEffect(() => { setPurchasesLoading(true); void loadCampaignPurchases(); }, [token]);
 
   const resetForm = () => {
     setForm({ title: '', location: '', credit_price: '', total_slots: '100', end_time: '', badge: '', is_featured: false, status: statusFilter });
@@ -361,6 +409,21 @@ export default function AdminCampaignsPage() {
       return next.slice(0, 5);
     });
     setImageUrlInput('');
+  };
+
+  const getPurchaseUserLabel = (p: AdminCampaignPurchase) => {
+    const phone = p.purchaser?.phone || p.phone_last10 || '';
+    const phoneLabel = phone ? `+91 ${phone}` : '—';
+    const name = p.purchaser?.name ? p.purchaser.name : '';
+    return name ? `${name} (${phoneLabel})` : phoneLabel;
+  };
+
+  const getPurchaseTicketsLabel = (p: AdminCampaignPurchase) => {
+    const latest = Array.isArray(p.last_ticket_numbers) ? p.last_ticket_numbers : [];
+    if (latest.length) return latest.join(', ');
+    const all = Array.isArray(p.ticket_numbers) ? p.ticket_numbers : [];
+    if (all.length) return all.slice(0, 6).join(', ');
+    return '—';
   };
 
   return (
@@ -667,7 +730,56 @@ export default function AdminCampaignsPage() {
         </table>
       </div>
 
+      <div className="mt-8">
+        <div className="mb-4">
+          <h2 className="text-2xl font-black text-white">Campaign Purchases</h2>
+          <p className="text-slate-400 mt-1">{purchases.length} user purchase records</p>
+        </div>
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+          <table className="w-full text-left">
+            <thead className="bg-slate-800 border-b border-slate-700">
+              <tr>
+                {['Purchase ID', 'Campaign', 'User', 'Last Qty', 'Total Qty', 'Last Credits', 'Tickets', 'Updated', 'Actions'].map((h) => (
+                  <th key={h} className="px-5 py-3.5 text-xs font-bold text-slate-400 uppercase tracking-wider">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800">
+              {purchasesLoading ? (
+                <tr><td colSpan={9} className="text-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary-400 mx-auto" /></td></tr>
+              ) : purchases.length === 0 ? (
+                <tr><td colSpan={9} className="text-center py-12 text-slate-500">No campaign purchases yet.</td></tr>
+              ) : purchases.map((p) => (
+                <tr key={p.id} className="hover:bg-slate-800/50 transition-colors">
+                  <td className="px-5 py-4 text-slate-500 text-xs font-mono">{p.id}</td>
+                  <td className="px-5 py-4">
+                    <p className="text-white font-semibold text-sm">{p.campaign_title || p.campaign_id}</p>
+                    <p className="text-slate-500 text-xs mt-0.5">{p.campaign_location || '—'}</p>
+                  </td>
+                  <td className="px-5 py-4 text-slate-300 text-sm">{getPurchaseUserLabel(p)}</td>
+                  <td className="px-5 py-4 text-slate-300 text-sm">{Number(p.last_quantity || 0)}</td>
+                  <td className="px-5 py-4 text-slate-300 text-sm">{Number(p.quantity || 0)}</td>
+                  <td className="px-5 py-4 text-primary-400 font-black credit-number">₹{Number(p.last_credits || 0).toFixed(0)}</td>
+                  <td className="px-5 py-4 text-slate-400 text-xs max-w-[220px] truncate">{getPurchaseTicketsLabel(p)}</td>
+                  <td className="px-5 py-4 text-slate-400 text-xs">{safeFormatDate(p.updated_at, 'dd MMM yyyy, HH:mm')}</td>
+                  <td className="px-5 py-4">
+                    <button
+                      type="button"
+                      onClick={() => setViewPurchase(p)}
+                      className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-200 text-xs font-bold hover:bg-slate-700 transition-colors"
+                    >
+                      View
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <AdminJsonModal title="Campaign" record={viewCampaign} onClose={() => setViewCampaign(null)} />
+      <AdminJsonModal title="Campaign Purchase" record={viewPurchase} onClose={() => setViewPurchase(null)} />
     </div>
   );
 }

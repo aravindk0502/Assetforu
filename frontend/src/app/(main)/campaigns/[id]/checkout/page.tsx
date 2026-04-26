@@ -262,7 +262,14 @@ function CampaignCheckoutContent() {
                 const res = await fetch(`/api/public/campaigns/${encodeURIComponent(String(campaign.id))}/purchase`, {
                     method: 'POST',
                     headers: { 'content-type': 'application/json', authorization: `Bearer ${bearer}` },
-                    body: JSON.stringify({ quantity: currentQty }),
+                    body: JSON.stringify({
+                        quantity: currentQty,
+                        purchaser: {
+                            name: user?.name || '',
+                            email: user?.email || '',
+                            phone: user?.phone || '',
+                        },
+                    }),
                 });
                 const json = (await res.json().catch(() => ({}))) as any;
                 if (res.status === 401 && typeof window !== 'undefined') {

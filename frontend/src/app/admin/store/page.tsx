@@ -8,12 +8,40 @@ import BackNavigation from '@/components/BackNavigation';
 import AdminJsonModal from '@/components/admin/AdminJsonModal';
 import { useAuthStore } from '@/store';
 
+type AdminStoreOrderItem = {
+  item_id: string;
+  title: string;
+  type: 'service' | 'product';
+  credits: number;
+  quantity: number;
+};
+
+type AdminStoreOrder = {
+  id: string;
+  phone_last10: string;
+  items: AdminStoreOrderItem[];
+  total_credits: number;
+  delivery_address?: {
+    name?: string;
+    phone?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
+  };
+  created_at: string;
+  status: 'placed' | 'processing' | 'completed';
+};
+
 export default function AdminStorePage() {
   const token = useAuthStore((s) => s.token);
   const [items, setItems] = useState<StoreItem[]>([]);
+  const [orders, setOrders] = useState<AdminStoreOrder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [ordersLoading, setOrdersLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [viewItem, setViewItem] = useState<StoreItem | null>(null);
+  const [viewOrder, setViewOrder] = useState<AdminStoreOrder | null>(null);
   const [editItem, setEditItem] = useState<StoreItem | null>(null);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState('');
@@ -56,6 +84,27 @@ export default function AdminStorePage() {
       setLoading(false);
     }
   };
+
+  const loadOrders = async () => {
+    try {
+      const bearer = token || (typeof window !== 'undefined' ? localStorage.getItem('af_token') : null);
+      const res = await fetch('/api/admin/store-orders', {
+        headers: bearer ? { authorization: `Bearer ${bearer}` } : undefined,
+        cache: 'no-store',
+      });
+      const json = (await res.json().catch(() => ({}))) as { success?: boolean; data?: AdminStoreOrder[] };
+      if (res.ok && json?.success && Array.isArray(json?.data)) {
+        setOrders(json.data);
+      } else {
+        setOrders([]);
+      }
+    } catch {
+      setOrders([]);
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
+
   useEffect(() => {
     setLoading(true);
     load({
@@ -64,6 +113,12 @@ export default function AdminStorePage() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [typeFilter, categoryFilter]);
+
+  useEffect(() => {
+    setOrdersLoading(true);
+    void loadOrders();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   const compressToBlob = (file: File): Promise<Blob> =>
     new Promise((resolve, reject) => {
@@ -321,6 +376,21 @@ export default function AdminStorePage() {
   });
 
   const categories = Array.from(new Set(items.map((i) => i.category))).sort((a, b) => a.localeCompare(b));
+
+  const formatOrderAddress = (order: AdminStoreOrder) => {
+    const d = order.delivery_address;
+    if (!d) return 'No address captured';
+    const line = [d.address, d.city, d.state, d.pincode].filter(Boolean).join(', ');
+    const head = [d.name, d.phone].filter(Boolean).join(' | ');
+    return [head, line].filter(Boolean).join(' - ') || 'No address captured';
+  };
+
+  const formatOrderItems = (order: AdminStoreOrder) => {
+    if (!Array.isArray(order.items) || !order.items.length) return 'No items';
+    return order.items
+      .map((it) => `${it.title} x${it.quantity}`)
+      .join(', ');
+  };
 
   return (
     <div>
@@ -608,7 +678,79 @@ export default function AdminStorePage() {
         </table>
       </div>
 
+      <div className="mt-8">
+        <div className="mb-4">
+          <h2 className="text-2xl font-black text-white">Redeemed Orders</h2>
+          <p className="text-slate-400 mt-1">{orders.length} user orders</p>
+        </div>
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+          <table className="w-full text-left">
+            <thead className="bg-slate-800 border-b border-slate-700">
+              <tr>
+                {['Order ID', 'User', 'Items', 'Credits', 'Address', 'Status', 'Date', 'Actions'].map((h) => (
+                  <th key={h} className="px-5 py-3.5 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800">
+              {ordersLoading ? (
+                <tr>
+                  <td colSpan={8} className="text-center py-12">
+                    <Loader2 className="w-6 h-6 animate-spin text-primary-400 mx-auto" />
+                  </td>
+                </tr>
+              ) : orders.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="text-center py-12 text-slate-500">
+                    No redeemed orders yet.
+                  </td>
+                </tr>
+              ) : (
+                orders.map((order) => (
+                  <tr key={order.id} className="hover:bg-slate-800/50 transition-colors">
+                    <td className="px-5 py-4 text-slate-500 text-xs font-mono">{order.id}</td>
+                    <td className="px-5 py-4 text-slate-300 text-sm font-mono">+91 {order.phone_last10 || '—'}</td>
+                    <td className="px-5 py-4 text-slate-300 text-xs max-w-[240px] truncate">{formatOrderItems(order)}</td>
+                    <td className="px-5 py-4 text-primary-400 font-black credit-number">₹{Number(order.total_credits || 0).toFixed(0)}</td>
+                    <td className="px-5 py-4 text-slate-400 text-xs max-w-[320px] truncate">{formatOrderAddress(order)}</td>
+                    <td className="px-5 py-4">
+                      <span
+                        className={clsx(
+                          'badge text-[10px]',
+                          order.status === 'completed'
+                            ? 'bg-green-900/50 text-green-400'
+                            : order.status === 'processing'
+                              ? 'bg-amber-900/50 text-amber-400'
+                              : 'bg-blue-900/50 text-blue-300'
+                        )}
+                      >
+                        {order.status}
+                      </span>
+                    </td>
+                    <td className="px-5 py-4 text-slate-500 text-xs">
+                      {order.created_at ? new Date(order.created_at).toLocaleString() : '—'}
+                    </td>
+                    <td className="px-5 py-4">
+                      <button
+                        type="button"
+                        onClick={() => setViewOrder(order)}
+                        className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-200 text-xs font-bold hover:bg-slate-700 transition-colors"
+                      >
+                        View
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <AdminJsonModal title="Store Item" record={viewItem} onClose={() => setViewItem(null)} />
+      <AdminJsonModal title="Redeemed Order" record={viewOrder} onClose={() => setViewOrder(null)} />
     </div>
   );
 }

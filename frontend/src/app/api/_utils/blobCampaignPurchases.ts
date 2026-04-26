@@ -6,7 +6,30 @@ export type CampaignPurchase = {
   id: string;
   phone_last10: string;
   campaign_id: string;
+  campaign_title?: string;
+  purchaser?: {
+    name?: string;
+    email?: string;
+    phone?: string;
+  };
   quantity: number;
+  total_credits?: number;
+  last_quantity?: number;
+  last_credits?: number;
+  last_ticket_numbers?: number[];
+  status?: 'placed' | 'completed';
+  events?: Array<{
+    id: string;
+    quantity: number;
+    credits: number;
+    ticket_numbers: number[];
+    created_at: string;
+    purchaser?: {
+      name?: string;
+      email?: string;
+      phone?: string;
+    };
+  }>;
   created_at: string;
   updated_at: string;
 };

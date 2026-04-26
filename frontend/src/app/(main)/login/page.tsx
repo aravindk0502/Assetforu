@@ -6,6 +6,7 @@ import { useAuthStore } from '@/store';
 import { authAPI } from '@/lib/api';
 import { CheckCircle, Leaf, Loader2, Phone } from 'lucide-react';
 import clsx from 'clsx';
+import { registerFcmToken } from '@/lib/fcm/register';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -15,7 +16,7 @@ export default function LoginPage() {
 
   const [step, setStep] = useState<'phone' | 'otp' | 'success'>('phone');
   const [phone, setPhone] = useState('');
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [otp, setOtp] = useState(['', '', '', '']);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -90,7 +91,7 @@ export default function LoginPage() {
     const next = [...otp];
     next[index] = value;
     setOtp(next);
-    if (value && index < 5) otpRefs.current[index + 1]?.focus();
+    if (value && index < 3) otpRefs.current[index + 1]?.focus();
   };
 
   const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
@@ -112,6 +113,10 @@ export default function LoginPage() {
       const { token: t, user } = res.data as { token: string; user: unknown };
       localStorage.setItem('af_last_phone', phone);
       setAuth(user as never, t);
+      // Trigger on user action (OTP verify click) for reliable browser permission prompt.
+      void registerFcmToken({ authToken: t, promptIfNeeded: true }).then((result) => {
+        if (!result.ok) console.log('[FCM] login registration skipped', result.reason);
+      });
       setStep('success');
       setTimeout(() => {
         router.replace(nextPath || '/profile');
@@ -119,18 +124,8 @@ export default function LoginPage() {
     } catch (e: unknown) {
       const err = e as { response?: { data?: { message?: string } } };
       const msg = err.response?.data?.message || 'Invalid OTP';
-      if (
-        isAdminNext &&
-        adminMode === 'company' &&
-        /^\d{10}$/.test(phone) &&
-        phone === '9344562418' &&
-        /msg91 is not configured/i.test(msg)
-      ) {
-        setError('Use emergency Company Admin OTP: 123456');
-      } else {
-        setError(msg);
-      }
-      setOtp(['', '', '', '', '', '']);
+      setError(msg);
+      setOtp(['', '', '', '']);
       otpRefs.current[0]?.focus();
     } finally {
       setLoading(false);
@@ -144,7 +139,7 @@ export default function LoginPage() {
     try {
       await authAPI.sendOtp(phone);
       setCountdown(30);
-      setOtp(['', '', '', '', '', '']);
+      setOtp(['', '', '', '']);
     } catch {
       setError('Failed to resend OTP');
     } finally {
@@ -167,7 +162,7 @@ export default function LoginPage() {
             {step === 'success'
               ? 'Redirecting…'
               : step === 'otp'
-                ? 'Enter the 6-digit OTP sent to your phone.'
+                ? 'Enter the 4-digit OTP sent to your phone.'
                 : 'Use your mobile number to login.'}
           </p>
         </div>
@@ -280,7 +275,7 @@ export default function LoginPage() {
                 </div>
               )}
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-3">Enter 6-digit OTP</label>
+                <label className="block text-sm font-bold text-slate-700 mb-3">Enter 4-digit OTP</label>
                 <div className="flex gap-2 justify-between">
                   {otp.map((digit, i) => (
                     <input
@@ -305,7 +300,7 @@ export default function LoginPage() {
 
               <div className="flex items-center justify-between text-sm">
                 <button
-                  onClick={() => { setStep('phone'); setOtp(['', '', '', '', '', '']); setError(''); }}
+                  onClick={() => { setStep('phone'); setOtp(['', '', '', '']); setError(''); }}
                   className="text-slate-500 hover:text-primary-700 font-medium"
                 >
                   ← Change number

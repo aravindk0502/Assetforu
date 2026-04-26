@@ -3,13 +3,19 @@ import { getBlobReadWriteToken, hasBlobReadWriteToken } from '@/app/api/_utils/b
 import { getCachedBlobData, invalidateCachedBlobData, setCachedBlobData } from '@/app/api/_utils/blobCache';
 
 export type NotificationTokenRecord = {
+  user_id?: string;
   phone_last10: string;
+  token_hash?: string;
   token_sealed: string;
+  user_agent?: string;
+  device_platform?: string;
   created_at: string;
   updated_at: string;
 };
 
-const TOKENS_KEY = 'notifications/tokens.json';
+// "Table" for FCM device registrations (Blob-backed)
+const TOKENS_KEY = 'notifications/user_fcm_tokens.json';
+const LEGACY_TOKENS_KEY = 'notifications/tokens.json';
 
 function nowIso() {
   return new Date().toISOString();
@@ -25,7 +31,11 @@ export async function loadNotificationTokens(): Promise<NotificationTokenRecord[
   if (cached) return cached;
   try {
     const res = await list({ prefix: TOKENS_KEY } as any);
-    const blobs = safeArray<{ url: string; uploadedAt?: string }>((res as any)?.blobs);
+    let blobs = safeArray<{ url: string; uploadedAt?: string }>((res as any)?.blobs);
+    if (!blobs.length) {
+      const legacyRes = await list({ prefix: LEGACY_TOKENS_KEY } as any);
+      blobs = safeArray<{ url: string; uploadedAt?: string }>((legacyRes as any)?.blobs);
+    }
     if (!blobs.length) return [];
     const latest = blobs
       .slice()

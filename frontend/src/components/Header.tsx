@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore, useCartStore, useUIStore } from '@/store';
 import { formatCurrency } from '@/lib/currency';
@@ -8,6 +8,24 @@ import { Leaf, Wallet, LogOut, UserCircle, Activity, ShoppingCart, Bell, Heart }
 import { fetchSiteContent } from '@/lib/siteContent';
 import { useLanguage } from '@/components/LanguageProvider';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import { getNotificationsUpdatedEventName, readClientNotifications, type ClientNotificationItem } from '@/lib/fcm/inbox';
+import { registerFcmToken } from '@/lib/fcm/register';
+import { addToast } from '@/components/Toast';
+
+const NOTIFICATION_SEEN_AT_KEY = 'af_notifications_seen_at';
+
+function timeAgo(iso: string) {
+    const t = new Date(iso).getTime();
+    if (!Number.isFinite(t)) return '';
+    const diffSec = Math.max(0, Math.floor((Date.now() - t) / 1000));
+    if (diffSec < 60) return `${diffSec}s ago`;
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHour = Math.floor(diffMin / 60);
+    if (diffHour < 24) return `${diffHour}h ago`;
+    const diffDay = Math.floor(diffHour / 24);
+    return `${diffDay}d ago`;
+}
 
 export function Header() {
     const router = useRouter();
@@ -22,9 +40,14 @@ export function Header() {
     const { openSignupModal, resetUserData } = useUIStore();
     const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
     const [notificationsOpen, setNotificationsOpen] = useState(false);
+    const [registeringPush, setRegisteringPush] = useState(false);
     const [mounted, setMounted] = useState(false);
     const [hasStoredToken, setHasStoredToken] = useState(false);
     const [siteHeader, setSiteHeader] = useState<any | null>(null);
+    const [notifications, setNotifications] = useState<ClientNotificationItem[]>([]);
+    const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
+    const firstNotificationSyncRef = useRef(true);
+    const knownNotificationIdsRef = useRef<Set<string>>(new Set());
     const { t } = useLanguage();
 
     const isAuthed = !!user || !!token || hasStoredToken;
@@ -51,26 +74,90 @@ export function Header() {
         logout();
         resetUserData();
         setNotificationsOpen(false);
+        setUnreadNotificationsCount(0);
         setProfileDropdownOpen(false);
+        if (typeof window !== 'undefined') {
+            localStorage.removeItem(NOTIFICATION_SEEN_AT_KEY);
+        }
         window.location.assign('/');
     };
 
-    const notifications = [
-        {
-            id: 'n-1',
-            title: 'Campaign Update',
-            message: 'New premium land campaign now live.',
-            time: '2h ago',
-            link: '/campaigns',
-        },
-        {
-            id: 'n-2',
-            title: 'Wallet',
-            message: 'Credits redeemed successfully in Asset Store.',
-            time: '1d ago',
-            link: '/activity',
-        },
-    ];
+    const markNotificationsSeen = () => {
+        if (typeof window === 'undefined') return;
+        localStorage.setItem(NOTIFICATION_SEEN_AT_KEY, String(Date.now()));
+        setUnreadNotificationsCount(0);
+    };
+
+    const ensurePushRegistration = async () => {
+        if (registeringPush) return;
+        if (!isAuthed) return;
+        const bearer = token || (typeof window !== 'undefined' ? localStorage.getItem('af_token') : null);
+        if (!bearer) return;
+        try {
+            setRegisteringPush(true);
+            const result = await registerFcmToken({ authToken: bearer, promptIfNeeded: true });
+            console.log('[FCM] bell-click registration result', result);
+        } catch (e) {
+            console.error('[FCM] bell-click registration failed', e);
+        } finally {
+            setRegisteringPush(false);
+        }
+    };
+
+    const handleNotificationsClick = async () => {
+        if (!isAuthed) {
+            openSignupModal();
+            return;
+        }
+        await ensurePushRegistration();
+        setNotificationsOpen((prev) => {
+            const next = !prev;
+            if (next) markNotificationsSeen();
+            return next;
+        });
+    };
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const sync = () => {
+            const next = readClientNotifications();
+            setNotifications(next);
+
+            const seenAtMs = Number.parseInt(localStorage.getItem(NOTIFICATION_SEEN_AT_KEY) || '0', 10) || 0;
+            const unread = next.filter((n) => new Date(n.createdAt || 0).getTime() > seenAtMs).length;
+            setUnreadNotificationsCount(unread);
+
+            const knownIds = knownNotificationIdsRef.current;
+            const currentIds = new Set(next.map((n) => n.id).filter(Boolean));
+            let newCount = 0;
+            if (!firstNotificationSyncRef.current) {
+                currentIds.forEach((id) => {
+                    if (!knownIds.has(id)) newCount += 1;
+                });
+            }
+            knownNotificationIdsRef.current = currentIds;
+            if (firstNotificationSyncRef.current) {
+                firstNotificationSyncRef.current = false;
+                return;
+            }
+            if (newCount > 0) {
+                addToast('New notification', 'info', newCount, true);
+            }
+        };
+        sync();
+        const eventName = getNotificationsUpdatedEventName();
+        window.addEventListener(eventName, sync);
+        window.addEventListener('storage', sync);
+        return () => {
+            window.removeEventListener(eventName, sync);
+            window.removeEventListener('storage', sync);
+        };
+    }, []);
+
+    useEffect(() => {
+        if (notificationsOpen) markNotificationsSeen();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [notificationsOpen]);
 
     return (
         <header className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-sm">
@@ -161,13 +248,23 @@ export function Header() {
                         </a>
 
                         {/* Notifications - Desktop */}
-                        <button onClick={() => (isAuthed ? setNotificationsOpen(!notificationsOpen) : openSignupModal())} className="relative hidden sm:flex items-center justify-center h-9 w-9 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50">
+                        <button onClick={handleNotificationsClick} className="relative hidden sm:flex items-center justify-center h-9 w-9 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50">
                             <Bell className="w-4 h-4" />
+                            {unreadNotificationsCount > 0 && (
+                                <span className="absolute -top-2 -right-2 h-5 min-w-5 px-1 rounded-full bg-emerald-600 text-white text-[10px] font-bold flex items-center justify-center">
+                                    {unreadNotificationsCount > 99 ? '99+' : unreadNotificationsCount}
+                                </span>
+                            )}
                         </button>
 
                         {/* Notifications - Mobile */}
-                        <button onClick={() => (isAuthed ? setNotificationsOpen(!notificationsOpen) : openSignupModal())} className="relative sm:hidden flex items-center justify-center h-8 w-8 rounded-lg text-slate-600 active:bg-slate-100">
+                        <button onClick={handleNotificationsClick} className="relative sm:hidden flex items-center justify-center h-8 w-8 rounded-lg text-slate-600 active:bg-slate-100">
                             <Bell className="w-4 h-4" />
+                            {unreadNotificationsCount > 0 && (
+                                <span className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-1 rounded-full bg-emerald-600 text-white text-[9px] font-bold flex items-center justify-center">
+                                    {unreadNotificationsCount > 99 ? '99+' : unreadNotificationsCount}
+                                </span>
+                            )}
                         </button>
 
                         <div className="sm:hidden">
@@ -255,14 +352,14 @@ export function Header() {
                                         <button
                                             key={n.id}
                                             onClick={() => {
-                                                router.push(n.link);
+                                                router.push(n.link || '/activity');
                                                 setNotificationsOpen(false);
                                             }}
                                             className="w-full px-4 py-3 border-b border-slate-100 last:border-0 text-left hover:bg-slate-50 transition-colors cursor-pointer"
                                         >
                                             <p className="text-xs uppercase tracking-wide text-primary-600 font-bold">{n.title}</p>
                                             <p className="text-sm text-slate-700 mt-1">{n.message}</p>
-                                            <p className="text-xs text-slate-400 mt-2">{n.time}</p>
+                                            <p className="text-xs text-slate-400 mt-2">{timeAgo(n.createdAt)}</p>
                                         </button>
                                     ))}
                                 </div>

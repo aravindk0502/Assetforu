@@ -52,8 +52,18 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   }
 
   const { id } = await ctx.params;
-  const body = (await req.json().catch(() => ({}))) as { quantity?: number };
+  const body = (await req.json().catch(() => ({}))) as {
+    quantity?: number;
+    purchaser?: { name?: string; email?: string; phone?: string };
+  };
   const qty = Math.max(1, Math.min(20, asInt(body.quantity, 1)));
+  const purchaserSnapshot = body?.purchaser
+    ? {
+        name: String(body.purchaser.name || '').trim().slice(0, 120) || undefined,
+        email: String(body.purchaser.email || '').trim().slice(0, 160) || undefined,
+        phone: String(body.purchaser.phone || '').replace(/\D/g, '').slice(-10) || undefined,
+      }
+    : undefined;
 
   const campaigns = await loadCampaigns();
   const idx = campaigns.findIndex((c) => String(c.id) === String(id));
@@ -125,23 +135,54 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   });
   tickets.push(...newTickets);
 
+  const creditPrice = Math.max(0, Number(campaign.credit_price || 0));
+  const credits = creditPrice * qty;
+  const now = nowIso();
+  const ticketNumbers = newTickets.map((t) => t.ticket_number);
+  const purchaseEvent = {
+    id: crypto.randomUUID(),
+    quantity: qty,
+    credits,
+    ticket_numbers: ticketNumbers,
+    created_at: now,
+    purchaser: purchaserSnapshot,
+  };
+
   const nextPurchase = existing
-    ? { ...existing, quantity: already + qty, updated_at: nowIso() }
+    ? {
+        ...existing,
+        quantity: already + qty,
+        campaign_title: String(campaign.title || existing.campaign_title || ''),
+        purchaser: existing.purchaser || purchaserSnapshot,
+        total_credits: Math.max(0, Number(existing.total_credits || 0)) + credits,
+        last_quantity: qty,
+        last_credits: credits,
+        last_ticket_numbers: ticketNumbers,
+        status: 'completed',
+        events: [...(Array.isArray(existing.events) ? existing.events : []), purchaseEvent].slice(-200),
+        updated_at: now,
+      }
     : {
         id: crypto.randomUUID(),
         phone_last10: auth.phoneLast10,
         campaign_id: String(id),
+        campaign_title: String(campaign.title || ''),
+        purchaser: purchaserSnapshot,
         quantity: qty,
-        created_at: nowIso(),
-        updated_at: nowIso(),
+        total_credits: credits,
+        last_quantity: qty,
+        last_credits: credits,
+        last_ticket_numbers: ticketNumbers,
+        status: 'completed',
+        events: [purchaseEvent],
+        created_at: now,
+        updated_at: now,
       };
   if (pIdx >= 0) purchases[pIdx] = nextPurchase;
   else purchases.push(nextPurchase);
 
   // Write a simple transaction record for admin visibility.
   const txns = await loadTransactions();
-  const creditPrice = Math.max(0, Number(campaign.credit_price || 0));
-  const credits = creditPrice * qty;
   txns.push({
     id: crypto.randomUUID(),
     type: 'campaign_credit_purchase',

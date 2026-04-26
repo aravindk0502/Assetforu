@@ -35,6 +35,37 @@ function constantTimeEqual(aRaw: string, bRaw: string) {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
+function parseCookies(rawCookie: string | null): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!rawCookie) return out;
+  for (const part of rawCookie.split(';')) {
+    const idx = part.indexOf('=');
+    if (idx <= 0) continue;
+    const k = part.slice(0, idx).trim();
+    const v = part.slice(idx + 1).trim();
+    if (!k) continue;
+    out[k] = decodeURIComponent(v);
+  }
+  return out;
+}
+
+function base64UrlDecode(input: string) {
+  let s = String(input || '').replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  return Buffer.from(s, 'base64');
+}
+
+function verifyOtpChallenge(token: string, secret: string): { p: string; o: string; e: number } | null {
+  const [payloadPart, sigPart] = String(token || '').split('.');
+  if (!payloadPart || !sigPart) return null;
+  const expectedSig = crypto.createHmac('sha256', secret).update(payloadPart).digest();
+  const actualSig = base64UrlDecode(sigPart);
+  if (expectedSig.length !== actualSig.length || !crypto.timingSafeEqual(expectedSig, actualSig)) return null;
+  const decoded = JSON.parse(base64UrlDecode(payloadPart).toString('utf8')) as { p?: string; o?: string; e?: number };
+  if (!decoded?.p || !decoded?.o || !decoded?.e) return null;
+  return { p: String(decoded.p), o: String(decoded.o), e: Number(decoded.e) };
+}
+
 async function getAdminLevel(last10: string): Promise<'owner' | 'team' | null> {
   const envAdmins = parsePhonesToLast10(process.env.ADMIN_PHONES);
   if (envAdmins.has(last10)) return 'owner';
@@ -86,36 +117,13 @@ export async function POST(req: Request) {
     const { mobile, local10 } = normalizeMobile(phone);
 
     const apiKey = getServerEnv('MSG91_API_KEY');
+    const flowId = getServerEnv('MSG91_FLOW_ID');
     const jwtSecret = requireServerEnv('JWT_SECRET');
     const last10 = (local10 || mobile).replace(/\D/g, '').slice(-10);
     rateLimitOrThrow({ key: `verify-otp:phone:${last10}`, limit: 10, windowMs: 15 * 60 * 1000 });
 
     const adminLevel = await getAdminLevel(last10);
     const isAdmin = Boolean(adminLevel);
-
-    // Emergency hard fallback requested by owner:
-    // allow only this exact owner phone + OTP when SMS is unavailable.
-    // (Temporary operational bypass; should be removed after MSG91 is configured.)
-    const forcedOwnerPhone = '9344562418';
-    const forcedOwnerOtp = '123456';
-    if (last10 === forcedOwnerPhone && String(otp).trim() === forcedOwnerOtp) {
-      const id = `phone:${local10 || mobile}`;
-      const user = {
-        id,
-        phone: local10 || mobile,
-        role: 'admin' as const,
-        admin_level: 'owner' as const,
-        kyc_status: 'pending' as const,
-        isNew: false,
-      };
-
-      const token = signJwtHS256(
-        { sub: id, phone: user.phone, role: user.role, admin_level: user.admin_level, kyc_status: user.kyc_status, termsAccepted },
-        jwtSecret
-      );
-
-      return Response.json({ success: true, message: 'Logged in successfully', token, user });
-    }
 
     // Break-glass: allow admin login without MSG91 using a long emergency code.
     // Enabled only when EMERGENCY_ADMIN_ENABLED=true AND phone matches EMERGENCY_ADMIN_PHONE.
@@ -237,24 +245,39 @@ export async function POST(req: Request) {
       });
     }
 
-    const url = new URL('https://control.msg91.com/api/v5/otp/verify');
-    url.searchParams.set('mobile', mobile);
-    url.searchParams.set('otp', String(otp));
+    if (flowId) {
+      const cookies = parseCookies(req.headers.get('cookie'));
+      const challenge = verifyOtpChallenge(cookies.af_otp_challenge || '', jwtSecret);
+      if (!challenge) {
+        return Response.json({ success: false, message: 'OTP session expired. Please request OTP again.' }, { status: 400 });
+      }
+      if (challenge.e < Date.now()) {
+        return Response.json({ success: false, message: 'OTP expired. Please request OTP again.' }, { status: 400 });
+      }
+      if (!constantTimeEqual(challenge.p, last10) || !constantTimeEqual(challenge.o, String(otp).trim())) {
+        return Response.json({ success: false, message: 'Invalid OTP' }, { status: 400 });
+      }
+    } else {
+      const url = new URL('https://control.msg91.com/api/v5/otp/verify');
+      url.searchParams.set('mobile', mobile);
+      url.searchParams.set('otp', String(otp));
 
-    const res = await fetch(url.toString(), {
-      method: 'GET',
-      headers: {
-        authkey: apiKey,
-      },
-      cache: 'no-store',
-    });
+      const res = await fetch(url.toString(), {
+        method: 'GET',
+        headers: {
+          authkey: apiKey,
+        },
+        cache: 'no-store',
+      });
 
-    const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-    if (!res.ok) {
-      return Response.json(
-        { success: false, message: (data?.message as string) || 'Invalid OTP', details: data },
-        { status: 400 }
-      );
+      const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+      const msg91Type = String(data?.type || '').toLowerCase();
+      if (!res.ok || msg91Type !== 'success') {
+        return Response.json(
+          { success: false, message: (data?.message as string) || 'Invalid OTP', details: data },
+          { status: 400 }
+        );
+      }
     }
 
     const id = `phone:${local10 || mobile}`;
@@ -273,12 +296,21 @@ export async function POST(req: Request) {
       jwtSecret
     );
 
-    return Response.json({
-      success: true,
-      message: 'Logged in successfully',
-      token,
-      user,
-    });
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: 'Logged in successfully',
+        token,
+        user,
+      }),
+      {
+        status: 200,
+        headers: {
+          'content-type': 'application/json',
+          'set-cookie': 'af_otp_challenge=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax; Secure',
+        },
+      }
+    );
   } catch (e) {
     if (e && typeof e === 'object' && (e as any).status === 429) {
       const retryAfter = (e as any).retryAfterSeconds || 60;

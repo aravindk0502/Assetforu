@@ -4,6 +4,7 @@ import { useUIStore, useAuthStore } from '@/store';
 import { authAPI } from '@/lib/api';
 import { X, Leaf, Phone, Shield, Loader2, CheckCircle } from 'lucide-react';
 import clsx from 'clsx';
+import { registerFcmToken } from '@/lib/fcm/register';
 
 type Step = 'phone' | 'otp' | 'success';
 
@@ -13,7 +14,7 @@ export function SignupModal() {
 
   const [step, setStep] = useState<Step>('phone');
   const [phone, setPhone] = useState('');
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [otp, setOtp] = useState(['', '', '', '']);
   const [devOtp, setDevOtp] = useState('');
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -59,7 +60,7 @@ export function SignupModal() {
     const next = [...otp];
     next[index] = value;
     setOtp(next);
-    if (value && index < 5) otpRefs.current[index + 1]?.focus();
+    if (value && index < 3) otpRefs.current[index + 1]?.focus();
   };
 
   const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
@@ -70,7 +71,7 @@ export function SignupModal() {
 
   const handleVerifyOtp = async () => {
     const otpStr = otp.join('');
-    if (otpStr.length < 6) { setError('Enter the 6-digit OTP'); return; }
+    if (otpStr.length < 4) { setError('Enter the 4-digit OTP'); return; }
     if (!termsAccepted) { setError('You must accept the Terms & Conditions and Privacy Policy'); return; }
     setError('');
     setLoading(true);
@@ -79,6 +80,10 @@ export function SignupModal() {
       const { token, user } = res.data;
       localStorage.setItem('af_last_phone', phone);
       setAuth(user, token);
+      // Trigger on user action for reliable browser permission prompt.
+      void registerFcmToken({ authToken: token, promptIfNeeded: true }).then((result) => {
+        if (!result.ok) console.log('[FCM] signup registration skipped', result.reason);
+      });
       setStep('success');
       setTimeout(() => {
         closeSignupModal();
@@ -87,7 +92,7 @@ export function SignupModal() {
     } catch (e: unknown) {
       const err = e as { response?: { data?: { message?: string } } };
       setError(err.response?.data?.message || 'Invalid OTP');
-      setOtp(['', '', '', '', '', '']);
+      setOtp(['', '', '', '']);
       otpRefs.current[0]?.focus();
     } finally {
       setLoading(false);
@@ -101,7 +106,7 @@ export function SignupModal() {
     try {
       await authAPI.sendOtp(phone);
       setCountdown(30);
-      setOtp(['', '', '', '', '', '']);
+      setOtp(['', '', '', '']);
     } catch {
       setError('Failed to resend OTP');
     } finally {
@@ -136,7 +141,7 @@ export function SignupModal() {
             {step === 'success'
               ? 'Your account is ready.'
               : step === 'otp'
-                ? 'Entering 6-digit OTP — check your phone'
+                ? 'Entering 4-digit OTP — check your phone'
                 : 'Sign up or log in to access campaigns & wallet.'}
           </p>
         </div>
@@ -218,7 +223,7 @@ export function SignupModal() {
           {step === 'otp' && (
             <div className="space-y-5">
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-3">Enter 6-digit OTP</label>
+                <label className="block text-sm font-bold text-slate-700 mb-3">Enter 4-digit OTP</label>
                 <div className="flex gap-2 justify-between">
                   {otp.map((digit, i) => (
                     <input
@@ -243,7 +248,7 @@ export function SignupModal() {
 
               <div className="flex items-center justify-between text-sm">
                 <button
-                  onClick={() => { setStep('phone'); setOtp(['', '', '', '', '', '']); setError(''); }}
+                  onClick={() => { setStep('phone'); setOtp(['', '', '', '']); setError(''); }}
                   className="text-slate-500 hover:text-primary-700 font-medium"
                 >
                   ← Change number
@@ -261,10 +266,10 @@ export function SignupModal() {
 
               <button
                 onClick={handleVerifyOtp}
-                disabled={loading || otp.join('').length < 6}
+                disabled={loading || otp.join('').length < 4}
                 className={clsx(
                   'w-full py-3.5 rounded-xl font-bold text-white transition-all',
-                  loading || otp.join('').length < 6
+                  loading || otp.join('').length < 4
                     ? 'bg-slate-300 cursor-not-allowed'
                     : 'bg-primary-700 hover:bg-primary-800 shadow-primary active:scale-[0.98]'
                 )}
