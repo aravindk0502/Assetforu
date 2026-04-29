@@ -1,6 +1,57 @@
 import { create } from 'zustand';
 import type { User, CartItem } from '@/types';
 
+function normalizePhoneLast10(raw?: string) {
+  const digits = String(raw || '').replace(/\D/g, '');
+  if (!digits) return '';
+  return digits.slice(-10);
+}
+
+function getCurrentPhoneKey() {
+  if (typeof window === 'undefined') return '';
+  try {
+    const rawUser = localStorage.getItem('af_user');
+    const user = rawUser ? (JSON.parse(rawUser) as { phone?: string }) : null;
+    const fromUser = normalizePhoneLast10(user?.phone);
+    if (fromUser) return fromUser;
+    return normalizePhoneLast10(localStorage.getItem('af_last_phone') || '');
+  } catch {
+    return normalizePhoneLast10(localStorage.getItem('af_last_phone') || '');
+  }
+}
+
+function walletBalanceKeyForPhone(phoneLast10: string) {
+  return `af_wallet_balance_${phoneLast10}`;
+}
+
+function transactionsKeyForPhone(phoneLast10: string) {
+  return `af_transactions_${phoneLast10}`;
+}
+
+function activityKeyForPhone(phoneLast10: string) {
+  return `af_activity_${phoneLast10}`;
+}
+
+function favoritesKeyForPhone(phoneLast10: string) {
+  return `af_favorites_${phoneLast10}`;
+}
+
+function migrateScopedUserData(phoneRaw?: string) {
+  if (typeof window === 'undefined') return;
+  const phoneLast10 = normalizePhoneLast10(phoneRaw);
+  if (!phoneLast10) return;
+
+  const wbScoped = localStorage.getItem(walletBalanceKeyForPhone(phoneLast10));
+  const txScoped = localStorage.getItem(transactionsKeyForPhone(phoneLast10));
+  const activityScoped = localStorage.getItem(activityKeyForPhone(phoneLast10));
+  const favScoped = localStorage.getItem(favoritesKeyForPhone(phoneLast10));
+
+  if (wbScoped != null) localStorage.setItem('af_wallet_balance', wbScoped);
+  if (txScoped != null) localStorage.setItem('af_transactions', txScoped);
+  if (activityScoped != null) localStorage.setItem('af_activity', activityScoped);
+  if (favScoped != null) localStorage.setItem('af_favorites', favScoped);
+}
+
 // ── Auth Store ────────────────────────────────────────────────
 interface AuthState {
   user: User | null;
@@ -37,6 +88,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     const merged = overrides[key] ? { ...user, ...overrides[key] } : user;
     localStorage.setItem('af_token', token);
     localStorage.setItem('af_user', JSON.stringify(merged));
+    localStorage.setItem('af_last_phone', normalizePhoneLast10(merged?.phone || lastPhone));
+    migrateScopedUserData(merged?.phone || lastPhone);
     set({ user: merged, token, isLoaded: true });
   },
 
@@ -134,7 +187,9 @@ interface UIState {
 
 const loadWalletBalance = () => {
   if (typeof window === 'undefined') return 0;
-  const stored = localStorage.getItem('af_wallet_balance');
+  const phoneKey = getCurrentPhoneKey();
+  const scoped = phoneKey ? localStorage.getItem(walletBalanceKeyForPhone(phoneKey)) : null;
+  const stored = scoped ?? localStorage.getItem('af_wallet_balance');
   return stored ? Number(stored) : 0;
 };
 
@@ -148,7 +203,8 @@ const loadCurrency = (): 'INR' | 'USD' | 'AED' => {
 const loadTransactions = (): Transaction[] => {
   if (typeof window === 'undefined') return [];
   try {
-    const raw = localStorage.getItem('af_transactions');
+    const phoneKey = getCurrentPhoneKey();
+    const raw = (phoneKey ? localStorage.getItem(transactionsKeyForPhone(phoneKey)) : null) ?? localStorage.getItem('af_transactions');
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
@@ -158,7 +214,8 @@ const loadTransactions = (): Transaction[] => {
 const loadActivity = (): ActivityEntry[] => {
   if (typeof window === 'undefined') return [];
   try {
-    const raw = localStorage.getItem('af_activity');
+    const phoneKey = getCurrentPhoneKey();
+    const raw = (phoneKey ? localStorage.getItem(activityKeyForPhone(phoneKey)) : null) ?? localStorage.getItem('af_activity');
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
@@ -168,7 +225,8 @@ const loadActivity = (): ActivityEntry[] => {
 const loadFavorites = (): FavoriteItem[] => {
   if (typeof window === 'undefined') return [];
   try {
-    const raw = localStorage.getItem('af_favorites');
+    const phoneKey = getCurrentPhoneKey();
+    const raw = (phoneKey ? localStorage.getItem(favoritesKeyForPhone(phoneKey)) : null) ?? localStorage.getItem('af_favorites');
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
@@ -185,21 +243,29 @@ const loadTicketSequence = (campaignId: string) => {
 const saveWalletBalance = (b: number) => {
   if (typeof window === 'undefined') return;
   localStorage.setItem('af_wallet_balance', String(b));
+  const phoneKey = getCurrentPhoneKey();
+  if (phoneKey) localStorage.setItem(walletBalanceKeyForPhone(phoneKey), String(b));
 };
 
 const saveTransactions = (transactions: Transaction[]) => {
   if (typeof window === 'undefined') return;
   localStorage.setItem('af_transactions', JSON.stringify(transactions));
+  const phoneKey = getCurrentPhoneKey();
+  if (phoneKey) localStorage.setItem(transactionsKeyForPhone(phoneKey), JSON.stringify(transactions));
 };
 
 const saveActivity = (activity: ActivityEntry[]) => {
   if (typeof window === 'undefined') return;
   localStorage.setItem('af_activity', JSON.stringify(activity));
+  const phoneKey = getCurrentPhoneKey();
+  if (phoneKey) localStorage.setItem(activityKeyForPhone(phoneKey), JSON.stringify(activity));
 };
 
 const saveFavorites = (favorites: FavoriteItem[]) => {
   if (typeof window === 'undefined') return;
   localStorage.setItem('af_favorites', JSON.stringify(favorites));
+  const phoneKey = getCurrentPhoneKey();
+  if (phoneKey) localStorage.setItem(favoritesKeyForPhone(phoneKey), JSON.stringify(favorites));
 };
 
 const saveTicketSequence = (campaignId: string, nextNumber: number) => {
