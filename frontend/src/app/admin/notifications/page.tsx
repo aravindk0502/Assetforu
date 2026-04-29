@@ -54,6 +54,7 @@ export default function AdminNotificationsPage() {
   const [editLink, setEditLink] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
   const [deletingId, setDeletingId] = useState('');
+  const [deletingAll, setDeletingAll] = useState(false);
 
   const phones = useMemo(() => parsePhones(phonesRaw), [phonesRaw]);
 
@@ -154,6 +155,33 @@ export default function AdminNotificationsPage() {
       setError(msg);
     } finally {
       setDeletingId('');
+    }
+  };
+
+  const deleteAllLogs = async () => {
+    const ok = window.confirm('Delete ALL live notifications? This cannot be undone.');
+    if (!ok) return;
+    setDeletingAll(true);
+    setError('');
+    setSuccess('');
+    try {
+      const bearer = token || (typeof window !== 'undefined' ? localStorage.getItem('af_token') : null);
+      if (!bearer) throw new Error('Not authenticated');
+      const res = await fetch('/api/admin/notifications/logs', {
+        method: 'DELETE',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${bearer}` },
+        body: JSON.stringify({ all: true }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { success?: boolean; message?: string };
+      if (!res.ok || json?.success === false) throw new Error(json?.message || `HTTP ${res.status}`);
+      setLogs([]);
+      setSuccess('All notifications deleted.');
+      setTimeout(() => setSuccess(''), 2500);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Failed to delete notifications';
+      setError(msg);
+    } finally {
+      setDeletingAll(false);
     }
   };
 
@@ -348,9 +376,19 @@ export default function AdminNotificationsPage() {
         </div>
 
         <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <h2 className="text-lg font-extrabold text-white">Recent Sends</h2>
-            {loadingLogs && <Loader2 className="w-4 h-4 animate-spin text-slate-300" />}
+            <div className="flex items-center gap-2">
+              {loadingLogs && <Loader2 className="w-4 h-4 animate-spin text-slate-300" />}
+              <button
+                type="button"
+                onClick={deleteAllLogs}
+                disabled={deletingAll || logs.length === 0}
+                className="rounded-lg border border-red-700 px-2.5 py-1.5 text-[11px] font-bold text-red-300 hover:bg-red-950 disabled:opacity-60"
+              >
+                {deletingAll ? 'Deleting…' : 'Delete All'}
+              </button>
+            </div>
           </div>
           <div className="mt-4 space-y-3 max-h-[520px] overflow-auto pr-2">
             {!loadingLogs && logs.length === 0 && (

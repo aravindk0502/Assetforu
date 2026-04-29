@@ -71,7 +71,12 @@ export async function DELETE(req: Request) {
   const auth = await requireAdmin(req);
   if (!auth.ok) return Response.json({ success: false, message: auth.message }, { status: auth.status });
 
-  const body = (await req.json().catch(() => ({}))) as { id?: string };
+  const body = (await req.json().catch(() => ({}))) as { id?: string; all?: boolean };
+  if (body?.all === true) {
+    await saveNotificationLogs([]);
+    return Response.json({ success: true });
+  }
+
   const id = String(body?.id || '').trim();
   if (!id) return Response.json({ success: false, message: 'Notification id is required' }, { status: 400 });
 

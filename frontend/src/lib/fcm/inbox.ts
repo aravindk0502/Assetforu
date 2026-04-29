@@ -107,3 +107,42 @@ export function upsertClientNotifications(
   localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   emitUpdated();
 }
+
+export function reconcileServerNotifications(
+  items: Array<{
+    sourceId: string;
+    title: string;
+    message?: string;
+    link?: string;
+    createdAt?: string;
+  }>
+) {
+  if (typeof window === 'undefined') return;
+  const normalized = Array.isArray(items) ? items : [];
+
+  const existing = readClientNotifications();
+  const existingLocalOnly = existing.filter((x) => !x.sourceId);
+  const nextServerItems: ClientNotificationItem[] = normalized
+    .map((raw) => {
+      const sourceId = String(raw?.sourceId || '').trim();
+      const title = String(raw?.title || '').trim();
+      if (!sourceId || !title) return null;
+      return {
+        id: `srv-${sourceId}`,
+        sourceId,
+        title,
+        message: String(raw?.message || '').trim(),
+        link: String(raw?.link || '').trim() || undefined,
+        createdAt: String(raw?.createdAt || '').trim() || new Date().toISOString(),
+      } as ClientNotificationItem;
+    })
+    .filter((x): x is ClientNotificationItem => Boolean(x));
+
+  // Keep local-only items (foreground SW notifications), but fully reconcile server-sourced items.
+  const next = [...nextServerItems, ...existingLocalOnly]
+    .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+    .slice(0, MAX_ITEMS);
+
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  emitUpdated();
+}

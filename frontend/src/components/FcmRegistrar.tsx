@@ -5,7 +5,7 @@ import { onMessage } from 'firebase/messaging';
 import { useAuthStore } from '@/store';
 import { registerFcmToken } from '@/lib/fcm/register';
 import { getFirebaseMessaging } from '@/lib/firebaseClient';
-import { pushClientNotification, upsertClientNotifications } from '@/lib/fcm/inbox';
+import { pushClientNotification, reconcileServerNotifications } from '@/lib/fcm/inbox';
 
 const STORAGE_KEY = 'af_fcm_token';
 
@@ -118,7 +118,7 @@ export function FcmRegistrar() {
           data?: Array<{ id?: string; title?: string; message?: string; link?: string; createdAt?: string }>;
         };
         if (!res.ok || json?.success === false || !Array.isArray(json?.data)) return;
-        upsertClientNotifications(
+        reconcileServerNotifications(
           json.data.map((item) => ({
             sourceId: String(item?.id || '').trim(),
             title: String(item?.title || '').trim(),
