@@ -15,7 +15,6 @@ export function SignupModal() {
   const [step, setStep] = useState<Step>('phone');
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState(['', '', '', '']);
-  const [devOtp, setDevOtp] = useState('');
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -295,40 +294,6 @@ export function SignupModal() {
             </p>
           )}
 
-          {/* Dev Login - for testing */}
-          {step === 'phone' && (
-            <div className="mt-6 pt-6 border-t border-slate-200">
-              <p className="text-center text-xs text-slate-500 mb-3">Developer Login</p>
-              <div className="space-y-2">
-                <input
-                  type="text"
-                  value={devOtp}
-                  onChange={(e) => setDevOtp(e.target.value)}
-                  placeholder="Dev code"
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-primary-700"
-                />
-                <button
-                  onClick={() => {
-                    if (devOtp === 'dev123') {
-                      const devUser = { id: 'dev_user_1', name: 'Dev User', role: 'user' as const, phone: '9999999999', kyc_status: 'verified' as const };
-                      const devToken = 'dev_token_' + Date.now();
-                      setAuth(devUser, devToken);
-                      setStep('success');
-                      setTimeout(() => {
-                        closeSignupModal();
-                        signupModalCallback?.();
-                      }, 1500);
-                    } else {
-                      setError('Invalid dev code');
-                    }
-                  }}
-                  className="w-full py-2 bg-slate-700 hover:bg-slate-800 text-white rounded-lg font-bold text-sm transition-colors"
-                >
-                  Dev Login
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>
