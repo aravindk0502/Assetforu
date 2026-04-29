@@ -48,6 +48,12 @@ export default function AdminNotificationsPage() {
   const [logs, setLogs] = useState<LogItem[]>([]);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
+  const [editing, setEditing] = useState<LogItem | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editBody, setEditBody] = useState('');
+  const [editLink, setEditLink] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [deletingId, setDeletingId] = useState('');
 
   const phones = useMemo(() => parsePhones(phonesRaw), [phonesRaw]);
 
@@ -81,6 +87,75 @@ export default function AdminNotificationsPage() {
     return () => window.clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const startEdit = (item: LogItem) => {
+    setEditing(item);
+    setEditTitle(item.title || '');
+    setEditBody(item.body || '');
+    setEditLink(item.link || '');
+    setError('');
+    setSuccess('');
+  };
+
+  const saveEdit = async () => {
+    if (!editing) return;
+    setSavingEdit(true);
+    setError('');
+    setSuccess('');
+    try {
+      const bearer = token || (typeof window !== 'undefined' ? localStorage.getItem('af_token') : null);
+      if (!bearer) throw new Error('Not authenticated');
+      const res = await fetch('/api/admin/notifications/logs', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${bearer}` },
+        body: JSON.stringify({
+          id: editing.id,
+          title: editTitle,
+          body: editBody,
+          link: editLink,
+        }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { success?: boolean; message?: string; data?: LogItem };
+      if (!res.ok || json?.success === false) throw new Error(json?.message || `HTTP ${res.status}`);
+      const updated = json?.data;
+      if (updated) setLogs((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
+      setEditing(null);
+      setSuccess('Notification updated.');
+      setTimeout(() => setSuccess(''), 2500);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Failed to update notification';
+      setError(msg);
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const deleteLog = async (item: LogItem) => {
+    const ok = window.confirm('Delete this notification from live list?');
+    if (!ok) return;
+    setDeletingId(item.id);
+    setError('');
+    setSuccess('');
+    try {
+      const bearer = token || (typeof window !== 'undefined' ? localStorage.getItem('af_token') : null);
+      if (!bearer) throw new Error('Not authenticated');
+      const res = await fetch('/api/admin/notifications/logs', {
+        method: 'DELETE',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${bearer}` },
+        body: JSON.stringify({ id: item.id }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { success?: boolean; message?: string };
+      if (!res.ok || json?.success === false) throw new Error(json?.message || `HTTP ${res.status}`);
+      setLogs((prev) => prev.filter((l) => l.id !== item.id));
+      setSuccess('Notification deleted.');
+      setTimeout(() => setSuccess(''), 2500);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Failed to delete notification';
+      setError(msg);
+    } finally {
+      setDeletingId('');
+    }
+  };
 
   const send = async () => {
     setError('');
@@ -304,6 +379,23 @@ export default function AdminNotificationsPage() {
                     <p className={clsx('text-xs font-bold', l.failure_count ? 'text-red-300' : 'text-slate-500')}>
                       ✕ {l.failure_count}
                     </p>
+                    <div className="mt-3 flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => startEdit(l)}
+                        className="rounded-lg border border-slate-700 px-2 py-1 text-[11px] font-bold text-slate-200 hover:bg-slate-800"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteLog(l)}
+                        disabled={deletingId === l.id}
+                        className="rounded-lg border border-red-700 px-2 py-1 text-[11px] font-bold text-red-300 hover:bg-red-950 disabled:opacity-60"
+                      >
+                        {deletingId === l.id ? 'Deleting…' : 'Delete'}
+                      </button>
+                    </div>
                   </div>
                 </div>
                 {l.error && <p className="mt-2 text-xs text-red-300">{l.error}</p>}
@@ -312,6 +404,54 @@ export default function AdminNotificationsPage() {
           </div>
         </div>
       </div>
+
+      {editing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-xl rounded-2xl border border-slate-800 bg-slate-900 p-5">
+            <h3 className="text-lg font-extrabold text-white">Edit Notification</h3>
+            <p className="text-xs text-slate-400 mt-1">Update title, message or link in live notification list.</p>
+
+            <div className="mt-4 space-y-3">
+              <input
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                placeholder="Title"
+                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-700"
+              />
+              <textarea
+                value={editBody}
+                onChange={(e) => setEditBody(e.target.value)}
+                placeholder="Message"
+                className="w-full h-24 resize-none rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-700"
+              />
+              <input
+                value={editLink}
+                onChange={(e) => setEditLink(e.target.value)}
+                placeholder="/campaigns/123 or https://..."
+                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-700"
+              />
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setEditing(null)}
+                className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-bold text-slate-200 hover:bg-slate-800"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={saveEdit}
+                disabled={savingEdit}
+                className="rounded-xl bg-primary-700 px-4 py-2 text-sm font-extrabold text-white hover:bg-primary-600 disabled:opacity-70"
+              >
+                {savingEdit ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
