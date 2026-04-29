@@ -29,6 +29,17 @@ type MenuKey = 'personal' | 'wallet' | 'tickets' | 'favorites' | 'preferences' |
 
 type Gender = 'male' | 'female' | 'other' | '';
 
+function normalizePhoneLast10(raw?: string) {
+  const digits = String(raw || '').replace(/\D/g, '');
+  if (!digits) return '';
+  return digits.slice(-10);
+}
+
+function profileExtrasKeyForPhone(raw?: string) {
+  const last10 = normalizePhoneLast10(raw);
+  return last10 ? `af_profile_extras_${last10}` : '';
+}
+
 export default function ProfilePage() {
   const router = useRouter();
   const { user, logout, updateUser, token, isLoaded, loadFromStorage } = useAuthStore();
@@ -96,7 +107,9 @@ export default function ProfilePage() {
   useEffect(() => {
     try {
       setHasStoredToken(!!localStorage.getItem('af_token'));
-      const extrasRaw = localStorage.getItem('af_profile_extras');
+      const phoneHint = user?.phone || localStorage.getItem('af_last_phone') || '';
+      const scopedKey = profileExtrasKeyForPhone(phoneHint);
+      const extrasRaw = (scopedKey ? localStorage.getItem(scopedKey) : null) || localStorage.getItem('af_profile_extras');
       if (extrasRaw) {
         const extras = JSON.parse(extrasRaw) as {
           name?: string;
@@ -122,7 +135,7 @@ export default function ProfilePage() {
     } catch {
       setHasStoredToken(false);
     }
-  }, [token, isLoaded]);
+  }, [token, isLoaded, user?.phone]);
 
   const isAuthed = !!user || !!token || hasStoredToken;
   const isGuest = isLoaded && !isAuthed;
@@ -148,10 +161,10 @@ export default function ProfilePage() {
     try {
       const nextProfile = { name, email, phone };
       if (typeof window !== 'undefined') {
-        localStorage.setItem(
-          'af_profile_extras',
-          JSON.stringify({ name, email, phone, gender, dob, country, state, city, nationality })
-        );
+        const payload = JSON.stringify({ name, email, phone, gender, dob, country, state, city, nationality });
+        localStorage.setItem('af_profile_extras', payload);
+        const scopedKey = profileExtrasKeyForPhone(phone || user?.phone);
+        if (scopedKey) localStorage.setItem(scopedKey, payload);
       }
 
       if (user?.id?.startsWith('dev_')) {

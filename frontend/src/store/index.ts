@@ -36,6 +36,10 @@ function favoritesKeyForPhone(phoneLast10: string) {
   return `af_favorites_${phoneLast10}`;
 }
 
+function profileExtrasKeyForPhone(phoneLast10: string) {
+  return `af_profile_extras_${phoneLast10}`;
+}
+
 function migrateScopedUserData(phoneRaw?: string) {
   if (typeof window === 'undefined') return;
   const phoneLast10 = normalizePhoneLast10(phoneRaw);
@@ -45,11 +49,13 @@ function migrateScopedUserData(phoneRaw?: string) {
   const txScoped = localStorage.getItem(transactionsKeyForPhone(phoneLast10));
   const activityScoped = localStorage.getItem(activityKeyForPhone(phoneLast10));
   const favScoped = localStorage.getItem(favoritesKeyForPhone(phoneLast10));
+  const profileExtrasScoped = localStorage.getItem(profileExtrasKeyForPhone(phoneLast10));
 
   if (wbScoped != null) localStorage.setItem('af_wallet_balance', wbScoped);
   if (txScoped != null) localStorage.setItem('af_transactions', txScoped);
   if (activityScoped != null) localStorage.setItem('af_activity', activityScoped);
   if (favScoped != null) localStorage.setItem('af_favorites', favScoped);
+  if (profileExtrasScoped != null) localStorage.setItem('af_profile_extras', profileExtrasScoped);
 }
 
 // ── Auth Store ────────────────────────────────────────────────
@@ -102,9 +108,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     localStorage.removeItem('af_transactions');
     localStorage.removeItem('af_wallet_balance');
     localStorage.removeItem('af_delivery_address');
-    localStorage.removeItem('af_profile_overrides');
-    localStorage.removeItem('af_profile_extras');
-    localStorage.removeItem('af_last_phone');
+    // Keep profile overrides/extras so same phone can restore details on next login.
     set({ user: null, token: null });
   },
 
@@ -355,15 +359,13 @@ export const useUIStore = create<UIState>((set, get) => ({
     set({ favorites: updated });
   },
   resetUserData: () => {
-    saveWalletBalance(0);
-    saveTransactions([]);
-    saveActivity([]);
-    saveFavorites([]);
+    // Session reset only: do not persist wipes to phone-scoped storage.
     if (typeof window !== 'undefined') {
+      localStorage.removeItem('af_wallet_balance');
+      localStorage.removeItem('af_transactions');
+      localStorage.removeItem('af_activity');
+      localStorage.removeItem('af_favorites');
       localStorage.removeItem('af_delivery_address');
-      localStorage.removeItem('af_profile_overrides');
-      localStorage.removeItem('af_profile_extras');
-      localStorage.removeItem('af_last_phone');
     }
     set({ walletBalance: 0, transactions: [], activity: [], favorites: [] });
   },
