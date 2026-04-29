@@ -34,14 +34,9 @@ function getSafeNotificationLink(raw?: string) {
     if (v.startsWith('/') && !v.startsWith('//')) return v;
     // Allow same-site absolute URLs and convert them to in-app paths.
     try {
-        const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
         const u = new URL(v);
-        if (currentOrigin && u.origin === currentOrigin) {
-            return `${u.pathname || '/'}${u.search || ''}${u.hash || ''}`;
-        }
-        // Also accept assetforu domain variants for admin-entered links.
-        if (/(\.|^)assetforu\.com$/i.test(u.hostname)) {
-            return `${u.pathname || '/'}${u.search || ''}${u.hash || ''}`;
+        if (u.protocol === 'http:' || u.protocol === 'https:') {
+            return u.toString();
         }
     } catch {
         return '';
@@ -392,7 +387,11 @@ export function Header() {
                                                 <button
                                                     key={n.id}
                                                     onClick={() => {
-                                                        router.push(safeLink);
+                                                        if (safeLink.startsWith('/')) {
+                                                            router.push(safeLink);
+                                                        } else {
+                                                            window.open(safeLink, '_blank', 'noopener,noreferrer');
+                                                        }
                                                         setNotificationsOpen(false);
                                                     }}
                                                     className={`${baseClass} hover:bg-slate-50 cursor-pointer`}
