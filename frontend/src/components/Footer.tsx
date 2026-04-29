@@ -71,9 +71,9 @@ export function Footer() {
   }, [siteFooter]);
 
   return (
-    <footer className="bg-white border-t border-slate-100 mt-20">
-      <div className="mx-auto max-w-7xl px-6 lg:px-10 py-14">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
+    <footer className="bg-white border-t border-slate-100 mt-12">
+      <div className="mx-auto max-w-7xl px-6 lg:px-10 py-10">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}
           <div className="md:col-span-1">
             <div className="flex items-center gap-2.5 mb-4">
@@ -126,7 +126,7 @@ export function Footer() {
         </div>
 
         {/* Disclaimer Section */}
-        <div className="mt-10 p-4 bg-slate-50 border border-slate-200 rounded-lg">
+        <div className="mt-8 p-4 bg-slate-50 border border-slate-200 rounded-lg">
           <p className="text-xs text-slate-600 leading-relaxed space-y-2">
             {disclaimerLines.map((line) => (
               <span key={line} className="block mt-2 first:mt-0">{line}</span>
@@ -135,7 +135,7 @@ export function Footer() {
         </div>
 
         {/* Social Media Links */}
-        <div className="mt-10 flex items-center justify-center gap-6">
+        <div className="mt-8 flex items-center justify-center gap-5">
           {socialLinks.map((l) => {
             const label = String(l.label || '');
             const href = String(l.href || '#');
@@ -164,7 +164,7 @@ export function Footer() {
         </div>
 
         {/* Footer Bottom */}
-        <div className="border-t border-slate-100 mt-10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="border-t border-slate-100 mt-8 pt-6 flex flex-col md:flex-row justify-between items-center gap-3">
           <p className="text-xs text-slate-400">© {new Date().getFullYear()} AssetForU Technologies. All rights reserved.</p>
           <p className="text-xs text-slate-400">You are purchasing Asset Credits for platform usage. Credits are usable across products and services within AssetForU.</p>
         </div>
