@@ -27,6 +27,14 @@ function timeAgo(iso: string) {
     return `${diffDay}d ago`;
 }
 
+function getSafeNotificationLink(raw?: string) {
+    const v = String(raw || '').trim();
+    if (!v) return '';
+    // Allow only internal app routes.
+    if (v.startsWith('/') && !v.startsWith('//')) return v;
+    return '';
+}
+
 export function Header() {
     const router = useRouter();
     const user = useAuthStore((state) => state.user);
@@ -349,18 +357,33 @@ export function Header() {
                             ) : (
                                 <div className="max-h-72 overflow-auto">
                                     {notifications.map((n) => (
-                                        <button
-                                            key={n.id}
-                                            onClick={() => {
-                                                router.push(n.link || '/activity');
-                                                setNotificationsOpen(false);
-                                            }}
-                                            className="w-full px-4 py-3 border-b border-slate-100 last:border-0 text-left hover:bg-slate-50 transition-colors cursor-pointer"
-                                        >
-                                            <p className="text-xs uppercase tracking-wide text-primary-600 font-bold">{n.title}</p>
-                                            <p className="text-sm text-slate-700 mt-1">{n.message}</p>
-                                            <p className="text-xs text-slate-400 mt-2">{timeAgo(n.createdAt)}</p>
-                                        </button>
+                                        (() => {
+                                            const safeLink = getSafeNotificationLink(n.link);
+                                            const baseClass = 'w-full px-4 py-3 border-b border-slate-100 last:border-0 text-left transition-colors';
+                                            if (!safeLink) {
+                                                return (
+                                                    <div key={n.id} className={`${baseClass} cursor-default`}>
+                                                        <p className="text-xs uppercase tracking-wide text-primary-600 font-bold">{n.title}</p>
+                                                        <p className="text-sm text-slate-700 mt-1">{n.message}</p>
+                                                        <p className="text-xs text-slate-400 mt-2">{timeAgo(n.createdAt)}</p>
+                                                    </div>
+                                                );
+                                            }
+                                            return (
+                                                <button
+                                                    key={n.id}
+                                                    onClick={() => {
+                                                        router.push(safeLink);
+                                                        setNotificationsOpen(false);
+                                                    }}
+                                                    className={`${baseClass} hover:bg-slate-50 cursor-pointer`}
+                                                >
+                                                    <p className="text-xs uppercase tracking-wide text-primary-600 font-bold">{n.title}</p>
+                                                    <p className="text-sm text-slate-700 mt-1">{n.message}</p>
+                                                    <p className="text-xs text-slate-400 mt-2">{timeAgo(n.createdAt)}</p>
+                                                </button>
+                                            );
+                                        })()
                                     ))}
                                 </div>
                             )}
