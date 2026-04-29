@@ -123,6 +123,7 @@ interface UIState {
   walletBalance: number;
   setWalletBalance: (b: number) => void;
   transactions: Transaction[];
+  setTransactions: (items: Transaction[]) => void;
   addTransaction: (t: Omit<Transaction, 'id' | 'createdAt'>) => void;
   activity: ActivityEntry[];
   addActivity: (a: ActivityInput) => void;
@@ -222,6 +223,10 @@ export const useUIStore = create<UIState>((set, get) => ({
     set({ walletBalance: b });
   },
   transactions: loadTransactions(),
+  setTransactions: (items) => {
+    saveTransactions(items);
+    set({ transactions: items });
+  },
   addTransaction: (t) => {
     const now = new Date().toISOString();
     const newTransaction: Transaction = {

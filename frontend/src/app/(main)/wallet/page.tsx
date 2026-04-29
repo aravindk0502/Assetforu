@@ -1,15 +1,29 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useAuthStore, useUIStore } from '@/store';
 import { formatCurrency } from '@/lib/currency';
 import Link from 'next/link';
 import BackNavigation from '@/components/BackNavigation';
 import { useRouter } from 'next/navigation';
+import { walletAPI } from '@/lib/api';
 
 export default function WalletPage() {
     const router = useRouter();
     const user = useAuthStore((state) => state.user);
-    const { walletBalance, transactions, currency } = useUIStore();
+    const { walletBalance, transactions, currency, setWalletBalance, setTransactions } = useUIStore();
+
+    useEffect(() => {
+        if (!user) return;
+        walletAPI
+            .get()
+            .then((r) => {
+                const data = r?.data?.data || {};
+                setWalletBalance(Number(data.balance || 0));
+                setTransactions(Array.isArray(data.transactions) ? data.transactions : []);
+            })
+            .catch(() => { });
+    }, [user, setWalletBalance, setTransactions]);
 
     if (!user) {
         return (

@@ -65,7 +65,10 @@ export const walletAPI = {
       const status = Number(err?.response?.status || 0);
       // Fallback to Next.js public wallet API for production setups that use phone-based auth.
       if (status === 401 || status === 403 || status >= 500) {
-        return axios.get('/api/public/wallet');
+        const token = typeof window !== 'undefined' ? localStorage.getItem('af_token') || '' : '';
+        return axios.get('/api/public/wallet', {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
       }
       throw err;
     }
