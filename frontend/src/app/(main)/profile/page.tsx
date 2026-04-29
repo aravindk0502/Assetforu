@@ -9,6 +9,7 @@ import { useAuthStore, useUIStore, useCartStore } from '@/store';
 import { formatCurrency } from '@/lib/currency';
 import { getCountryNames, getStatesForCountry, getCitiesForState } from '@/lib/countries';
 import BackNavigation from '@/components/BackNavigation';
+import { addToast } from '@/components/Toast';
 import {
   User,
   Wallet,
@@ -155,6 +156,7 @@ export default function ProfilePage() {
       if (user?.id?.startsWith('dev_')) {
         updateUser({ name, email, phone });
         setSaveSuccess(true);
+        addToast('Profile updated successfully', 'success');
         setTimeout(() => setSaveSuccess(false), 3000);
         return;
       }
@@ -162,9 +164,10 @@ export default function ProfilePage() {
       await userAPI.updateProfile({ name, email, phone });
       updateUser({ name, email, phone });
       setSaveSuccess(true);
+      addToast('Profile updated successfully', 'success');
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch {
-      // ignore
+      addToast('Failed to update profile', 'info');
     } finally {
       setSaving(false);
     }
