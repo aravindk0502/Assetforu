@@ -58,7 +58,18 @@ export const userAPI = {
 
 // ── Wallet ───────────────────────────────────────────────────
 export const walletAPI = {
-  get: () => api.get('/wallet'),
+  get: async () => {
+    try {
+      return await api.get('/wallet');
+    } catch (err: any) {
+      const status = Number(err?.response?.status || 0);
+      // Fallback to Next.js public wallet API for production setups that use phone-based auth.
+      if (status === 401 || status === 403 || status >= 500) {
+        return axios.get('/api/public/wallet');
+      }
+      throw err;
+    }
+  },
   addCredits: (credits: number, amount: number, reference_id?: string) =>
     api.post('/wallet/add', { credits, amount, reference_id }),
 };
