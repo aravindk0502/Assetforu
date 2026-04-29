@@ -28,7 +28,7 @@ export function BottomNav() {
 
     return (
         <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white border-t border-slate-200 shadow-lg">
-            <div className="flex items-center justify-around h-16">
+            <div className="flex items-center justify-around h-14">
                 {navItems.map(({ href, label, icon: Icon }) => {
                     const isActive = pathname === href || (href !== '/' && pathname.startsWith(href));
                     const isFavoritesLink = href === '/favourites';
@@ -37,21 +37,21 @@ export function BottomNav() {
                             key={href}
                             href={href}
                             className={clsx(
-                                'relative flex flex-col items-center justify-center w-full h-full gap-1 text-xs font-semibold transition-colors',
+                                'relative flex flex-col items-center justify-center w-full h-full gap-0.5 text-xs font-semibold transition-colors',
                                 isActive
                                     ? 'text-primary-700 bg-primary-50'
                                     : 'text-slate-500 hover:text-slate-700'
                             )}
                         >
                             <div className="relative flex items-center justify-center">
-                                <Icon className="w-5 h-5" />
+                                <Icon className="w-[18px] h-[18px]" />
                                 {mounted && isFavoritesLink && favorites.length > 0 && (
                                     <span className="absolute -top-2 -right-2 h-5 min-w-5 px-1 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center shadow-md">
                                         {favorites.length}
                                     </span>
                                 )}
                             </div>
-                            <span className="text-[10px]">{label}</span>
+                            <span className="text-[10px] leading-none">{label}</span>
                         </Link>
                     );
                 })}

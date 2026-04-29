@@ -179,7 +179,7 @@ export function Header() {
     return (
         <header className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-sm">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-10">
-                <div className="flex items-center justify-between h-16">
+                <div className="flex items-center justify-between h-14 sm:h-[60px]">
                     {/* Logo */}
                     <Link href="/" className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
                         <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary-700 flex items-center justify-center">
@@ -233,7 +233,7 @@ export function Header() {
                     </nav>
 
                     {/* Right Side - Responsive */}
-                    <div className="flex items-center gap-1.5 sm:gap-3">
+                    <div className="flex items-center gap-1 sm:gap-2.5">
                         {/* Wallet - Desktop */}
                         <Link href="/wallet" className="hidden sm:flex items-center gap-2 bg-primary-50 hover:bg-primary-100 px-3 py-2 rounded-lg transition-colors">
                             <Wallet className="w-4 h-4 text-primary-700" />

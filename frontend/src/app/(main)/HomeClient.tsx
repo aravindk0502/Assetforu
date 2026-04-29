@@ -264,13 +264,13 @@ export default function HomePage() {
           <div className="absolute inset-0 bg-gradient-to-r from-emerald-950/25 via-transparent to-transparent" />
           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-slate-950/10" />
         </div>
-        <div className="relative z-10 mx-auto max-w-7xl px-6 lg:px-10 py-24 md:py-28">
+        <div className="relative z-10 mx-auto max-w-7xl px-6 lg:px-10 py-20 md:py-24">
           <div className="max-w-3xl text-white">
             <p className="text-xs uppercase tracking-[0.35em] text-emerald-200/80 mb-4">{t('home.hero.kicker', 'Digital Platform Experience')}</p>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight tracking-tight">{siteHero?.heading || t('home.hero.heading', 'Explore Premium Land Opportunities with Asset Credits')}</h1>
             <p className="mt-6 max-w-2xl text-base sm:text-lg text-slate-100/85 leading-8">{siteHero?.subheading || t('home.hero.subheading', 'Access curated land campaigns, view property details, and enter complimentary benefits when you purchase Asset Credits.')}</p>
             <p className="mt-6 text-sm text-slate-200/70 max-w-xl">{siteHero?.note || t('home.hero.note', 'Campaign-related benefits are complimentary platform features and not the primary purpose of credit purchase.')}</p>
-            <div className="mt-10 flex flex-wrap items-center gap-4">
+            <div className="mt-8 flex flex-wrap items-center gap-3">
               <button onClick={() => router.push(siteHero?.primary_cta_href || '/campaigns')} className="rounded-full bg-emerald-300 text-slate-950 px-6 py-3 text-sm font-semibold shadow-xl shadow-emerald-500/20 transition hover:bg-emerald-200">
                 {siteHero?.primary_cta_label || t('home.hero.ctaPrimary', 'Get Started')}
               </button>
@@ -279,7 +279,7 @@ export default function HomePage() {
               </button>
             </div>
           </div>
-          <div className="mt-14 grid gap-4 md:grid-cols-3">
+          <div className="mt-10 grid gap-3 md:grid-cols-3">
             {[
               { label: t('home.stats.wallet', 'Wallet Balance'), value: `${formatCurrency(isAuthed ? walletBalance : 0, currency)}` },
               { label: t('home.stats.active', 'Active Campaigns'), value: `${activeCountLabel}` },
@@ -294,8 +294,8 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-6 lg:px-10 py-12">
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+      <section className="mx-auto max-w-7xl px-6 lg:px-10 py-10">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
           <div>
             <p className="text-xs uppercase tracking-[0.25em] text-emerald-600">{t('home.featured.kicker', 'Platform Campaigns')}</p>
             <h2 className="text-3xl font-black text-slate-900 mt-2">{t('home.featured.title', 'Featured Campaigns')}</h2>
@@ -303,7 +303,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[1fr_2fr]">
+        <div className="grid gap-5 lg:grid-cols-[1fr_2fr]">
           <div className="rounded-3xl bg-white p-6 border border-slate-200 shadow-sm">
             <h3 className="text-lg font-black text-slate-900">{t('home.why.title', 'Why AssetForU?')}</h3>
             <ul className="mt-4 space-y-3 text-sm text-slate-600">

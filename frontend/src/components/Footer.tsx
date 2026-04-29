@@ -71,8 +71,8 @@ export function Footer() {
   }, [siteFooter]);
 
   return (
-    <footer className="bg-white border-t border-slate-100 mt-12">
-      <div className="mx-auto max-w-7xl px-6 lg:px-10 py-10">
+    <footer className="bg-white border-t border-slate-100 mt-8">
+      <div className="mx-auto max-w-7xl px-6 lg:px-10 py-9">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}
           <div className="md:col-span-1">
