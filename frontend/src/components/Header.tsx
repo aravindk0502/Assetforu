@@ -30,8 +30,22 @@ function timeAgo(iso: string) {
 function getSafeNotificationLink(raw?: string) {
     const v = String(raw || '').trim();
     if (!v) return '';
-    // Allow only internal app routes.
+    // Allow internal app routes directly.
     if (v.startsWith('/') && !v.startsWith('//')) return v;
+    // Allow same-site absolute URLs and convert them to in-app paths.
+    try {
+        const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+        const u = new URL(v);
+        if (currentOrigin && u.origin === currentOrigin) {
+            return `${u.pathname || '/'}${u.search || ''}${u.hash || ''}`;
+        }
+        // Also accept assetforu domain variants for admin-entered links.
+        if (/(\.|^)assetforu\.com$/i.test(u.hostname)) {
+            return `${u.pathname || '/'}${u.search || ''}${u.hash || ''}`;
+        }
+    } catch {
+        return '';
+    }
     return '';
 }
 
@@ -365,6 +379,11 @@ export function Header() {
                                                     <div key={n.id} className={`${baseClass} cursor-default`}>
                                                         <p className="text-xs uppercase tracking-wide text-primary-600 font-bold">{n.title}</p>
                                                         <p className="text-sm text-slate-700 mt-1">{n.message}</p>
+                                                        {n.link && (
+                                                            <p className="text-[11px] text-slate-500 mt-1 break-all">
+                                                                Link: <span className="text-slate-400">{n.link}</span>
+                                                            </p>
+                                                        )}
                                                         <p className="text-xs text-slate-400 mt-2">{timeAgo(n.createdAt)}</p>
                                                     </div>
                                                 );
@@ -380,6 +399,11 @@ export function Header() {
                                                 >
                                                     <p className="text-xs uppercase tracking-wide text-primary-600 font-bold">{n.title}</p>
                                                     <p className="text-sm text-slate-700 mt-1">{n.message}</p>
+                                                    {n.link && (
+                                                        <p className="text-[11px] text-slate-500 mt-1 break-all">
+                                                            Link: <span className="text-slate-400">{n.link}</span>
+                                                        </p>
+                                                    )}
                                                     <p className="text-xs text-slate-400 mt-2">{timeAgo(n.createdAt)}</p>
                                                 </button>
                                             );
